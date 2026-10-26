@@ -581,7 +581,8 @@ namespace Jatify.UI
         // open while the cursor is on the badge or in the card; a moment's grace to travel between them
         private static void GroupCard(Minimap m, Vector2 ptr, ThemeData t)
         {
-            var g = MapClusters.Over; float now = Time.unscaledTime;
+            var g = MapClusters.Over = MapClusters.Under(ptr); float now = Time.unscaledTime;
+            if (g != null && ZInput.GetMouseButtonDown(0)) { PinGroup(g); return; }   // click the badge: the card stays open
             if (_cardGroup != null) _cardGroup = Same(_cardGroup);   // groups are rebuilt with every pin refresh: follow ours by its pins
             if (g != null && _cardGroup != null && g.Pins.Contains(_cardGroup.Pins[0])) g = _cardGroup;
             bool inCard = _cardGroup != null && RectTransformUtility.RectangleContainsScreenPoint(_groupCard, ptr, null);

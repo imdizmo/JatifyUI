@@ -14,7 +14,7 @@ namespace Jatify.UI
     [BepInPlugin(Guid, "Jatify UI", Version)]
     public class Plugin : BaseUnityPlugin
     {
-        public const string Guid = "jatify.ui", Version = "0.1.0";
+        public const string Guid = "jatify.ui", Version = "0.1.1";
         internal static Plugin Instance;
         private Harmony _harmony;
         private Theme _theme;

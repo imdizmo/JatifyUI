@@ -8,7 +8,7 @@ namespace Jatify.UI
 {
     // Crowded pins (user): three or more pins that overlap on the big map become one badge with their count;
     // hovering it lists them in a card you can move into, hovering a row brings that pin out (bigger, named),
-    // clicking a row or the badge zooms in. Also the one place that decides whether a pin marker shows
+    // clicking the badge keeps the card open, clicking a row zooms to that pin. Also the one place that decides whether a pin marker shows
     // (vanilla only creates markers, it never shows one again once hidden): a hidden kind or a grouped pin
     // is off, anything else on.
     internal static class MapClusters
@@ -21,6 +21,15 @@ namespace Jatify.UI
         private static readonly AccessTools.FieldRef<Minimap, bool> PinUpdate = AccessTools.FieldRefAccess<Minimap, bool>("m_pinUpdateRequired");
         private static Minimap.PinData _highlight;
         internal static Group Over;   // the badge under the cursor
+
+        // the pin layer gets no pointer events (bug report 2026-10-26: hover and click did nothing), so the badges
+        // are hit-tested here, by screen position, like the group card
+        internal static Group Under(Vector2 ptr)
+        {
+            for (int i = Groups.Count - 1; i >= 0; i--)
+                if (Groups[i].Badge != null && RectTransformUtility.RectangleContainsScreenPoint(Groups[i].Badge, ptr, null)) return Groups[i];
+            return null;
+        }
 
         // a pin picked from a group's card: shown out of the group, bigger, until the cursor leaves its row
         internal static Minimap.PinData Highlight
@@ -101,7 +110,6 @@ namespace Jatify.UI
                 rt.gameObject.SetActive(true); rt.SetAsLastSibling(); rt.anchoredPosition = g.At; g.Badge = rt;
                 count.text = g.Pins.Count.ToString(); ((RectTransform)count.transform.parent).sizeDelta = new Vector2(g.Pins.Count >= 10 ? 28f : 20f, 18f);
                 icon.sprite = CommonIcon(g); icon.enabled = icon.sprite != null;
-                rt.GetComponent<GroupRef>().Group = g;
             }
             for (int i = Groups.Count; i < _badges.Count; i++) if (_badges[i].rt != null) _badges[i].rt.gameObject.SetActive(false);
             if (Over != null && !Groups.Contains(Over)) Over = null;
@@ -122,8 +130,6 @@ namespace Jatify.UI
             var icon = Kit.Img(rt, "I", null, Color.white, false); icon.rectTransform.Fill(8f); icon.preserveAspect = true;
             var pill = Kit.Panel(rt, "Pill", Theme.C(t.accent), 9); var pr = pill.rectTransform; pr.anchorMin = pr.anchorMax = Vector2.one; pr.pivot = new Vector2(0.5f, 0.5f); pr.anchoredPosition = new Vector2(-4f, -4f); pr.sizeDelta = new Vector2(22f, 18f);
             var count = Kit.Text(pr, "N", "", Fonts.Bold, 12f, new Color(0.02f, 0.08f, 0.05f)); count.alignment = TextAlignmentOptions.Center; count.rectTransform.Fill();
-            var gr = rt.gameObject.AddComponent<GroupRef>();
-            rt.gameObject.AddComponent<Button>().onClick.AddListener(() => { if (gr.Group != null) MapStyle.PinGroup(gr.Group); });   // click: the card stays open
             return (rt, count, icon);
         }
 
@@ -133,13 +139,6 @@ namespace Jatify.UI
             _badges.Clear(); Groups.Clear(); _grouped.Clear(); _highlight = null; Over = null;
             var m = Minimap.instance;   // every marker back on
             if (m != null) foreach (var p in Pins(m)) if (p.m_uiElement != null) { p.m_uiElement.gameObject.SetActive(true); p.m_uiElement.localScale = Vector3.one; }
-        }
-
-        internal class GroupRef : MonoBehaviour, UnityEngine.EventSystems.IPointerEnterHandler, UnityEngine.EventSystems.IPointerExitHandler
-        {
-            internal Group Group;
-            public void OnPointerEnter(UnityEngine.EventSystems.PointerEventData _) => Over = Group;
-            public void OnPointerExit(UnityEngine.EventSystems.PointerEventData _) { if (Over == Group) Over = null; }
         }
     }
 

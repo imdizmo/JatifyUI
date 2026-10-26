@@ -227,7 +227,7 @@ out*).
 - **Pins:** more pin kinds (ore, dungeon, cave and others), sizes you choose, and names that don't pile on top of each other.
     - A pin list sorted by distance, a search, filters by kind, and undo for a pin you removed.
 - **Live marks:** portals, ships and carts appear on the map by themselves, and a portal shows where it leads.
-- **Crowded areas:** groups of nearby pins fold into one; hover it for the list, click it to zoom in.
+- **Crowded areas:** groups of nearby pins fold into one; hover it for the list, click it to keep the list open, click a pin in it to zoom there.
 - **Zoom:** the map can zoom closer than Valheim allows (`Map` → `ZoomIn`, off by default).
 - **Discovery:** ore deposits and dungeon entrances you walk past can pin themselves (both off by default).
     - Ore pins are crossed off once mined out.
