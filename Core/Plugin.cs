@@ -146,9 +146,9 @@ namespace Jatify.UI
             Safe("target-health", TargetHealth.Tick);
             Safe("map-marks", () => MapMarks.Tick(Minimap.instance));
             Safe("mod-slot-lift", ModSlots.TickStaged);
-            Safe("test-panel", TestPanel.Tick);
+            if (Dev.Build) Safe("test-panel", TestPanel.Tick);   // F8 test kit and shot.request: dev profile only, never in a release install
             Safe("config-page", () => ConfigPage.Open?.Tick());
-            Safe("devshot", DevShot.Tick);
+            if (Dev.Build) Safe("devshot", DevShot.Tick);
         }
 
         private void LateUpdate() { if (Headless) return; Safe("vanilla-hud", VanillaHud.Tick); Safe("minimap", () => VanillaMinimap.Tick(Root.MapHole)); Safe("layout", InventoryStyle.Layout); Safe("notices", Notices.Tick); Safe("save-badge", SaveBadge.Tick); Safe("chest-peek", ChestPeek.Tick); Safe("graves", Graves.Tick); Safe("cursor", CursorSkin.Tick); Safe("hover-card", HoverCard.Tick); Safe("item-tip", ItemTip.Tick); } // after the game's own HUD update and animators
