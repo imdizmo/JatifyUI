@@ -20,7 +20,30 @@ namespace Jatify.UI
         private static float _scanAt = -99f; private static int _nearFrame = -1;
         internal static bool Building;   // inside Player.UpdatePlacement: the build menu asks
 
-        internal static bool On => Building ? Cfg.BuildFromChests.Value : Cfg.CraftFromChests.Value;
+        internal static bool On => !Other && (Building ? Cfg.BuildFromChests.Value : Cfg.CraftFromChests.Value);
+
+        // another craft-from-containers mod is installed: two of them both pay for the same craft (a lantern refuel
+        // ate both lanterns and two cores, bug report 2026-10-26), so ours steps aside and leaves it to that one
+        private static readonly string[] Others = { "Azumatt.AzuCraftyBoxes", "aedenthorn.CraftFromContainers" };   // ponytail: known GUIDs, add others as they're reported
+        private static bool? _other;
+        // the other mod's own reach, so the panel counts exactly the chests it will take from (AzuCraftyBoxes: "Container Range", 20 m)
+        private static BepInEx.Configuration.ConfigEntryBase _otherRange;
+        private static float OtherRange()
+        {
+            if (_otherRange == null) _otherRange = AccessTools.Field(AccessTools.TypeByName("AzuCraftyBoxes.AzuCraftyBoxesPlugin"), "mRange")?.GetValue(null) as BepInEx.Configuration.ConfigEntryBase;
+            try { return _otherRange != null ? System.Convert.ToSingle(_otherRange.BoxedValue) : Cfg.StackRange.Value; } catch { return Cfg.StackRange.Value; }
+        }
+        internal static bool Other
+        {
+            get
+            {
+                if (_other.HasValue) return _other.Value;
+                var hit = Array.Find(Others, BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey);
+                if (hit != null) Log.Warn($"{hit} is installed: Jatify UI's craft and build from chests stays off (only one mod may pay for a craft)");
+                _other = hit != null;
+                return _other.Value;
+            }
+        }
 
         // all loaded chests, refreshed every 2 s (ponytail: a scene scan; a Container.Awake hook if it ever shows in profiles)
         private static List<Container> Near(Player p)
@@ -29,7 +52,7 @@ namespace Jatify.UI
             _nearFrame = Time.frameCount;
             if (Time.unscaledTime - _scanAt > 2f) { _scanAt = Time.unscaledTime; _all.Clear(); _all.AddRange(UnityEngine.Object.FindObjectsByType<Container>(FindObjectsSortMode.None)); }
             _near.Clear(); _totals.Clear();
-            float r = Cfg.StackRange.Value, r2 = r * r; long id = p.GetPlayerID(); var pos = p.transform.position;
+            float r = Other ? OtherRange() : Cfg.StackRange.Value, r2 = r * r; long id = p.GetPlayerID(); var pos = p.transform.position;
             foreach (var c in _all)
             {
                 if (c == null || c.GetInventory() == null || c.GetComponentInParent<Player>() != null) continue;
@@ -93,7 +116,7 @@ namespace Jatify.UI
         // in the chests only
         internal static int InChests(Player p, string name)
         {
-            if (p == null || !On) return 0;
+            if (p == null || !(On || Other)) return 0;   // with another craft-from-chests mod we still count (the panel shows what it will use), it alone pays
             Near(p); return _totals.TryGetValue(name, out var n) ? n : 0;
         }
 
