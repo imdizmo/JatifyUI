@@ -7,7 +7,8 @@ using UnityEngine.UI;
 namespace Jatify.UI
 {
     // F8: a small in-game panel to fire every notice by hand (skill banner, unlock card, pickups, biome,
-    // achievement banner, Valheim's own messages), to get the test kit and to teleport to your grave and back. While it is open the cursor is
+    // achievement banner, Valheim's own messages), to get the test kit, to teleport to your grave and back, and the
+    // build switches (free build, build anywhere: DevBuild.cs). While it is open the cursor is
     // free and the game takes no input (Typing's patches).
     internal static class TestPanel
     {
@@ -51,6 +52,8 @@ namespace Jatify.UI
                 ("Teleport to my grave", () => DevTest.Run("tp-grave")),
                 ("Teleport back", () => DevTest.Run("tp-back")),
                 ("Loading screen", LoadingScreen),
+                ("", DevBuild.ToggleFree),       // labels from Toggles: they show the switch's state
+                ("", DevBuild.ToggleAnywhere),
             };
             float h = 52f + actions.Length * 40f + 30f;
             _root.sizeDelta = new Vector2(280f, h);
@@ -58,7 +61,12 @@ namespace Jatify.UI
             var title = Kit.Text(_root, "Title", "Test notices", Fonts.Bold, 16f, Color.white); title.rectTransform.At(16, 0, 200, 48); title.alignment = TextAlignmentOptions.MidlineLeft;
             Btn("×", 236, 10, 30, 28, () => _root.gameObject.SetActive(false), t);
             var line = Kit.Img(_root, "Line", null, Theme.C(t.glassLine)); line.rectTransform.At(0, 48, 280, 1);
-            for (int i = 0; i < actions.Length; i++) { var a = actions[i].Item2; Btn(actions[i].Item1, 14, 58 + i * 40, 252, 34, () => { try { a(); } catch (Exception e) { Log.Warn("test panel: " + e.Message); } }, t); }
+            for (int i = 0; i < actions.Length; i++)
+            {
+                var a = actions[i].Item2; TextMeshProUGUI tx = null;
+                tx = Btn(actions[i].Item1, 14, 58 + i * 40, 252, 34, () => { try { a(); } catch (Exception e) { Log.Warn("test panel: " + e.Message); } Label(a, tx); }, t);
+                Label(a, tx);
+            }
             var hint = Kit.Text(_root, "Hint", "F8 or Esc closes", Fonts.Mono, 10.5f, Theme.C(t.mute)); hint.rectTransform.At(16, h - 26, 250, 16);
         }
 
@@ -69,7 +77,14 @@ namespace Jatify.UI
             Campfire.LoadBar.Preview(); _root.gameObject.SetActive(false);
         }
 
-        private static void Btn(string label, float x, float y, float w, float h, Action on, ThemeData t)
+        // a switch's button says what it does now
+        private static void Label(Action a, TextMeshProUGUI tx)
+        {
+            if (a == DevBuild.ToggleFree) tx.text = "Free build: " + (DevBuild.Free ? "on" : "off");
+            else if (a == DevBuild.ToggleAnywhere) tx.text = "Build anywhere: " + (DevBuild.Anywhere ? "on" : "off");
+        }
+
+        private static TextMeshProUGUI Btn(string label, float x, float y, float w, float h, Action on, ThemeData t)
         {
             var (b, f) = Kit.Box(_root, "Btn", Theme.C(t.raised), Theme.C(t.glassLine), 8); b.rectTransform.At(x, y, w, h);
             var tx = Kit.Text(b.rectTransform, "T", label, Fonts.Medium, 13f, Theme.C(t.text)); tx.rectTransform.Fill(); tx.rectTransform.offsetMin = new Vector2(12f, 0f); tx.alignment = label == "×" ? TextAlignmentOptions.Center : TextAlignmentOptions.MidlineLeft;
@@ -77,6 +92,7 @@ namespace Jatify.UI
             b.raycastTarget = true; var btn = b.gameObject.AddComponent<Button>(); btn.targetGraphic = f;
             var cb = btn.colors; cb.highlightedColor = new Color(1.35f, 1.35f, 1.4f); btn.colors = cb;
             btn.onClick.AddListener(() => on());
+            return tx;
         }
 
         private static ItemDrop.ItemData RandomItem(Func<ItemDrop.ItemData, bool> ok)

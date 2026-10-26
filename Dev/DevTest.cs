@@ -193,6 +193,7 @@ namespace Jatify.UI
                 {
                     var go = Object.Instantiate(ZNetScene.instance.GetPrefab("piece_chest_wood"), p.transform.position + p.transform.forward * 2f, Quaternion.LookRotation(-p.transform.forward));
                     go.GetComponent<ZNetView>().GetZDO().Set(ZDOVars.s_creator, p.GetPlayerID());
+                    HarmonyLib.AccessTools.TypeByName("AzuCraftyBoxes.API")?.GetMethod("AddContainer")?.Invoke(null, new object[] { go.GetComponent<Container>() });   // a craft-from-chests mod's own registration, where there is one
                     var ci = go.GetComponent<Container>().GetInventory(); int n = 0;
                     while (ci.AddItem("Wood", 50, 1, 0, 0L, "", false) != null && ++n < 100) { }
                     Log.Info($"WOODCHEST: {n} stacks of wood");
@@ -243,6 +244,157 @@ namespace Jatify.UI
                     p.EquipItem(helm, false); var on = helm.m_gridPos;
                     bool ok = off.y >= 0 && off.y < SpecialRows.Start && on.x == 0 && on.y == er && p.IsItemEquiped(helm);
                     Log.Info($"EQROW: worn {string.Join(", ", worn)}; helmet off -> {off.x},{off.y}, on -> {on.x},{on.y}. " + (ok ? "PASS" : "FAIL"));
+                    return true;
+                }
+                case "inv-lantern": case "inv-lantern-eq": case "inv-lantern-data": case "inv-lantern-eq-data":   // Hip Lantern's refuel (lantern + surtling core -> lantern) through vanilla's DoCrafting, as the Craft button does; -eq: lantern worn; -data: it carries saved data, as a used one does (with Epic Loot, Hip Lantern then drops the new one and picks it up again) (bug report 2026-10-26: it vanished)
+                {
+                    var rec = ObjectDB.instance.m_recipes.FirstOrDefault(r => r.m_item != null && r.m_item.name == "HipLantern" && r.m_resources.Any(q => q.m_resItem != null && q.m_resItem.name == "HipLantern"));
+                    if (rec == null) { Log.Info("LANTERN: Hip Lantern not installed or no refuel recipe. SKIP"); return true; }
+                    System.Func<string> lanterns = () => string.Join("; ", inv.GetAllItems().Where(i => i.m_dropPrefab != null && i.m_dropPrefab.name == "HipLantern").Select(i => $"@{i.m_gridPos.x},{i.m_gridPos.y} fuel {i.m_durability:0}/{i.GetMaxDurability():0} worn {p.IsItemEquiped(i)} data {i.m_customData.Count}"));
+                    System.Func<int> count = () => inv.GetAllItems().Count(i => i.m_dropPrefab != null && i.m_dropPrefab.name == "HipLantern");
+                    foreach (var old in inv.GetAllItems().Where(i => i.m_dropPrefab != null && i.m_dropPrefab.name == "HipLantern").ToList()) { p.UnequipItem(old, false); inv.RemoveItem(old); }   // exactly one lantern: the bug is about which one the craft takes
+                    var lamp = inv.AddItem("HipLantern", 1, 1, 0, p.GetPlayerID(), p.GetPlayerName(), new Vector2i(-1, -1), false);
+                    inv.AddItem("SurtlingCore", 2, 1, 0, 0L, "", new Vector2i(-1, -1), false);
+                    if (lamp == null) { Log.Info("LANTERN: no room for a lantern. SKIP"); return true; }
+                    lamp.m_durability = lamp.GetMaxDurability() * 0.25f;
+                    if (what.EndsWith("-data")) lamp.m_customData["jatify.test"] = "used";
+                    if (what.StartsWith("inv-lantern-eq")) p.EquipItem(lamp);
+                    var nearBefore = Physics.OverlapSphere(p.transform.position, 6f).Select(c => c.GetComponentInParent<ItemDrop>()).Where(d => d != null && d.name.StartsWith("HipLantern")).Distinct().Count();
+                    int before = count(), cores = inv.CountItems("$item_surtlingcore");
+                    Log.Info($"LANTERN {what}: before [{lanterns()}] cores {cores}");
+                    var gui = InventoryGui.instance; if (!InventoryGui.IsVisible()) gui.Show(null);
+                    var tr = HarmonyLib.Traverse.Create(gui);
+                    tr.Field("m_craftRecipe").SetValue(rec); tr.Field("m_craftUpgradeItem").SetValue(null); tr.Field("m_multiCrafting").SetValue(false); tr.Field("m_craftVariant").SetValue(0);
+                    HarmonyLib.AccessTools.Method(typeof(InventoryGui), "DoCrafting").Invoke(gui, new object[] { p });
+                    int after = count(), coresAfter = inv.CountItems("$item_surtlingcore");
+                    bool full = inv.GetAllItems().Any(i => i.m_dropPrefab != null && i.m_dropPrefab.name == "HipLantern" && i.m_durability >= i.GetMaxDurability() - 0.5f);
+                    var near = Physics.OverlapSphere(p.transform.position, 6f).Select(c => c.GetComponentInParent<ItemDrop>()).Where(d => d != null && d.name.StartsWith("HipLantern")).Distinct().Count() - nearBefore;
+                    Log.Info($"LANTERN {what}: after [{lanterns()}] cores {coresAfter}, lanterns dropped near you {near}. " + (after == before && full && coresAfter == cores - 1 ? "PASS" : $"FAIL (lanterns {before} -> {after}, a full one {full}, cores {cores} -> {coresAfter})"));
+                    return true;
+                }
+                case "inv-pay:chest": case "inv-pay:split": case "inv-pay:upgrade": case "inv-pay:queue": case "inv-pay:hands":
+                case "inv-pay:chest-ui": case "inv-pay:split-ui": case "inv-pay:upgrade-ui": case "inv-pay:queue-ui": case "inv-pay:hands-ui":
+                {   // a craft is paid exactly once, whoever pays (us, or another craft-from-chests mod). Spawns its own chest (yours) and a
+                    // workbench it opens like a player (interact), then crafts 1.5 s later. chest: materials only in the chest; split: one
+                    // of each in the bag, the rest in the chest; upgrade: quality 1 -> 2 (workbench + chopping block); queue: three in a
+                    // row; hands: inventory crafting, no station (Club)
+                    string mode = what.Substring(8); bool ui = mode.EndsWith("-ui"); if (ui) mode = mode.Substring(0, mode.Length - 3);   // -ui: through the crafting list and the Craft button (queue: Jatify's Queue), with the craft timer
+                    var spawned = new System.Collections.Generic.List<GameObject>();
+                    var cgo = Object.Instantiate(ZNetScene.instance.GetPrefab("piece_chest_wood"), p.transform.position + p.transform.forward * 2f, Quaternion.LookRotation(-p.transform.forward)); spawned.Add(cgo);
+                    cgo.GetComponent<ZNetView>().GetZDO().Set(ZDOVars.s_creator, p.GetPlayerID());
+                    var chest = cgo.GetComponent<Container>().GetInventory();
+                    HarmonyLib.AccessTools.TypeByName("AzuCraftyBoxes.API")?.GetMethod("AddContainer")?.Invoke(null, new object[] { cgo.GetComponent<Container>() });   // a craft-from-chests mod's own registration, where there is one (it skips chests without an owner on spawn)
+                    Recipe rec; ItemDrop.ItemData up = null; int q = 1;
+                    CraftingStation bench = null;
+                    if (mode == "hands") rec = ObjectDB.instance.m_recipes.FirstOrDefault(r => r.name == "Recipe_Club");
+                    else
+                    {   // a workbench recipe (level 1, quality 2 costs something, so the same one serves the upgrade)
+                        if (mode == "upgrade") q = 2;
+                        rec = ObjectDB.instance.m_recipes.FirstOrDefault(r => r.m_item != null && r.m_craftingStation != null && r.m_craftingStation.m_name == "$piece_workbench" && r.m_minStationLevel <= 1 && r.m_item.m_itemData.m_shared.m_maxQuality > 1 && r.m_resources.Any(x => !x.m_upgraderResource && x.GetAmount(2) > 0) && r.m_resources.All(x => x.m_resItem != null));
+                        var wb = Object.Instantiate(ZNetScene.instance.GetPrefab("piece_workbench"), p.transform.position + p.transform.right * 1.5f, Quaternion.LookRotation(-p.transform.right)); spawned.Add(wb);
+                        wb.GetComponent<ZNetView>().GetZDO().Set(ZDOVars.s_creator, p.GetPlayerID());
+                        bench = wb.GetComponent<CraftingStation>();
+                        bench.m_craftRequireRoof = false;   // this test bench only: a roof has nothing to do with paying (a bench opens within 2 m, under a roof)
+                        var ext = q == 2 ? ZNetScene.instance.GetPrefab("piece_workbench_ext1") : null;   // chopping block: workbench level 2, what quality 2 needs
+                        if (ext != null) spawned.Add(Object.Instantiate(ext, wb.transform.position + p.transform.right * 1.5f, Quaternion.identity));
+                    }
+                    if (rec == null) { Log.Info("PAY: no recipe to test. SKIP"); return true; }
+                    var mats = rec.m_resources.Where(r => r.m_resItem != null && !r.m_upgraderResource && r.GetAmount(q) > 0).ToList();   // upgrader items are only spent at the upgrade station (Valheim 1.0)
+                    string itemName = rec.m_item.m_itemData.m_shared.m_name;
+                    // set aside what you carry of these (given back afterwards), so the counts start from zero
+                    var setAside = inv.GetAllItems().Where(i => i.m_shared.m_name == itemName || mats.Any(m => m.m_resItem.m_itemData.m_shared.m_name == i.m_shared.m_name)).ToList();
+                    var wasWorn = setAside.Where(i => p.IsItemEquiped(i)).ToList();
+                    foreach (var w in setAside) { p.UnequipItem(w, false); inv.RemoveItem(w); }
+                    System.Action restore = () => {   // the test leaves nothing behind: its crafts and leftovers go, your things come back
+                        foreach (var x in inv.GetAllItems().Where(i => i.m_shared.m_name == itemName || mats.Any(m => m.m_resItem.m_itemData.m_shared.m_name == i.m_shared.m_name)).ToList()) { p.UnequipItem(x, false); inv.RemoveItem(x); }
+                        foreach (var w in setAside) { if (!inv.AddItem(w)) ItemDrop.DropItem(w, w.m_stack, p.transform.position + Vector3.up, Quaternion.identity); else if (wasWorn.Contains(w)) p.EquipItem(w, false); }
+                    };
+                    foreach (var m in mats)
+                    {
+                        int need = m.GetAmount(q) * 3; string pf = m.m_resItem.name;
+                        if (mode == "split") { inv.AddItem(pf, 1, 1, 0, 0L, "", new Vector2i(-1, -1), false); need -= 1; }
+                        chest.AddItem(pf, need + 5, 1, 0, 0L, "", false);
+                    }
+                    if (mode == "upgrade") up = inv.AddItem(rec.m_item.name, 1, 1, 0, p.GetPlayerID(), p.GetPlayerName(), new Vector2i(-1, -1), false);
+                    Later(1.5f, () => {   // another craft-from-chests mod sees a new chest on its next refresh
+                    System.Func<string> counts = () => string.Join(", ", mats.Select(m => $"{m.m_resItem.m_itemData.m_shared.m_name} bag {inv.CountItems(m.m_resItem.m_itemData.m_shared.m_name)} chest {chest.CountItems(m.m_resItem.m_itemData.m_shared.m_name)}"));
+                    System.Func<int> total = () => mats.Sum(m => inv.CountItems(m.m_resItem.m_itemData.m_shared.m_name) + chest.CountItems(m.m_resItem.m_itemData.m_shared.m_name));
+                    System.Func<int> made = () => inv.GetAllItems().Count(i => i.m_shared.m_name == itemName);
+                    int t0 = total(), k0 = made(), runs = mode == "queue" ? 3 : 1, cost = mats.Sum(m => m.GetAmount(q));
+                    Log.Info($"PAY {mode} {rec.name} q{q} (other chest mod {Stock.Other}, free build {p.NoCostCheat()}): before {counts()}");
+                    var gui = InventoryGui.instance;
+                    if (bench != null) { if (InventoryGui.IsVisible()) gui.Hide(); bench.Interact(p, false, false); }   // open the workbench like a player
+                    else { if (InventoryGui.IsVisible()) gui.Hide(); gui.Show(null, 3); }   // the crafting tab, no station
+                    var tr = HarmonyLib.Traverse.Create(gui); var craft = HarmonyLib.AccessTools.Method(typeof(InventoryGui), "DoCrafting");
+                    Log.Info($"PAY {mode}: crafting at {(p.GetCurrentCraftingStation() ? p.GetCurrentCraftingStation().m_name + " level " + p.GetCurrentCraftingStation().GetLevel() : "hands (inventory)")}");
+                    System.Action check = () => {
+                    int paid = t0 - total(), got = made() - k0;
+                    int ql = up != null ? (inv.GetAllItems().FirstOrDefault(i => i.m_shared.m_name == itemName)?.m_quality ?? 0) : 0;
+                    bool ok = up != null ? ql == 2 && paid == cost && got == 0 : got == runs && paid == cost * runs;
+                    string why = "";
+                    if (!ok) { var st0 = p.GetCurrentCraftingStation(); why = $" [requirements met {p.HaveRequirements(rec, false, q)}, station {(st0 ? st0.m_name : "none")}, craft tab {gui.InCraftTab()}, upgrade tab {gui.InUpradeTab()}, queue {CraftQueue.Items.Count}, queue on {CraftQueue.On.Value}, craft timer {HarmonyLib.AccessTools.FieldRefAccess<InventoryGui, float>("m_craftTimer")(gui):0.0}, bag has room {inv.CanAddItem(rec.m_item.gameObject, 1)}]"; }
+                    if (up != null && ql != 2) { var st = p.GetCurrentCraftingStation(); why = $" [station {(st ? st.m_name : "none")} level {(st ? st.GetLevel() : 0)}, upgrader station {(st ? st.m_upgrader : false)}, requirements met {p.HaveRequirements(rec, false, 2)}, max quality {rec.m_item.m_itemData.m_shared.m_maxQuality}]"; }
+                    Log.Info($"PAY {mode}{(ui ? "-ui" : "")} {rec.name}: after {counts()}; paid {paid} (expected {cost * runs}), made {got}" + (up != null ? $", quality {ql}" : "") + ". " + (ok ? "PASS" : "FAIL") + why);
+                    foreach (var go in spawned) ZNetScene.instance.Destroy(go);
+                    restore();
+                    };
+                    if (!ui)
+                    {
+                        for (int r = 0; r < runs; r++)
+                        {
+                            tr.Field("m_craftRecipe").SetValue(rec); tr.Field("m_craftUpgradeItem").SetValue(up); tr.Field("m_multiCrafting").SetValue(false); tr.Field("m_craftVariant").SetValue(0);
+                            craft.Invoke(gui, new object[] { p });
+                        }
+                        check(); return;
+                    }
+                    // the player's way: pick it in the list, press Craft (or Queue x3), let the craft timer run
+                    if (up != null) gui.OnTabUpgradePressed(); else gui.OnTabCraftPressed();   // upgrades live on the Upgrade tab, everything else on Craft
+                    Later(0.5f, () => {   // the list refills on the next frame
+                    var list = HarmonyLib.AccessTools.Field(typeof(InventoryGui), "m_availableRecipes").GetValue(gui) as System.Collections.IList;
+                    int index = -1;
+                    for (int i = 0; list != null && i < list.Count; i++)
+                    {
+                        var t = HarmonyLib.Traverse.Create(list[i]);
+                        if (t.Property<Recipe>("Recipe").Value == rec && t.Property<ItemDrop.ItemData>("ItemData").Value == up) { index = i; break; }
+                    }
+                    if (index < 0) { Log.Info($"PAY {mode}-ui {rec.name}: not in the crafting list ({list?.Count ?? 0} entries). FAIL"); check(); return; }
+                    HarmonyLib.AccessTools.Method(typeof(InventoryGui), "SetRecipe").Invoke(gui, new object[] { index, true });
+                    gui.m_multiCraftAmount = 1;   // one at a time (the detail card's stepper may hold another amount)
+                    if (mode == "queue") CraftQueue.Add(rec, 3);
+                    else HarmonyLib.AccessTools.Method(typeof(InventoryGui), "OnCraftPressed").Invoke(gui, null);
+                    Later(mode == "queue" ? 9f : 4f, check);   // the craft timer (~2 s each; the queue crafts one after another)
+                    });
+                    });
+                    return true;
+                }
+                case "inv-smeltkit":   // a smelter 2.5 m to the right and a chest of ours in front: 50 copper ore, 50 coal (Shift + add pulls from chests with some mods)
+                {
+                    var sm = Object.Instantiate(ZNetScene.instance.GetPrefab("smelter"), p.transform.position + p.transform.right * 2.5f, Quaternion.LookRotation(-p.transform.right));
+                    sm.GetComponent<ZNetView>().GetZDO().Set(ZDOVars.s_creator, p.GetPlayerID());
+                    var go = Object.Instantiate(ZNetScene.instance.GetPrefab("piece_chest_wood"), p.transform.position + p.transform.forward * 2f, Quaternion.LookRotation(-p.transform.forward));
+                    go.GetComponent<ZNetView>().GetZDO().Set(ZDOVars.s_creator, p.GetPlayerID());
+                    HarmonyLib.AccessTools.TypeByName("AzuCraftyBoxes.API")?.GetMethod("AddContainer")?.Invoke(null, new object[] { go.GetComponent<Container>() });
+                    var ci = go.GetComponent<Container>().GetInventory();
+                    ci.AddItem("CopperOre", 50, 1, 0, 0L, "", false); ci.AddItem("Coal", 50, 1, 0, 0L, "", false);
+                    Log.Info($"SMELTKIT: smelter + chest with {ci.CountItems("$item_copperore")} copper ore, {ci.CountItems("$item_coal")} coal; bag has {inv.CountItems("$item_copperore")} ore, {inv.CountItems("$item_coal")} coal");
+                    return true;
+                }
+                case "inv-smeltcount":   // what the smelter holds and what the chests near you still have
+                {
+                    var sm = Object.FindObjectsByType<Smelter>(FindObjectsSortMode.None).OrderBy(x => Vector3.Distance(x.transform.position, p.transform.position)).FirstOrDefault();
+                    var nv = sm != null ? sm.GetComponent<ZNetView>() : null;
+                    int ore = nv != null ? nv.GetZDO().GetInt(ZDOVars.s_queued) : -1; float fuel = nv != null ? nv.GetZDO().GetFloat(ZDOVars.s_fuel) : -1;
+                    int chestOre = Object.FindObjectsByType<Container>(FindObjectsSortMode.None).Where(c => c.GetInventory() != null && Vector3.Distance(c.transform.position, p.transform.position) < 20f).Sum(c => c.GetInventory().CountItems("$item_copperore"));
+                    int chestCoal = Object.FindObjectsByType<Container>(FindObjectsSortMode.None).Where(c => c.GetInventory() != null && Vector3.Distance(c.transform.position, p.transform.position) < 20f).Sum(c => c.GetInventory().CountItems("$item_coal"));
+                    Log.Info($"SMELTCOUNT: smelter ore queued {ore}, fuel {fuel:0.#}; chests near you: {chestOre} ore, {chestCoal} coal; bag {inv.CountItems("$item_copperore")} ore, {inv.CountItems("$item_coal")} coal");
+                    return true;
+                }
+                case "inv-pay-tidy":   // what the payment tests left in the bag before they cleaned up after themselves
+                {
+                    var testMade = new[] { "Club", "ArmorRagsChest", "LeatherScraps" };   // prefab names
+                    var left = inv.GetAllItems().Where(i => i.m_dropPrefab != null && testMade.Contains(i.m_dropPrefab.name)).ToList();
+                    foreach (var x in left) { p.UnequipItem(x, false); inv.RemoveItem(x); }
+                    Log.Info($"PAY tidy: removed {left.Count} stack(s): " + string.Join(", ", left.GroupBy(i => i.m_shared.m_name).Select(g => $"{g.Key} x{g.Sum(i => i.m_stack)}")));
                     return true;
                 }
                 case "inv-canadd":   // room check: what Valheim's own count says vs ours
@@ -463,8 +615,13 @@ namespace Jatify.UI
         private static System.Collections.Generic.HashSet<int> _oldGraves = new System.Collections.Generic.HashSet<int>();
 
         // After xr-die: find the newest grave near the death spot and compare.
+        // a test step that has to wait for the world (another mod's refresh, a spawned piece settling)
+        private static System.Action _later; private static float _laterAt;
+        private static void Later(float seconds, System.Action a) { _later = a; _laterAt = Time.unscaledTime + seconds; }
+
         internal static void Tick()
         {
+            if (_later != null && Time.unscaledTime >= _laterAt) { var a = _later; _later = null; try { a(); } catch (System.Exception e) { Log.Warn("dev test: " + e); } }
             if (_expectGrave < 0 || Time.unscaledTime - _dieAt < 1f) return;
             var g = Object.FindObjectsByType<TombStone>(FindObjectsSortMode.None).FirstOrDefault(t => !_oldGraves.Contains(t.GetInstanceID())); // the grave this death made
             if (g == null) { if (Time.unscaledTime - _dieAt > 20f) { _expectGrave = -1; Log.Info("XR die: no new grave within 20 s. FAIL"); } return; }
