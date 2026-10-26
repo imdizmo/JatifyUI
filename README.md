@@ -22,7 +22,8 @@ out*).
 ## Install
 
 - **With a mod manager** (r2modman, Gale, Thunderstore): install Jatify UI, and VNEI if you want the full Compendium.
-- **By hand:** put the `JatifyUI` folder (the DLL and its `campfire-loading` folder) into `BepInEx/plugins`.
+- **By hand:** copy what is in the zip's `plugins` folder (`JatifyUI.dll` and its `campfire-loading` folder) into a
+  new `BepInEx/plugins/JatifyUI` folder. Keep them together: the loading screen looks for its art beside the DLL.
 - **On a dedicated server** (optional): the same DLL in the server's `BepInEx/plugins`. It draws nothing there; it only
   runs stations on Auto and answers players' Automation tabs (see *Servers and multiplayer*).
 

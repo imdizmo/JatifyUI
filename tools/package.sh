@@ -10,6 +10,7 @@ mkdir -p "$S/plugins" "$R/dist"
 cp "$R/package/manifest.json" "$R/package/icon.png" "$R/package/CHANGELOG.md" "$S/"
 cp "$R/README.md" "$S/README.md"
 cp "$R/build/JatifyUI.dll" "$S/plugins/"
+cp "$R/LICENSE" "$S/"
 cp -r "$R/package/loading" "$S/plugins/campfire-loading"   # the loading screen art (Campfire/LoadingArt looks beside the DLL)
 rm -f "$R/dist/Jatify-JatifyUI-$V.zip"
 (cd "$S" && zip -qr -X "$R/dist/Jatify-JatifyUI-$V.zip" .)
