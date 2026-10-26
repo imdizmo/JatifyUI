@@ -11,7 +11,9 @@ namespace Jatify.UI
     // Over a chest the peek card shows this instead (ChestPeek uses Actions).
     internal static class HoverCard
     {
-        private static readonly Regex KeyLine = new Regex(@"^\s*\[<color=[^>]+><b>(.*?)</b></color>\]\s*(.*)$", RegexOptions.Compiled);
+        // a key hint: "[<color=yellow><b>E</b></color>] Open" (vanilla) or any [ ] with colour tags in it, in either order (mods write
+        // "[<b><color=yellow>LeftShift</color> + <color=yellow>E</color></b>] Add coal from Inventory & Nearby Containers")
+        private static readonly Regex KeyLine = new Regex(@"^\s*\[(?=[^\]]*<color)(.*?)\]\s*(.*)$", RegexOptions.Compiled);
         private static readonly Regex Tags = new Regex("<[^>]+>", RegexOptions.Compiled);
         internal static string Title = ""; internal static readonly List<(string key, string what)> Actions = new List<(string, string)>(); internal static readonly List<string> Notes = new List<string>();
         private static RectTransform _root; private static CanvasGroup _cg; private static string _raw;

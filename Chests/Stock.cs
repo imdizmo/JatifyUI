@@ -26,13 +26,55 @@ namespace Jatify.UI
         // ate both lanterns and two cores, bug report 2026-10-26), so ours steps aside and leaves it to that one
         private static readonly string[] Others = { "Azumatt.AzuCraftyBoxes", "aedenthorn.CraftFromContainers" };   // ponytail: known GUIDs, add others as they're reported
         private static bool? _other;
-        // the other mod's own reach, so the panel counts exactly the chests it will take from (AzuCraftyBoxes: "Container Range", 20 m)
-        private static BepInEx.Configuration.ConfigEntryBase _otherRange;
-        private static float OtherRange()
+        // AzuCraftyBoxes pays: the panel counts through its API, so its range, per-chest exclusions, item rules, pull mode (all /
+        // mine / nothing) and its containers (drawers, backpacks) all apply. If the API is gone, the bag only (logged once).
+        private static System.Reflection.MethodInfo _nearby, _count, _canPull, _prefabName, _prevent; private static bool _apiLooked, _apiBad;
+        private static int _nearbyFrame = -1; private static System.Collections.IList _nearbyList;
+        private static readonly Dictionary<string, string> _prefabOf = new Dictionary<string, string>();
+        private static int OtherCount(Player p, string name)
         {
-            if (_otherRange == null) _otherRange = AccessTools.Field(AccessTools.TypeByName("AzuCraftyBoxes.AzuCraftyBoxesPlugin"), "mRange")?.GetValue(null) as BepInEx.Configuration.ConfigEntryBase;
-            try { return _otherRange != null ? System.Convert.ToSingle(_otherRange.BoxedValue) : Cfg.StackRange.Value; } catch { return Cfg.StackRange.Value; }
+            if (!_apiLooked)
+            {
+                _apiLooked = true;
+                var api = AccessTools.TypeByName("AzuCraftyBoxes.API");
+                _nearby = api?.GetMethod("GetNearbyContainers")?.MakeGenericMethod(typeof(Player));
+                _count = api?.GetMethod("CountItemInContainer");
+                _canPull = api?.GetMethod("CanItemBePulled", new[] { typeof(string), typeof(string) });
+                _prefabName = AccessTools.TypeByName("AzuCraftyBoxes.IContainers.IContainer")?.GetMethod("GetPrefabName");
+                _prevent = AccessTools.Method(AccessTools.TypeByName("AzuCraftyBoxes.Util.Functions.MiscFunctions"), "ShouldPrevent");
+                if (_nearby == null || _count == null) { _apiBad = true; Log.Warn("AzuCraftyBoxes: its API was not found, the crafting panel counts the bag only (it still takes from chests)"); }
+            }
+            if (_apiBad) return 0;
+            try
+            {
+                if (_prevent != null && (bool)_prevent.Invoke(null, null)) return 0;   // its pull mode is Off (Alt+O): it takes nothing, so nothing to count
+                if (_nearbyFrame != Time.frameCount)
+                {
+                    _nearbyFrame = Time.frameCount;
+                    var range = AccessTools.Field(AccessTools.TypeByName("AzuCraftyBoxes.AzuCraftyBoxesPlugin"), "mRange")?.GetValue(null) as BepInEx.Configuration.ConfigEntryBase;
+                    float r = range != null ? Convert.ToSingle(range.BoxedValue) : Cfg.StackRange.Value;
+                    _nearbyList = _nearby.Invoke(null, new object[] { p, r }) as System.Collections.IList;
+                }
+                if (_nearbyList == null || _nearbyList.Count == 0) return 0;
+                string prefab = PrefabOf(name); int n = 0;
+                foreach (var c in _nearbyList)
+                {
+                    if (c == null) continue;
+                    if (_canPull != null && _prefabName != null && prefab != null && !(bool)_canPull.Invoke(null, new object[] { (string)_prefabName.Invoke(c, null), prefab })) continue;
+                    n += (int)_count.Invoke(null, new object[] { c, name });
+                }
+                return n;
+            }
+            catch (Exception e) { _apiBad = true; Log.Warn($"AzuCraftyBoxes: counting its chests failed ({e.GetType().Name}), the crafting panel counts the bag only (it still takes from chests)"); return 0; }
         }
+        private static string PrefabOf(string sharedName)
+        {
+            if (_prefabOf.TryGetValue(sharedName, out var pf)) return pf;
+            pf = null;
+            foreach (var go in ObjectDB.instance.m_items) { var d = go != null ? go.GetComponent<ItemDrop>() : null; if (d != null && d.m_itemData.m_shared.m_name == sharedName) { pf = go.name; break; } }
+            _prefabOf[sharedName] = pf; return pf;
+        }
+
         internal static bool Other
         {
             get
@@ -52,7 +94,7 @@ namespace Jatify.UI
             _nearFrame = Time.frameCount;
             if (Time.unscaledTime - _scanAt > 2f) { _scanAt = Time.unscaledTime; _all.Clear(); _all.AddRange(UnityEngine.Object.FindObjectsByType<Container>(FindObjectsSortMode.None)); }
             _near.Clear(); _totals.Clear();
-            float r = Other ? OtherRange() : Cfg.StackRange.Value, r2 = r * r; long id = p.GetPlayerID(); var pos = p.transform.position;
+            float r = Cfg.StackRange.Value, r2 = r * r; long id = p.GetPlayerID(); var pos = p.transform.position;
             foreach (var c in _all)
             {
                 if (c == null || c.GetInventory() == null || c.GetComponentInParent<Player>() != null) continue;
@@ -116,7 +158,9 @@ namespace Jatify.UI
         // in the chests only
         internal static int InChests(Player p, string name)
         {
-            if (p == null || !(On || Other)) return 0;   // with another craft-from-chests mod we still count (the panel shows what it will use), it alone pays
+            if (p == null) return 0;
+            if (Other) return OtherCount(p, name);   // the other mod pays: count what it would take, by its own rules
+            if (!On) return 0;
             Near(p); return _totals.TryGetValue(name, out var n) ? n : 0;
         }
 
