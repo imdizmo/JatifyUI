@@ -53,7 +53,9 @@ namespace Jatify.UI
             TooltipKeys.On = Config.Bind("Inventory", "TooltipKeys", true, "Key hints (move, use, split, lock, delete) at the bottom of item tooltips.");
             _theme = new Theme(Paths.ConfigPath);
             Fonts.Load(Paths.CachePath);
+#if JATIFY_DEV
             DevShot.Init(Paths.CachePath);
+#endif
             Root.Create(_theme);
             _theme.Changed += Root.Restyle;
             _theme.Changed += d => { if (InventoryGui.instance != null) { InventoryStyle.Apply(d); CraftingStyle.Apply(d); } if (Hud.instance != null) BuildStyle.Apply(d); if (Minimap.instance != null) MapStyle.Apply(d); if (Menu.instance != null) MenuStyle.Apply(d); StartMenu.Restore(); };
@@ -93,6 +95,7 @@ namespace Jatify.UI
             Safe("server-auto", ServerAuto.Tick);   // the server runs Auto stations nobody has loaded
             if (Headless) return;
             _theme?.Tick(); // applies a changed theme file on the main thread
+#if JATIFY_DEV
             if (!_dumped && InventoryGui.instance != null && Fonts.Medium != null)
             {
                 _dumped = true; // dev: the vanilla inventory layout, for restyling it
@@ -104,6 +107,7 @@ namespace Jatify.UI
                 DevDump.Tree("inventorygui", g.transform, Paths.CachePath);
                 Log.Info("dumped the vanilla inventory layout to BepInEx/cache/jatify.ui");
             }
+#endif
             Safe("hud", Root.Tick);
             // The inventory screen exists per world: style it once a player is in, forget it when Valheim
             // destroys it (logout, character or world switch). A failure is logged, never fatal.
@@ -146,12 +150,21 @@ namespace Jatify.UI
             Safe("target-health", TargetHealth.Tick);
             Safe("map-marks", () => MapMarks.Tick(Minimap.instance));
             Safe("mod-slot-lift", ModSlots.TickStaged);
-            if (Dev.Build) Safe("test-panel", TestPanel.Tick);   // F8 test kit and shot.request: dev profile only, never in a release install
+#if JATIFY_DEV
+            if (Dev.Build) Safe("test-panel", TestPanel.Tick);   // F8 test kit and shot.request: dev builds only
             Safe("config-page", () => ConfigPage.Open?.Tick());
             if (Dev.Build) Safe("devshot", DevShot.Tick);
+#endif
         }
 
         private void LateUpdate() { if (Headless) return; Safe("vanilla-hud", VanillaHud.Tick); Safe("minimap", () => VanillaMinimap.Tick(Root.MapHole)); Safe("layout", InventoryStyle.Layout); Safe("notices", Notices.Tick); Safe("save-badge", SaveBadge.Tick); Safe("chest-peek", ChestPeek.Tick); Safe("graves", Graves.Tick); Safe("cursor", CursorSkin.Tick); Safe("hover-card", HoverCard.Tick); Safe("item-tip", ItemTip.Tick); } // after the game's own HUD update and animators
+
+        private static void DevTeardown()
+        {
+#if JATIFY_DEV
+            TestPanel.Destroy();
+#endif
+        }
 
         private void OnDestroy() { if (!Headless) Teardown(); }
 
@@ -185,7 +198,7 @@ namespace Jatify.UI
             Safe("campfire-unload", Campfire.Module.Unload);   // after unpatching (its postfixes stay out of the hand-back), before Kit and Fonts go
             if (_theme != null) { _theme.Changed -= Root.Restyle; _theme.Dispose(); }
             Deeds.Model.Earned -= OnEarned;
-            Notices.Restore(); TestPanel.Destroy(); SaveBadge.Destroy(); ChestPeek.Destroy(); CursorSkin.Restore(); HoverCard.Destroy(); ItemTip.Destroy();
+            Notices.Restore(); DevTeardown(); SaveBadge.Destroy(); ChestPeek.Destroy(); CursorSkin.Restore(); HoverCard.Destroy(); ItemTip.Destroy();
             SettingsStyle.Restore();
             VanillaHud.Restore();
             VanillaMinimap.Restore();

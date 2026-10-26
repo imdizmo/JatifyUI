@@ -13,6 +13,13 @@
     <ProfileDir Condition="'$(ProfileDir)' == ''">$(HOME)/.local/share/com.kesomannen.gale/valheim/profiles/jatify-ui-dev</ProfileDir>
     <Managed>$(ValheimDir)/valheim_Data/Managed</Managed>
   </PropertyGroup>
+  <!-- Dev tools (Dev/, not in the repo) only in dev builds: dotnet build -p:JatifyDev=true. A release build never contains them. -->
+  <PropertyGroup Condition="'$(JatifyDev)' == 'true'">
+    <DefineConstants>$(DefineConstants);JATIFY_DEV</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(JatifyDev)' != 'true'">
+    <Compile Remove="Dev/**" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
     <EmbeddedResource Include="assets/fonts/*.ttf" LogicalName="fonts/%(Filename)%(Extension)" />

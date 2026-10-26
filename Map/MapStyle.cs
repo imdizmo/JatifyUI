@@ -367,7 +367,9 @@ namespace Jatify.UI
             var bar = Kit.Node(w, "Hints").At(Side, WH - Bar, WW - Side, Bar);
             float x = 16f;
             var hints = new List<(string, string)> { ("Double-click", "pin"), ("Click", "cross off"), ("Right-click", "remove"), ("Middle", "ping"), ("Drag", "move"), ("Wheel", "zoom") };
+#if JATIFY_DEV
             if (Dev.Build) hints.Add(("Alt + right", "teleport"));
+#endif
             foreach (var (k, what) in hints)
                 x += HoverCard.Row(bar, k, what, x, 11f, t) + 18f;
             var (ub, _) = Kit.Box(bar, "Undo", Theme.C(t.raised), Theme.C(t.line2), 7); ub.rectTransform.At(x + 6, 8, 92, 28); ub.raycastTarget = true;   // design: bring back the last removed pin
@@ -697,6 +699,7 @@ namespace Jatify.UI
     }
 
     // dev builds: Alt + right click on the big map teleports you there, on the ground (right click alone still removes a pin)
+#if JATIFY_DEV
     [HarmonyPatch(typeof(Minimap), "RemovePinUnderPointer")]
     internal static class MapTeleport
     {
@@ -711,6 +714,7 @@ namespace Jatify.UI
             return false;
         }
     }
+#endif
 
     [HarmonyPatch(typeof(Minimap), "UpdateMap")]
     internal static class MapInputOnMap

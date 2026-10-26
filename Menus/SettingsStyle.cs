@@ -477,7 +477,9 @@ namespace Jatify.UI
         {
             var list = __instance.transform.Find("Dropdown List"); var cv = list != null ? list.GetComponent<Canvas>() : null;
             if (cv != null) { cv.overrideSorting = true; cv.sortingOrder = 32600; }
+#if JATIFY_DEV
             if ((Arm || Dev.Build) && list != null) { Arm = false; DevDump.Tree("dropdownlist", list, BepInEx.Paths.CachePath); Log.Info("dev dump -> dump-dropdownlist.txt"); }
+#endif
         }
     }
 }

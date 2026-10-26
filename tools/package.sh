@@ -9,6 +9,10 @@ S=$(mktemp -d); trap 'rm -rf "$S"' EXIT
 mkdir -p "$S/plugins" "$R/dist"
 cp "$R/package/manifest.json" "$R/package/icon.png" "$R/package/CHANGELOG.md" "$S/"
 cp "$R/README.md" "$S/README.md"
+# a release never carries the dev tools (they only build with -p:JatifyDev=true): refuse if any slipped in
+if strings -e l "$R/build/JatifyUI.dll" | grep -q -E "Give test kit|shot\.request" || strings "$R/build/JatifyUI.dll" | grep -q -E "^(DevTest|TestPanel|DevShot|FlatWorld|DevDump)$"; then
+  echo "package: the DLL contains dev tools, not packaging (build without -p:JatifyDev=true)" >&2; exit 1
+fi
 cp "$R/build/JatifyUI.dll" "$S/plugins/"
 cp "$R/LICENSE" "$S/"
 cp -r "$R/package/loading" "$S/plugins/campfire-loading"   # the loading screen art (Campfire/LoadingArt looks beside the DLL)
