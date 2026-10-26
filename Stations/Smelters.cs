@@ -116,7 +116,34 @@ namespace Jatify.UI
             nv.GetZDO().Set(OffKey, string.Join(",", list));
         }
 
-        private static bool Held() { var k = Key.Value; if (k.MainKey == KeyCode.None || !Input.GetKey(k.MainKey)) return false; foreach (var m in k.Modifiers) if (!Input.GetKey(m)) return false; return true; }
+        // the key actually used: AzuCraftyBoxes pulls a station's ore or fuel from chests on its key + use (on release; ours opens
+        // on press, so one press did both). When its key is ours, ours moves to Left Alt and the hints follow.
+        internal static KeyboardShortcut Effective
+        {
+            get
+            {
+                var k = Key.Value;
+                if (k.MainKey == KeyCode.None || !Stock.Other || OtherFillKey() != k.MainKey) return k;
+                if (!_moved) { _moved = true; Log.Warn($"AzuCraftyBoxes fills stations from chests on {k} + use: the Auto card opens on Left Alt + use instead"); }
+                return new KeyboardShortcut(KeyCode.LeftAlt);
+            }
+        }
+        private static bool _moved;
+        private static KeyCode? _otherFill;
+        private static KeyCode OtherFillKey()
+        {
+            if (_otherFill.HasValue) return _otherFill.Value;
+            KeyCode code = KeyCode.None;
+            try
+            {
+                var e = AccessTools.Field(AccessTools.TypeByName("AzuCraftyBoxes.AzuCraftyBoxesPlugin"), "fillAllModKey")?.GetValue(null) as ConfigEntryBase;
+                if (e?.BoxedValue is KeyboardShortcut ks) code = ks.MainKey; else if (e?.BoxedValue is KeyCode kc) code = kc;
+            }
+            catch { }
+            _otherFill = code; return code;
+        }
+
+        private static bool Held() { var k = Effective; if (k.MainKey == KeyCode.None || !Input.GetKey(k.MainKey)) return false; foreach (var m in k.Modifiers) if (!Input.GetKey(m)) return false; return true; }
 
         // the station key + use: our card instead of vanilla's add
         [HarmonyPrefix, HarmonyPatch(typeof(Player), "Interact")]
@@ -252,7 +279,7 @@ namespace Jatify.UI
             int m = Mode(st); long by = nv.GetZDO().GetLong(ByKey, 0L);
             string state = m == ForcedOn ? (by != 0L && by != p.GetPlayerID() ? "Auto: on (another player's)" : "Auto: on (set here)")
                          : m == ForcedOff ? "Auto: off (set here)" : Automation.Paused(st) ? "Auto: off (its type is off)" : "Auto: on (by its type)";
-            var k = Key.Value; return "\n" + state + (k.MainKey == KeyCode.None ? "" : $"\n[<color=yellow><b>{k} + $KEY_Use</b></color>] Auto settings");
+            var k = Effective; return "\n" + state + (k.MainKey == KeyCode.None ? "" : $"\n[<color=yellow><b>{k} + $KEY_Use</b></color>] Auto settings");
         }
         [HarmonyPostfix, HarmonyPatch(typeof(Smelter), "OnHoverAddOre")] private static void HoverOre(Smelter __instance, ref string __result) { if (!string.IsNullOrEmpty(__result)) __result += Localization.instance.Localize(AutoLine(__instance)); }
         [HarmonyPostfix, HarmonyPatch(typeof(Smelter), "OnHoverAddFuel")] private static void HoverFuel(Smelter __instance, ref string __result) { if (!string.IsNullOrEmpty(__result)) __result += Localization.instance.Localize(AutoLine(__instance)); }

@@ -155,7 +155,7 @@ namespace Jatify.UI
             Knots.Divider(hl, false, Theme.C(t.accent));   // design .kdiv: a small knot in the section line
             _count = Kit.Text(Root, "Count", "", Fonts.Mono, 11f, Theme.C(t.mute)); _count.characterSpacing = 8f; _count.richText = true; _count.rectTransform.At(18, 60, 606, 14);
             _list = Pages.Scroll(Root, 18, 84, 606, 640);
-            var hint = Kit.Text(Root, "Hint", "Everything is off until you switch it on: a type, then what it may take. A station's own settings (hold Left Shift and use it) win over these. Stations on Auto top themselves up from nearby chests while you're within 40 m.", Fonts.Medium, 12f, Theme.C(t.mute));
+            var hint = Kit.Text(Root, "Hint", $"Everything is off until you switch it on: a type, then what it may take. A station's own settings (hold {Smelters.Effective} and use it) win over these. Stations on Auto top themselves up from nearby chests while you're within 40 m.", Fonts.Medium, 12f, Theme.C(t.mute));
             hint.textWrappingMode = TextWrappingModes.Normal; hint.rectTransform.At(18, 734, 606, 40);
         }
 

@@ -39,7 +39,7 @@ namespace Jatify.UI
             {
                 if (_other.HasValue) return _other.Value;
                 var hit = Array.Find(Others, BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey);
-                if (hit != null) Log.Warn($"{hit} is installed: Jatify UI's craft and build from chests stays off (only one mod may pay for a craft)");
+                if (hit != null) Log.Warn($"{hit} is installed: it pays for crafts and builds from chests, Jatify UI's own steps aside (only one mod may pay)");
                 _other = hit != null;
                 return _other.Value;
             }

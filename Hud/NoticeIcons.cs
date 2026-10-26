@@ -27,8 +27,8 @@ namespace Jatify.UI
             ["$msg_nobuildzone"] = "hammer", ["$msg_privatezone"] = "hammer", ["$msg_invalidplacement"] = "hammer", ["$msg_needspace"] = "hammer", ["$msg_snapping"] = "hammer",
             ["$msg_wrongbiome"] = "hammer", ["$msg_nosnow"] = "hammer", ["$msg_snowtoodeep"] = "hammer", ["$msg_needdirt"] = "hammer", ["$msg_needcultivated"] = "hammer", ["$msg_blocked"] = "hammer",
             ["$msg_stationneedroof"] = "hammer", ["$msg_stationtooexposed"] = "hammer", ["$msg_extensionmissingstation"] = "hammer", ["$msg_missingstation"] = "hammer", ["$msg_cantremovenow"] = "hammer",
-            ["$inventory_full"] = "chest", ["$inventory_needspace"] = "chest", ["$msg_isfull"] = "chest", ["$msg_itsfull"] = "chest", ["$msg_noroom"] = "chest",
-            ["$msg_stackall"] = "to-chest", ["$msg_stackall_none"] = "to-chest", ["$msg_cantpickup"] = "chest", ["$msg_cantdrop"] = "chest",
+            ["$inventory_full"] = "box", ["$inventory_needspace"] = "box", ["$msg_isfull"] = "box", ["$msg_itsfull"] = "box", ["$msg_noroom"] = "box",   // box: the storage chest ("chest" is the chest-armour slot icon)
+            ["$msg_stackall"] = "to-chest", ["$msg_stackall_none"] = "to-chest", ["$msg_cantpickup"] = "box", ["$msg_cantdrop"] = "box",
             ["$msg_food_done"] = "food_icon", ["$msg_cantconsume"] = "food_icon", ["$msg_nocookitems"] = "food_icon", ["$msg_nocookroom"] = "food_icon",
             ["$piece_fermenter_exposed"] = "piece:fermenter", ["$piece_fermenter_needroof"] = "piece:fermenter",
             ["$hud_eitrrequired"] = "item:MeadEitrMinor", ["$msg_noturretammo"] = "item:TurretBolt",

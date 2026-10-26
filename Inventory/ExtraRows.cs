@@ -70,7 +70,7 @@ namespace Jatify.UI
             {
                 int need = leaving.Count - free.Count;
                 Log.Warn($"extra rows: {need} item(s) in the rows to remove have no free cell; keeping {_applied} extra rows");
-                MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, $"Make room for {need} more item(s) before removing rows", 0, Kit.Icon("chest"));
+                MessageHud.instance?.ShowMessage(MessageHud.MessageType.Center, $"Make room for {need} more item(s) before removing rows", 0, Kit.Icon("box"));
                 _busy = true; Extra.Value = _applied; _busy = false;
                 return;
             }
