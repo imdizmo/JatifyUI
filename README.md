@@ -363,6 +363,9 @@ You can remove Jatify at any time. Before you do:
 - **Empty the Wishbone and Wisplight slots and the key pouch** into your bag. Those items are kept without the mod, but
   you can't see them until it's back.
 - **Make room in Valheim's own rows** for what's in the extra rows. Jatify warns you if they won't fit.
+- **With AzuExtendedPlayerInventory:** if Jatify says items are waiting in its hold (only after a first load with a full
+  bag), free a few bag slots and let them come back first. Like the slots above, they're kept without the mod but out of
+  sight until it's back.
 
 Without the mod:
 
