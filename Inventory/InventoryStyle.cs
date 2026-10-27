@@ -361,6 +361,10 @@ namespace Jatify.UI
         private static bool _azuScreenShown; private static readonly List<(CanvasGroup cg, bool ours, float alpha, bool blocks)> _underScreen = new List<(CanvasGroup, bool, float, bool)>();
         private static void AzuPanels(InventoryGui g)
         {
+            // its character page (where its slot cells live) sits in the crafting panel, which Valheim hides while a chest is
+            // open: the slots went with it. Moved up beside it, in place (the cells are placed in screen space anyway)
+            var page = g.m_crafting.Find("AzuEPI_CharacterPage");
+            if (page != null) { var from = g.m_crafting; int at = from.GetSiblingIndex(); _l.Do(() => page.SetParent(from.parent, true), () => { if (page != null && from != null) page.SetParent(from, true); }); page.SetSiblingIndex(at + 1); }
             bool screen = false;   // one of its screens open: our crafting panel steps away (it covers it, as it hides Valheim's)
             foreach (var n in AzuScreens) { var s = g.m_crafting.transform.Find(n); if (s != null && s.gameObject.activeSelf) { screen = true; break; } }
             if (screen != _azuScreenShown)

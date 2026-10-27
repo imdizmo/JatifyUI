@@ -15,9 +15,11 @@ namespace Jatify.UI
         {
             internal Sprite Sprite; internal Material Mat; internal Image.Type Type; internal Color Color, BicDefault, BicDisabled; internal bool Bic;
             internal TMP_FontAsset Font; internal Color TextColor; internal bool Scrim; internal float Size;
-            internal bool Btn; internal Selectable.Transition Trans; internal ColorBlock Colors; internal SpriteState Sprites; internal Color BtcDisabled, BtcDefaultWas; internal Color IconDisabled; internal ButtonImageColor IconBic;
+            internal bool Btn; internal Selectable.Transition Trans; internal ColorBlock Colors; internal SpriteState Sprites; internal Color BtcDisabled, BtcDefaultWas, BtcMeshWas; internal Color IconDisabled; internal ButtonImageColor IconBic;
             internal bool Own; internal bool Lay; internal Component Stc; internal Color StcDefault, StcDisabled; internal RectOffset Pad; internal TextAnchor Align; internal float Spacing;
         }
+
+        private static bool _tableLooked;
 
         private static System.Type _tableUi, _stcType; private static bool _stcLooked; private static float _next;
         private static readonly List<Image> _imgs = new List<Image>(); private static readonly List<TMP_Text> _txts = new List<TMP_Text>(); private static readonly List<Selectable> _btns = new List<Selectable>();
@@ -45,7 +47,7 @@ namespace Jatify.UI
             PaintTabs();
             if (Time.unscaledTime < _next) return;
             _next = Time.unscaledTime + 0.4f;   // its lists rebuild when you pick a tab or an item; a pass is cheap
-            if (_tableUi == null) _tableUi = AccessTools.TypeByName("EpicLoot_UnityLib.EnchantingTableUI");
+            if (!_tableLooked) { _tableLooked = true; _tableUi = AccessTools.TypeByName("EpicLoot_UnityLib.EnchantingTableUI"); }   // once (without EpicLoot it is never found)
             var ui = _tableUi != null ? Traverse.Create(_tableUi).Property("instance").GetValue() as Component : null;
             var panel = ui != null ? ui.transform.Find("Panel") : null;
             if (panel == null || !panel.gameObject.activeInHierarchy) return;
@@ -194,6 +196,7 @@ namespace Jatify.UI
         // Valheim's tab strip shows the open tab as a button you can't press
         private static bool Tab(Transform tr) => tr.parent != null && tr.parent.name == "Tabs";
         private static readonly AccessTools.FieldRef<ButtonTextColor, Color> BtcDefault = AccessTools.FieldRefAccess<ButtonTextColor, Color>("m_defaultColor");
+        private static readonly AccessTools.FieldRef<ButtonTextColor, Color> BtcMesh = AccessTools.FieldRefAccess<ButtonTextColor, Color>("m_defaultMeshColor");   // its second default, written last: the label flickered back to orange
 
         // hover / press: a shade of our colour instead of its wood sprites; the open tab in our accent; tab labels readable
         private static void Style(Selectable b, ThemeData t)
@@ -210,7 +213,9 @@ namespace Jatify.UI
             if (btc != null)
             {
                 mark.BtcDisabled = btc.m_disabledColor; mark.BtcDefaultWas = BtcDefault(btc); btc.m_disabledColor = tab ? Theme.C(t.accent) : Theme.C(t.mute);
-                if (Orange(mark.BtcDefaultWas)) BtcDefault(btc) = Theme.C(t.accent);   // its orange labels (Sacrifice, Enchant, ...) in our green
+                mark.BtcMeshWas = BtcMesh(btc);
+                if (Orange(mark.BtcDefaultWas)) BtcDefault(btc) = Theme.C(t.accent);
+                if (Orange(mark.BtcMeshWas)) BtcMesh(btc) = Theme.C(t.accent);   // its orange labels (Sacrifice, Enchant, ...) in our green
             }
             foreach (var bic in b.GetComponents<ButtonImageColor>())
                 if (bic.m_image != null && bic.m_image != img) { mark.IconBic = bic; mark.IconDisabled = bic.m_disabledColor; bic.m_disabledColor = tab ? Theme.C(t.accent) : Theme.C(t.mute); }   // the icon
@@ -271,7 +276,7 @@ namespace Jatify.UI
                 if (lay != null && m.Lay) { lay.padding = m.Pad; lay.childAlignment = m.Align; lay.spacing = m.Spacing; }
                 var b = m.GetComponent<Selectable>();
                 if (m.Stc != null) { var tr = Traverse.Create(m.Stc); tr.Field("_defaultColor").SetValue(m.StcDefault); tr.Field("DisabledColor").SetValue(m.StcDisabled); }
-                if (b != null && m.Btn) { b.transition = m.Trans; b.colors = m.Colors; b.spriteState = m.Sprites; var btc = b.GetComponent<ButtonTextColor>(); if (btc != null) { btc.m_disabledColor = m.BtcDisabled; BtcDefault(btc) = m.BtcDefaultWas; } if (m.IconBic != null) m.IconBic.m_disabledColor = m.IconDisabled; }
+                if (b != null && m.Btn) { b.transition = m.Trans; b.colors = m.Colors; b.spriteState = m.Sprites; var btc = b.GetComponent<ButtonTextColor>(); if (btc != null) { btc.m_disabledColor = m.BtcDisabled; BtcDefault(btc) = m.BtcDefaultWas; BtcMesh(btc) = m.BtcMeshWas; } if (m.IconBic != null) m.IconBic.m_disabledColor = m.IconDisabled; }
                 var x = m.GetComponent<TMP_Text>();
                 if (x != null && m.Font != null) { x.font = m.Font; x.color = m.TextColor; }
                 if (x != null && m.Size > 0f) x.fontSize = m.Size;

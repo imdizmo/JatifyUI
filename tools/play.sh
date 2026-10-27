@@ -2,8 +2,8 @@
 # Start Valheim with a Gale profile, the way Gale does: the profile's doorstop files go into the game folder, then Steam
 # starts the game with that profile's BepInEx preloader. Gale doesn't need to be open.
 #   tools/play.sh <profile>          refuses while Valheim is running
-#   tools/play.sh <profile> --kill   closes the running game first (no save on quit: fine for test characters, may lose the
-#                                    last minutes on a real one)
+#   tools/play.sh <profile> --kill   closes the running game first: SIGTERM is a normal quit, Valheim saves the character
+#                                    and world (seen 2026-10-27); SIGKILL only if it hangs for 20 s
 set -euo pipefail
 P="${1:?usage: play.sh <profile> [--kill]}"
 GALE="$HOME/.local/share/com.kesomannen.gale/valheim/profiles"

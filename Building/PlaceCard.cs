@@ -28,12 +28,12 @@ namespace Jatify.UI
             _next = Time.unscaledTime + 0.25f;
             bool free = p.NoCostCheat() || (ZoneSystem.instance != null && ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoBuildCost));
             var sb = new System.Text.StringBuilder(piece.name).Append(free);
-            foreach (var r in piece.m_resources) if (r.m_resItem != null) sb.Append('|').Append(Have(p, r.m_resItem.m_itemData.m_shared.m_name));
+            Plugin.Timed("pc.count", () => { foreach (var r in piece.m_resources) if (r.m_resItem != null) sb.Append('|').Append(Have(p, r.m_resItem.m_itemData.m_shared.m_name)); });
             bool st = piece.m_craftingStation == null || CraftingStation.HaveBuildStationInRange(piece.m_craftingStation.m_name, p.transform.position) != null
                       || (ZoneSystem.instance != null && ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoCraftCost));
             sb.Append(st);
             var key = sb.ToString(); if (key == _key) return;
-            _key = key; Build(p, piece, free, st);
+            _key = key; Plugin.Timed("pc.build", () => Build(p, piece, free, st));
         }
 
         private static int Have(Player p, string name) { bool was = Stock.Building; Stock.Building = true; int n = Stock.Count(p, name); Stock.Building = was; return n; }

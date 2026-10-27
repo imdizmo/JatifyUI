@@ -109,7 +109,7 @@ namespace Jatify.UI
         private static ThemeData _t;
         private static readonly List<P> _all = new List<P>();
         private static int _cat = -1, _region = -1; private static string _type, _q = "", _shown; private static bool _avail;
-        private static Piece _picked; private static float _nextCheck;
+        private static Piece _picked; private static float _nextCheck; private static int _paintFrom;
 
         // favourites (asked for on Nexus): starred pieces, saved on the character, listed in their own tab at the top
         private const int FavCat = -2; internal const string FavKey = "jatify.piecefavs";
@@ -138,7 +138,7 @@ namespace Jatify.UI
             var h = Hud.instance; var me = Player.m_localPlayer;
             bool open = h != null && me != null && Hud.IsPieceSelectionVisible() && Root.Canvas != null && Table(me) != null;
             if (!open) { if (_root != null) Close(); return; }
-            if (_root == null) Open(h, me);
+            if (_root == null) Plugin.Timed("bm.open", () => Open(h, me));
             // ours sits on Jatify's canvas, above the pause menu and the map, where Valheim's own window was covered: it steps
             // aside while they're up (the test sweep found it over the map, the menu and the settings)
             bool covered = Menu.IsVisible() || Minimap.IsOpen() || ConfigPage.Open != null || Settings.instance != null;
@@ -146,8 +146,8 @@ namespace Jatify.UI
             if (covered) return;
             // Q / E (vanilla) change the hammer's tab: follow it
             var table = Table(me); int vc = (int)table.GetSelectedCategory();
-            if (vc != _lastVc) { bool moved = _lastVc != int.MinValue; _lastVc = vc; if (moved && _q.Length == 0 && vc != _cat && _catTabs.ContainsKey(vc)) { _cat = vc; _type = null; _region = -1; Refresh(); } }   // follows Q / E when pressed, so the Favourites tab stays
-            if (Time.unscaledTime >= _nextCheck) { _nextCheck = Time.unscaledTime + 0.5f; Paint(me); }   // what you can build changes as you walk and pick up
+            if (vc != _lastVc) { bool moved = _lastVc != int.MinValue; _lastVc = vc; if (moved && _q.Length == 0 && vc != _cat && _catTabs.ContainsKey(vc)) { _cat = vc; _type = null; _region = -1; Plugin.Timed("bm.qe", Refresh); } }   // follows Q / E when pressed, so the Favourites tab stays
+            if (_paintFrom > 0 || Time.unscaledTime >= _nextCheck) { _nextCheck = Time.unscaledTime + 0.5f; Plugin.Timed("bm.paint", () => Paint(me, 16)); }   // what you can build changes as you walk and pick up: a slice a frame (all at once cost 10 fps with chest mods)
         }
 
         private static readonly Dictionary<int, (Image bg, TextMeshProUGUI label)> _catTabs = new Dictionary<int, (Image, TextMeshProUGUI)>();
@@ -269,10 +269,22 @@ namespace Jatify.UI
             return _all.FindAll(p => (p.Name + " " + (p.Piece.m_craftingStation != null ? Localization.instance.Localize(p.Piece.m_craftingStation.m_name) : "") + " " + Regions[p.Region].name).ToLowerInvariant().Contains(_q));
         }
 
+        // can it be placed: its station in range and every material in the bag + chests. Our own check, not HaveRequirements:
+        // a chest mod scans every chest on each call (AzuCraftyBoxes, 108 chests: 21 ms a frame), here each material is counted
+        // once per round of the grid (_have, cleared when a round starts)
+        private static readonly Dictionary<string, int> _have = new Dictionary<string, int>();
         private static bool CanPlace(Player me, Piece p)
         {
-            bool was = Stock.Building; Stock.Building = true;
-            try { return me.HaveRequirements(p, Player.RequirementMode.CanBuild); } finally { Stock.Building = was; }
+            if (me.PlacementCostDisabled || ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoBuildCost)) return true;
+            if (!StationOk(p)) return false;
+            foreach (var r in p.m_resources)
+            {
+                if (r.m_resItem == null || r.m_amount <= 0) continue;
+                var name = r.m_resItem.m_itemData.m_shared.m_name;
+                if (!_have.TryGetValue(name, out var n)) { bool was = Stock.Building; Stock.Building = true; try { n = Stock.Count(me, name); } finally { Stock.Building = was; } _have[name] = n; }
+                if (n < r.m_amount) return false;
+            }
+            return true;
         }
 
         private static bool StationOk(Piece p) => p.m_craftingStation == null || CraftingStation.HaveBuildStationInRange(p.m_craftingStation.m_name, Player.m_localPlayer.transform.position) != null;
@@ -282,7 +294,7 @@ namespace Jatify.UI
             if (_root == null) return;
             var t = _t; var me = Player.m_localPlayer;
             foreach (var kv in _catTabs) { bool on = _q.Length == 0 && kv.Key == _cat; kv.Value.bg.color = on ? Theme.C(t.accent) : Color.clear; kv.Value.bg.transform.GetChild(0).GetComponent<Image>().color = on ? Theme.C(t.accentSoft) : Color.clear; }
-            var inTab = InTab();
+            _have.Clear(); var inTab = InTab();
             var types = new List<string>(); var regions = new List<int>();
             foreach (var p in inTab) { if (!types.Contains(p.Type)) types.Add(p.Type); if (!regions.Contains(p.Region)) regions.Add(p.Region); }
             types.Sort((a, b) => System.Array.IndexOf(TypeOrder, a).CompareTo(System.Array.IndexOf(TypeOrder, b))); regions.Sort();
@@ -320,7 +332,7 @@ namespace Jatify.UI
             var key = _cat + "|" + _q + "|" + _region + "|" + _avail + "|" + _flat + "|" + list.Count + "|" + _favs.Count;
             if (key == _shown) return; _shown = key;
             foreach (Transform c in _grid) Object.Destroy(c.gameObject);
-            _tiles.Clear();
+            _tiles.Clear(); _paintFrom = 0;
             int cols = Mathf.Max(1, (int)((RW + Gap) / (Tile + Gap)));
             float y = 0f; int col = 0; string type = null;
             foreach (var p in list)
@@ -361,17 +373,27 @@ namespace Jatify.UI
         }
 
         // states that change while it's open: what you can place, which station is in range, which is picked
-        private static void Paint(Player me)
+        // per call: every tile's picked colours, and the costly can-I-build check for `slice` tiles from where the last call
+        // stopped (0 = all). _paintFrom goes back to 0 once the round is done.
+        private static void Paint(Player me, int slice = 0)
         {
-            if (me == null) return; var t = _t;
+            if (me == null) return; var t = _t; if (slice == 0 || _paintFrom == 0) _have.Clear(); int i = 0, end = slice > 0 ? _paintFrom + slice : int.MaxValue;
+            Color acc = Theme.C(t.accent), line2 = Theme.C(t.line2), soft = Theme.C(t.accentSoft), raised = Theme.C(t.raised);   // parsed once, not per tile
             foreach (var kv in _tiles)
             {
-                var (bg, line, g, lockTag) = kv.Value; if (bg == null) continue;
-                bool ok = CanPlace(me, kv.Key), on = kv.Key == _picked, st = StationOk(kv.Key);
-                g.alpha = ok ? 1f : 0.45f;
-                line.color = on ? Theme.C(t.accent) : Theme.C(t.line2); bg.color = on ? Theme.C(t.accentSoft) : Theme.C(t.raised);
-                if (lockTag != null) lockTag.gameObject.SetActive(!st);
+                var (bg, line, g, lockTag) = kv.Value; if (bg == null) { i++; continue; }
+                bool on = kv.Key == _picked;
+                var lc = on ? acc : line2; if (line.color != lc) line.color = lc;
+                var bc = on ? soft : raised; if (bg.color != bc) bg.color = bc;
+                if (i >= (slice > 0 ? _paintFrom : 0) && i < end)
+                {
+                    bool ok = CanPlace(me, kv.Key);
+                    float a = ok ? 1f : 0.45f; if (g.alpha != a) g.alpha = a;   // a CanvasGroup write re-batches the canvas even when unchanged
+                    if (lockTag != null) { bool lk = !StationOk(kv.Key); if (lockTag.gameObject.activeSelf != lk) lockTag.gameObject.SetActive(lk); }
+                }
+                i++;
             }
+            _paintFrom = slice > 0 && end < _tiles.Count ? end : 0;
         }
 
         internal static void PickPiece(Piece p) => Pick(p);

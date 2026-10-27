@@ -12,6 +12,7 @@ namespace Jatify.UI
         private sealed class Circle { internal RectTransform Root; internal Image Icon, Cd; internal TextMeshProUGUI Key, Secs; }
         private readonly Circle[] _c = new Circle[3];
         private Component _bar; private CanvasGroup _hidden; private System.Collections.IList _icons;
+        private static bool _barLooked;
         private static System.Type _barType; private static System.Reflection.FieldInfo _fIcon, _fCd, _fKey, _fSecs;
 
         internal EpicAbilities(RectTransform dock, ThemeData t)
@@ -36,7 +37,7 @@ namespace Jatify.UI
         {
             if (_bar == null)
             {
-                if (_barType == null) _barType = AccessTools.TypeByName("EpicLoot.Abilities.AbilityBar");
+                if (!_barLooked) { _barLooked = true; _barType = AccessTools.TypeByName("EpicLoot.Abilities.AbilityBar"); }   // once: TypeByName scans every type, and without EpicLoot it never finds one
                 _bar = _barType != null && Hud.instance != null ? Hud.instance.GetComponentInChildren(_barType, true) : null;
                 if (_bar == null) { foreach (var c in _c) if (c.Root.gameObject.activeSelf) c.Root.gameObject.SetActive(false); return; }
                 _icons = Traverse.Create(_bar).Field("AbilityIcons").GetValue() as System.Collections.IList;

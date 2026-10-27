@@ -47,6 +47,10 @@ AzuEPI keeps owning the inventory rows and slots; Jatify UI draws them.
 ### Bug fixes
 
 - Much smoother in big bases: with the inventory open the frame rate went from about 10 to about 30 in a base with 27 chests nearby (with AzuCraftyBoxes); the crafting panel no longer recounts chests every frame, and stations, chest labels and dialogs no longer search the whole world on a timer.
+- The build menu and the placement card ran at about 12 fps with AzuCraftyBoxes and many chests nearby (108 in the test base); now about 40. Without EpicLoot installed, two lookups for its parts were retried every frame.
+- With AzuEPI, the equipment slots around the character disappeared while a chest was open.
+- Meads and food on the HUD action bars and quick slots showed 0 instead of their stack.
+- The enchanting table's Upgrade / Sacrifice button flickered between green and orange.
 - Repairing a Hip Lantern (or any craft) could lose the item with AzuCraftyBoxes installed: both mods paid for the craft ([#3](https://github.com/imdizmo/JatifyUI/issues/3), reported by Leo on Discord).
 - Dropping an item a reserved row doesn't take onto one of its slots could make the item vanish (a knife dropped on a cultivator in the Tools row, reported on Nexus).
 - Picking up your grave with Take everything left your gear unequipped; it now goes back on, and graves can't be sorted.

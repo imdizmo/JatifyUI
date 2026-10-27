@@ -377,7 +377,8 @@ namespace Jatify.UI
         private static int Ammo(Inventory inv, ItemDrop.ItemData w)
         {
             var t = w?.m_shared.m_ammoType; if (string.IsNullOrEmpty(t)) return -1;
-            var k = w.m_shared.m_itemType; if (k == ItemDrop.ItemData.ItemType.Ammo || k == ItemDrop.ItemData.ItemType.AmmoNonEquipable) return -1;
+            var k = w.m_shared.m_itemType;   // weapons only: meads and food can carry an ammo type too (Rayla's showed 0 instead of their stack)
+            if (k != ItemDrop.ItemData.ItemType.Bow && k != ItemDrop.ItemData.ItemType.OneHandedWeapon && k != ItemDrop.ItemData.ItemType.TwoHandedWeapon && k != ItemDrop.ItemData.ItemType.TwoHandedWeaponLeft) return -1;
             int n = 0;
             foreach (var i in inv.GetAllItems()) { var ik = i.m_shared.m_itemType; if (i.m_shared.m_ammoType == t && (ik == ItemDrop.ItemData.ItemType.Ammo || ik == ItemDrop.ItemData.ItemType.AmmoNonEquipable)) n += i.m_stack; }
             return n;
