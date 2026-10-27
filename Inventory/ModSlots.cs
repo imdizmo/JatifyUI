@@ -25,12 +25,25 @@ namespace Jatify.UI
 
         // rings (EpicLoot's and other mods'): utility items, so worn alone they push the belt off; here two of them sit
         // beside it. A mod with its own ring slots (AzuEPI) keeps them its way.
-        internal static bool RingsOn => !BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey("Azumatt.AzuExtendedPlayerInventory");
+        // only when the game has rings at all (vanilla has none: EpicLoot and other mods add them), and AzuEPI isn't there with its own
+        internal static bool RingsOn => !BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey("Azumatt.AzuExtendedPlayerInventory") && AnyRings;
+        private static bool? _anyRings;
+        private static bool AnyRings
+        {
+            get
+            {
+                if (_anyRings.HasValue) return _anyRings.Value;
+                var db = ObjectDB.instance; if (db == null || db.m_items.Count == 0) return false;
+                bool any = db.m_items.Any(go => go != null && go.GetComponent<ItemDrop>() is ItemDrop d && d.m_itemData.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Utility && RingName(go.name));
+                if (Player.m_localPlayer != null) _anyRings = any;   // settled once the world's items are all in (mods add theirs late)
+                return any;
+            }
+        }
+        private static bool RingName(string n) => (n.EndsWith("Ring") && !n.EndsWith("Earring")) || n == "Andvaranaut";
         internal static bool IsRing(ItemDrop.ItemData it)
         {
             if (it == null || it.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Utility || it.m_dropPrefab == null) return false;
-            var n = it.m_dropPrefab.name;
-            return (n.EndsWith("Ring") && !n.EndsWith("Earring")) || n == "Andvaranaut";
+            return RingName(it.m_dropPrefab.name);
         }
         private static Inventory _inv;
         private static Player _for;

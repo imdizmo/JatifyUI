@@ -96,7 +96,7 @@ namespace Jatify.UI
             internal KeyPouch(RectTransform doll, ThemeData t, GameObject tooltipPrefab)
             {
                 var (line, fill) = Kit.Box(doll, "Keys", Theme.C(t.raised), Theme.C(t.glassLine), 9);
-                var rt = line.rectTransform.At(ModSlots.RingsOn ? 126 : 52, 288, 46, 46); line.raycastTarget = true;   // AzuEPI: after the ammo, other mods' slots after it
+                var rt = line.rectTransform.At(ModSlots.RingsOn ? 126 : Azu.Drives ? 52 : 192, 288, 46, 46); line.raycastTarget = true;   // AzuEPI: after the ammo, other mods' slots after it; no rings: after the hands and ammo
                 _hint = Kit.IconImg(rt, "key", new Color(1f, 1f, 1f, 0.3f), 24f); _hint.rectTransform.At(11, 11, 24, 24);   // our swamp-key drawing (assets/svg/key.svg)
                 _icon = Kit.Img(rt, "Icon", null, Color.white, false); _icon.rectTransform.Fill(8f); _icon.preserveAspect = true; _icon.enabled = false;
                 _count = Kit.Text(rt, "Count", "", Fonts.Mono, 10.5f, Color.white); _count.alignment = TextAlignmentOptions.BottomRight; _count.rectTransform.Fill(5f);
@@ -174,9 +174,14 @@ namespace Jatify.UI
                     new EqSlot(_doll, "Ring", null, 0, 281, t, tooltipPrefab, 60f, ModSlots.RingX, 0), new EqSlot(_doll, "Ring", null, 180, 281, t, tooltipPrefab, 60f, ModSlots.RingX + 1, 0),
                     new EqSlot(_doll, "Ammo", Ammo, 70, 288, t, tooltipPrefab, 46f),
                 }
-                : new[]
+                : Azu.Drives ? new[]
                 {   // AzuEPI (it has the ring slots): no hands either (they show on the action bar and the figure); ammo, the key pouch, then other mods' slots
                     new EqSlot(_doll, "Ammo", Ammo, 0, 288, t, tooltipPrefab, 46f),
+                }
+                : new[]
+                {   // no rings in this game (vanilla): the hands, then ammo and the key pouch, as before rings came
+                    new EqSlot(_doll, "Main hand", Main, 2, 281, t, tooltipPrefab), new EqSlot(_doll, "Off hand", Off, 70, 281, t, tooltipPrefab),
+                    new EqSlot(_doll, "Ammo", Ammo, 138, 288, t, tooltipPrefab, 46f),
                 }).ToArray();
             _pouch = new KeyPouch(_doll, t, tooltipPrefab);
             // middle: the numbers that matter for what you wear
@@ -248,6 +253,7 @@ namespace Jatify.UI
             switch (slot)
             {
                 case "Key": return ModSlots.IsKey(it) ? "That pouch cell is taken" : "Only keys go in the key pouch";
+                case "Main hand": case "Off hand": return $"{name} can't be held there";
                 case "Wishbone": return "Only a Wishbone goes here";
                 case "Wisplight": return "Only a Wisplight goes here";
                 case "Ring": return "Only a ring goes here";
@@ -264,6 +270,8 @@ namespace Jatify.UI
                 case "Chest": return k == ItemDrop.ItemData.ItemType.Chest;
                 case "Legs": return k == ItemDrop.ItemData.ItemType.Legs;
                 case "Belt": return k == ItemDrop.ItemData.ItemType.Utility;
+                case "Main hand": return k == ItemDrop.ItemData.ItemType.OneHandedWeapon || k == ItemDrop.ItemData.ItemType.TwoHandedWeapon || k == ItemDrop.ItemData.ItemType.TwoHandedWeaponLeft || k == ItemDrop.ItemData.ItemType.Bow || k == ItemDrop.ItemData.ItemType.Tool || k == ItemDrop.ItemData.ItemType.Torch;
+                case "Off hand": return k == ItemDrop.ItemData.ItemType.Shield || k == ItemDrop.ItemData.ItemType.Torch;
                 case "Trinket": return k == ItemDrop.ItemData.ItemType.Trinket;
                 case "Ammo": return k == ItemDrop.ItemData.ItemType.Ammo;
                 default: return false;
@@ -273,7 +281,7 @@ namespace Jatify.UI
         private static Sprite Ghost(string slot)
         {
             string prefab = slot == "Head" ? "HelmetLeather" : slot == "Cape" ? "CapeDeerHide" : slot == "Chest" ? "ArmorLeatherChest" : slot == "Legs" ? "ArmorLeatherLegs"
-                : slot == "Belt" ? "BeltStrength" : slot == "Wishbone" ? "Wishbone" : slot == "Wisplight" ? "Demister" : slot == "Ring" ? "SilverRing" : slot == "Ammo" ? "ArrowWood" : slot == "Key" ? "CryptKey" : null;
+                : slot == "Belt" ? "BeltStrength" : slot == "Wishbone" ? "Wishbone" : slot == "Wisplight" ? "Demister" : slot == "Ring" ? "SilverRing" : slot == "Main hand" ? "SwordBronze" : slot == "Off hand" ? "ShieldWood" : slot == "Ammo" ? "ArrowWood" : slot == "Key" ? "CryptKey" : null;
             if (ObjectDB.instance == null) return null;
             if (slot == "Trinket")
                 foreach (var go in ObjectDB.instance.m_items) { var d = go ? go.GetComponent<ItemDrop>() : null; if (d != null && d.m_itemData.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Trinket) return d.m_itemData.GetIcon(); }
@@ -328,7 +336,7 @@ namespace Jatify.UI
                 // empty slot: a faint icon of what goes there (design), the name in the tooltip
                 string ic = name == "Head" ? "helm" : name == "Cape" ? "cape" : name == "Chest" ? "chest" : name == "Legs" ? "legs" : name == "Belt" ? "belt"
                           : name == "Trinket" ? "rune" : name == "Wishbone" ? "wishbone" : name == "Wisplight" ? "wisp" : name == "Ring" ? "rune" : name == "Key" ? "lock"
-                          : "arrow";
+                          : name == "Main hand" ? "sword" : name == "Off hand" ? "shield" : "arrow";
                 // design: a faint, greyed picture of what goes there; Valheim's own item icons where we have one
                 var ghost = Ghost(name);
                 _hint = ghost != null ? Kit.Img(rt, "Hint", ghost, new Color(0.55f, 0.55f, 0.6f, 0.3f), false) : Kit.IconImg(rt, ic, new Color(1f, 1f, 1f, 0.22f), size > 50f ? 28f : 22f);
