@@ -268,7 +268,7 @@ namespace Jatify.Campfire
             _remember.Set(Module.RememberPasswords.Value && Passwords.Available);
             PaintLeftList();
             SetShadowed(_selName, _sel != null ? _sel.GetName() : "");
-            SetShadowed(_selWorld, _serversTab ? (_server.IsValid ? Fejd.Shown(_server.ToString()) : "")
+            SetShadowed(_selWorld, _serversTab ? (_server.IsValid ? Fejd.Shown(Fejd.Name(_server)) : "")
                 : _world != null ? _world.m_name + (Module.HostServer.Value ? " · hosted for friends" : " · just you") : "");
             Clear(_enterBox);
             Primary(_enterBox, _serversTab ? "Join server" : "Enter world", 0f, 0f, 260f, 50f, Enter, _sel != null && (_serversTab ? _server.IsValid : _world != null), false, 16f);
@@ -404,11 +404,11 @@ namespace Jatify.Campfire
             }
             else
             {
-                foreach (var s in _servers.Where(s => q.Length == 0 || s.ToString().ToLowerInvariant().Contains(q)))
+                foreach (var s in _servers.Where(s => q.Length == 0 || s.ToString().ToLowerInvariant().Contains(q) || Fejd.Name(s).ToLowerInvariant().Contains(q)))
                 {
                     bool on = s.Equals(_server), saved = Passwords.Has(s.ToString());
                     var row = Row(_worlds, "s" + s, y, LI, RowH, on, () => { _server = s; Repaint(); });
-                    float rh = RowText(row.transform, Fejd.Shown(s.ToString()), saved ? "Favourite · password saved" : "Favourite", on && saved ? LI - 80f : LI, on);
+                    float rh = RowText(row.transform, Fejd.Shown(Fejd.Name(s)), saved ? "Favourite · password saved" : "Favourite", on && saved ? LI - 80f : LI, on);
                     if (on && saved)
                         Tip(Secondary(row.transform, "Forget", LI - 10f - 64f, 8f, 64f, 28f, () => { Passwords.Forget(s.ToString()); Repaint(); Toast("Password forgotten"); }, true, 12f),
                             "Forget this server's saved password");

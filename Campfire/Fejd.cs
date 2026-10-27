@@ -200,6 +200,10 @@ namespace Jatify.Campfire
             fav.Dispose();
         }
 
+        // a favourite's name; its address or crossplay ID (a string of letters, reported on Nexus) only if Valheim has no name for it
+        private static readonly Dictionary<string, string> _names = new Dictionary<string, string>();
+        internal static string Name(ServerJoinData s) => _names.TryGetValue(s.ToString(), out var n) ? n : s.ToString();
+
         internal static List<ServerJoinData> FavoriteServers()
         {
             var list = new List<ServerJoinData>();
@@ -207,7 +211,12 @@ namespace Jatify.Campfire
             {
                 // Read-only: a fresh view of Valheim's favourites file, never saved back.
                 var fav = new LocalServerList("favorite", ServerListGui.GetServerListLocations("favorite"));
-                for (int i = 0; i < fav.Count; i++) list.Add(fav[i]);
+                _names.Clear();
+                for (int i = 0; i < fav.Count; i++)
+                {   // its name as Valheim's list shows it (saved in the favourites file, or from matchmaking); read while the list is open
+                    list.Add(fav[i]);
+                    if (MultiBackendMatchmaking.TryGetServerName(fav[i], out string n) && !string.IsNullOrEmpty(n)) _names[fav[i].ToString()] = n;
+                }
                 fav.Dispose();
             }
             catch (Exception e) { Log.Warn("favourite servers: " + e.Message); }
