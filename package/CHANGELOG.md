@@ -50,6 +50,7 @@ AzuEPI keeps owning the inventory rows and slots; Jatify UI draws them.
 - Dropping an item a reserved row doesn't take onto one of its slots could make the item vanish (a knife dropped on a cultivator in the Tools row, reported on Nexus).
 - Picking up your grave with Take everything left your gear unequipped; it now goes back on, and graves can't be sorted.
 - About 190 "LiberationSans SDF Font Asset was not found" warnings in the log on load (reported on Nexus).
+- Unlocking an achievement showed Valheim's own pop-up next to Jatify UI's banner; with AchievementBanners on, only ours shows.
 - Map: bounty pins were removed by the map's clean-up, and vehicle pins shared a pin number with other mods' pin types (BetterMap's ore pins, ...).
 - Editing theme.json while playing broke the crafting panel (Valheim's recipe list came back, page tabs went missing).
 - Rebinding a key on the Jatify UI settings page never finished in release builds.

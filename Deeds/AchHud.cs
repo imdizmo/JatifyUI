@@ -179,4 +179,15 @@ namespace Jatify.UI.Deeds
             }
         }
     }
+
+    // Valheim 1.0.20's own unlock pop-up: ours (the banner) replaces it while AchievementBanners is on (both showed)
+    [HarmonyLib.HarmonyPatch(typeof(AchievementUnlockPopup), "Start")]
+    internal static class VanillaUnlockPopupOff
+    {
+        private static bool Prefix(AchievementUnlockPopup __instance)
+        {
+            if (!Cfg.Banners.Value) return true;
+            Object.Destroy(__instance.gameObject); return false;
+        }
+    }
 }
