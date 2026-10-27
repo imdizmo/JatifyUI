@@ -1,3 +1,4 @@
+using HarmonyLib;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -47,7 +48,7 @@ namespace Jatify.UI
                 foreach (var lk in crafting.GetComponentsInChildren<Transform>(true)) if (lk.name == "jatify-upgrade-locked") extra.Add(lk);
                 foreach (Transform c in crafting.Cast<Transform>().Concat(extra).ToList())
                 {
-                    if (c.name == "jatify-panel" || c.name == "jatify-page") continue;
+                    if (c.name == "jatify-panel" || c.name == "jatify-page" || c.name == "AzuEPI_CharacterPage") continue;   // AzuEPI keeps its slot cells there (they show in our inventory)
                     var cg = c.GetComponent<CanvasGroup>(); if (cg == null) { cg = c.gameObject.AddComponent<CanvasGroup>(); _added.Add(cg); }
                     if (!_hid.ContainsKey(cg)) _hid[cg] = (cg.alpha, cg.blocksRaycasts, cg.interactable);
                     cg.alpha = 0f; cg.blocksRaycasts = false; cg.interactable = false;
@@ -60,8 +61,11 @@ namespace Jatify.UI
             }
         }
 
+        internal static void CloseEmbedded() => _texts?.Unembed(true);
+
         internal static void Show(string page)
         {
+            if (page != "texts") _texts?.Unembed(true);   // a mod's page laid over the Texts panel goes with it
             Open = page;
             if (_root == null) return;
             HideCrafting(page != null);
@@ -654,18 +658,103 @@ namespace Jatify.UI
             _list = Pages.Scroll(Root, 0, 54, 220, 732);
             var vl = Kit.Img(Root, "VLine", null, Theme.C(t.glassLine)); vl.rectTransform.At(228, 45, 1, 745);
             _body = Pages.Scroll(Root, 246, 62, 392, 724);
+            _vline = vl.rectTransform;
+            var (bb, _) = Kit.Box(Root, "Back", Theme.C(t.raised), Theme.C(t.line2), 8); bb.rectTransform.At(0, 6, 86, 28); bb.raycastTarget = true;
+            var bt = Kit.Text(bb.rectTransform, "T", "‹ Texts", Fonts.Medium, 13f, Theme.C(t.text)); bt.alignment = TextAlignmentOptions.Center; bt.rectTransform.Fill();
+            bb.gameObject.AddComponent<UnityEngine.UI.Button>().onClick.AddListener(() => Unembed(true));
+            _back = bb.rectTransform; Notices.OnTop(_back); _back.gameObject.AddComponent<UnityEngine.UI.GraphicRaycaster>(); _back.gameObject.SetActive(false);   // over Valheim's dialog (a higher canvas), so it can be clicked
+        }
+
+        // ---- a mod's page shown inside this panel: Valheim's texts dialog (which draws it) laid over the panel, scaled to
+        // fit, without its own frame, list, title and backdrop; our list hides behind a "‹ Texts" button
+        private RectTransform _back, _vline; private TextsDialog _embedIn; private readonly List<GameObject> _embedHidden = new List<GameObject>();
+        private static readonly Vector3[] _wc = new Vector3[4];
+
+        private void Embed(TextsDialog d)
+        {
+            _embedIn = d; _list.gameObject.SetActive(false); _body.gameObject.SetActive(false); _vline.gameObject.SetActive(false); _back.gameObject.SetActive(true);
+            _embedHidden.Clear();
+            var frame = d.transform.Find("Texts_frame");
+            foreach (var n in new[] { "blur", "darken", "Closebutton" }) Hide(d.transform.Find(n));
+            if (frame != null) foreach (var n in new[] { "bkg", "topic", "TextList", "Closebutton" }) Hide(frame.Find(n));
+        }
+        private void Hide(Transform t) { if (t != null && t.gameObject.activeSelf) { t.gameObject.SetActive(false); _embedHidden.Add(t.gameObject); } }
+
+        internal void Unembed(bool close)
+        {
+            var d = _embedIn; _embedIn = null;
+            foreach (var go in _embedHidden) if (go != null) go.SetActive(true);
+            _embedHidden.Clear();
+            var frame = d != null ? d.transform.Find("Texts_frame") as RectTransform : null;
+            if (frame != null) { frame.localScale = Vector3.one; frame.anchoredPosition = Vector2.zero; }
+            if (close && d != null) d.gameObject.SetActive(false);
+            _list.gameObject.SetActive(true); _body.gameObject.SetActive(true); _vline.gameObject.SetActive(true); _back.gameObject.SetActive(false); _key = null;
+        }
+
+        // every frame while embedded: keep the page over the panel (Valheim re-lays the dialog when it changes pages)
+        private void FollowEmbed()
+        {
+            var d = _embedIn; if (d == null) return;
+            if (!d.gameObject.activeInHierarchy || !Root.gameObject.activeInHierarchy) { Unembed(false); return; }
+            var frame = d.transform.Find("Texts_frame") as RectTransform; if (frame == null) return;
+            // the part to show, in the frame's own units: EpicLoot's text area and the buttons under it
+            float xMin = float.MaxValue, yMin = float.MaxValue, xMax = float.MinValue, yMax = float.MinValue;
+            foreach (var n in new[] { "EpicLootMagicTextArea", "TextArea", "collapseAll", "searchField" })
+            {
+                var r = frame.Find(n) as RectTransform; if (r == null || !r.gameObject.activeSelf) continue;
+                r.GetWorldCorners(_wc);
+                for (int i = 0; i < 4; i += 2) { var lp = frame.InverseTransformPoint(_wc[i]); xMin = Mathf.Min(xMin, lp.x); xMax = Mathf.Max(xMax, lp.x); yMin = Mathf.Min(yMin, lp.y); yMax = Mathf.Max(yMax, lp.y); }
+            }
+            if (xMax <= xMin) return;
+            // where: the panel under its title line
+            Root.GetWorldCorners(_wc); float rs = Root.lossyScale.x;
+            float tlx = _wc[1].x, tly = _wc[1].y - 54f * rs, tw = _wc[2].x - _wc[1].x, th = (_wc[1].y - _wc[0].y) - 54f * rs;
+            float world = Mathf.Min(tw / (xMax - xMin), th / (yMax - yMin));   // world units per frame unit
+            var ps = frame.parent.lossyScale.x; float k = world / ps;
+            if (Mathf.Abs(frame.localScale.x - k) > 0.0001f) frame.localScale = new Vector3(k, k, 1f);
+            var want = new Vector3(tlx - xMin * world, tly - yMax * world, frame.position.z);
+            if ((frame.position - want).sqrMagnitude > 0.25f) frame.position = want;
+        }
+
+        // pages other mods add to Valheim's texts dialog (EpicLoot: magic effects, sets, treasure and bounties, shard stones):
+        // listed under the mod's name, opened in that dialog, where their own search and sections work
+        private static readonly System.Reflection.MethodInfo UpdateList = AccessTools.Method(typeof(TextsDialog), "UpdateTextsList"), ShowText = AccessTools.Method(typeof(TextsDialog), "ShowText", new[] { typeof(TextsDialog.TextInfo) });
+        private static readonly AccessTools.FieldRef<TextsDialog, System.Collections.Generic.List<TextsDialog.TextInfo>> Texts = AccessTools.FieldRefAccess<TextsDialog, System.Collections.Generic.List<TextsDialog.TextInfo>>("m_texts");
+        private static bool _woke;
+        private float ModPages(float y)
+        {
+            var g = InventoryGui.instance; var d = g != null ? g.m_textsDialog : null; var p = Player.m_localPlayer;
+            if (!Epic.On || d == null || p == null) return y;
+            System.Func<TextsDialog.TextInfo, bool> mods = i => i != null && i.GetType() != typeof(TextsDialog.TextInfo) && (i.GetType().Namespace ?? "").StartsWith("EpicLoot");
+            if (!d.gameObject.activeSelf && !_woke) { _woke = true; d.gameObject.SetActive(true); d.gameObject.SetActive(false); }   // mods hook its Awake (EpicLoot adds its pages there); our Texts page means it never opened: woken once, same frame, unseen
+            if (!Texts(d).Any(mods)) try { UpdateList?.Invoke(d, null); } catch (System.Exception e) { Log.Warn("texts: mod pages: " + e.Message); }   // its pages go in when the list is built
+            bool head = false;
+            foreach (var info in Texts(d))
+            {
+                if (!mods(info)) continue;
+                if (!head) { head = true; var h = Kit.Text(_list, "ModHead", "EPIC LOOT", Fonts.Mono, 10.5f, Theme.C(_t.mute)); h.characterSpacing = 8f; h.rectTransform.At(8, y + 2, 200, 14); y += 22f; }
+                var (b, _) = Kit.Box(_list, "ModText", new Color(0, 0, 0, 0), new Color(0, 0, 0, 0), 8); b.rectTransform.At(0, y, 212, 38);
+                var ic = Kit.Img(b.rectTransform, "I", Kit.Icon("texts_icon"), Theme.C(_t.accent), false); ic.rectTransform.At(8, 9, 20, 20); ic.preserveAspect = true;
+                var tx = Kit.Text(b.rectTransform, "T", Localization.instance.Localize(info.m_topic), Fonts.Medium, 13f, Theme.C(_t.dim)); tx.rectTransform.At(36, 0, 170, 38); tx.alignment = TextAlignmentOptions.MidlineLeft; tx.overflowMode = TextOverflowModes.Ellipsis;
+                var page = info; b.raycastTarget = true;
+                b.gameObject.AddComponent<UnityEngine.UI.Button>().onClick.AddListener(() => { d.Setup(p); ShowText?.Invoke(d, new object[] { page }); Embed(d); });
+                y += 40f;
+            }
+            return y;
         }
 
         internal void Tick()
         {
             var p = Player.m_localPlayer; if (p == null) return;
+            FollowEmbed(); if (_embedIn != null) return;
             var texts = p.GetKnownTexts();
             var key = $"{texts.Count}|{_sel}";
             if (key == _key) return;
             _key = key;
             if (_sel == null && texts.Count > 0) _sel = texts[0].Key;
             foreach (Transform c in _list) UnityEngine.Object.Destroy(c.gameObject);
-            float y = 0f;
+            float y = ModPages(0f);   // a mod's pages first (the runestone texts can run long)
+            if (y > 0f) { var rh = Kit.Text(_list, "TextsHead", "RUNESTONES", Fonts.Mono, 10.5f, Theme.C(_t.mute)); rh.characterSpacing = 8f; rh.rectTransform.At(8, y + 10, 200, 14); y += 30f; }
             foreach (var kv in texts)
             {
                 var label = kv.Key; bool on = label == _sel;
@@ -675,7 +764,7 @@ namespace Jatify.UI
                 b.raycastTarget = true; b.gameObject.AddComponent<UnityEngine.UI.Button>().onClick.AddListener(() => { _sel = label; _key = null; });
                 y += 40f;
             }
-            if (texts.Count == 0) { var e = Kit.Text(_list, "Empty", "No texts found yet. Read runestones to collect them.", Fonts.Medium, 12.5f, Theme.C(_t.mute)); e.textWrappingMode = TextWrappingModes.Normal; e.rectTransform.At(8, 8, 200, 60); y = 70f; }
+            if (texts.Count == 0) { var e = Kit.Text(_list, "Empty", "No texts found yet. Read runestones to collect them.", Fonts.Medium, 12.5f, Theme.C(_t.mute)); e.textWrappingMode = TextWrappingModes.Normal; e.rectTransform.At(8, y + 8, 200, 60); y += 70f; }
             _list.sizeDelta = new Vector2(0f, y);
             foreach (Transform c in _body) UnityEngine.Object.Destroy(c.gameObject);
             var sel = texts.FirstOrDefault(kv => kv.Key == _sel);
@@ -692,6 +781,13 @@ namespace Jatify.UI
 
 namespace Jatify.UI
 {
+    // closing the inventory: a mod's page laid over the Texts panel closes too
+    [HarmonyLib.HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Hide))]
+    internal static class TextsEmbedClose
+    {
+        private static void Postfix() => Pages.CloseEmbedded();
+    }
+
     // opening the inventory (or a station) starts on Crafting, not on the page you had open last
     [HarmonyLib.HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Show))]
     internal static class StationOpensCrafting

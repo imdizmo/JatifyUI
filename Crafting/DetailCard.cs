@@ -33,8 +33,23 @@ namespace Jatify.UI
         internal DetailCard(RectTransform desc, InventoryGui g, ThemeData t, Ledger l)
         {
             _g = g; _t = t;
+            // vanilla's icon / name / lore stay (we and other mods read them) but out of sight: moved into an invisible holder
+            // rather than changed, because other mods copy them for their own cards (EpicLoot's enchant result and augment
+            // choice) and a copy keeps the element's own scale and font, not its parent's
+            var hold = new Dictionary<Transform, RectTransform>();
             foreach (var r in new[] { g.m_recipeIcon?.rectTransform, g.m_recipeName?.rectTransform, g.m_recipeDecription?.rectTransform })
-                l.Rect(r, x => x.localScale = Vector3.zero);
+            {
+                if (r == null || r.parent == null) continue;
+                var parent = r.parent; int at = r.GetSiblingIndex();
+                if (!hold.TryGetValue(parent, out var h))
+                {
+                    h = hold[parent] = l.Own(Kit.Node(parent, "jatify-vanilla-detail"));
+                    h.anchorMin = Vector2.zero; h.anchorMax = Vector2.one; h.offsetMin = h.offsetMax = Vector2.zero;
+                    var cg = h.gameObject.AddComponent<CanvasGroup>(); cg.alpha = 0f; cg.blocksRaycasts = false; cg.interactable = false;
+                }
+                var into = h;
+                l.Do(() => r.SetParent(into, false), () => { if (r != null && parent != null) { r.SetParent(parent, false); r.SetSiblingIndex(at); } });
+            }
             // a scrolling view above REQUIRES (long stat lists scroll instead of running under the chips)
             _view = Kit.Node(desc, "jatify-detail"); l.Own(_view);
             _view.anchorMin = new Vector2(0f, 0f); _view.anchorMax = new Vector2(1f, 1f); _view.offsetMin = new Vector2(0f, 262f); _view.offsetMax = Vector2.zero;
@@ -43,13 +58,13 @@ namespace Jatify.UI
             _root = Kit.Node(_view, "Content");
             _root.anchorMin = new Vector2(0f, 1f); _root.anchorMax = new Vector2(1f, 1f); _root.pivot = new Vector2(0.5f, 1f); _root.anchoredPosition = Vector2.zero;
             var sr = _view.gameObject.AddComponent<ScrollRect>(); sr.content = _root; sr.horizontal = false; sr.scrollSensitivity = Kit.ScrollSpeed; sr.movementType = ScrollRect.MovementType.Clamped;
-            var req = _reqLabel = Kit.Text(desc, "jatify-requires", "REQUIRES", Fonts.Mono, 10.5f, Theme.C(t.mute)); l.Own(req); req.characterSpacing = 8f;
-            req.rectTransform.anchorMin = req.rectTransform.anchorMax = req.rectTransform.pivot = new Vector2(0f, 0f); req.rectTransform.anchoredPosition = new Vector2(14f, 244f); req.rectTransform.sizeDelta = new Vector2(200f, 14f);
+            var req = _reqLabel = Kit.Text(desc, "jatify-requires", "REQUIRES", Fonts.Mono, 12.5f, Theme.C(t.mute));   // crafting text: +2 px (user) l.Own(req); req.characterSpacing = 8f;
+            req.rectTransform.anchorMin = req.rectTransform.anchorMax = req.rectTransform.pivot = new Vector2(0f, 0f); req.rectTransform.anchoredPosition = new Vector2(14f, 244f); req.rectTransform.sizeDelta = new Vector2(200f, 16f);
             l.Rect(desc.Find("requirements") as RectTransform, r => r.localScale = Vector3.zero);   // replaced by our chips
             // design: two columns of chips (icon, name, "need / have N", tick) between REQUIRES and the stepper row
             _reqs = Kit.Node(desc, "jatify-reqs"); l.Own(_reqs);
             _reqs.anchorMin = _reqs.anchorMax = _reqs.pivot = new Vector2(0f, 0f); _reqs.anchoredPosition = new Vector2(14f, 100f); _reqs.sizeDelta = new Vector2(358f, 136f);
-            var note = _note = Kit.Text(desc, "jatify-craftnote", "Crafted items go to your backpack.", Fonts.Medium, 11.5f, Theme.C(t.mute)); l.Own(note); note.richText = true;
+            var note = _note = Kit.Text(desc, "jatify-craftnote", "Crafted items go to your backpack.", Fonts.Medium, 13.5f, Theme.C(t.mute)); l.Own(note); note.richText = true;
             note.rectTransform.anchorMin = note.rectTransform.anchorMax = note.rectTransform.pivot = new Vector2(0f, 0f); note.rectTransform.anchoredPosition = new Vector2(14f, 14f); note.rectTransform.sizeDelta = new Vector2(CraftQueue.On.Value ? 272f : 358f, 28f);
             _baseMulti = g.m_multiCraftAmount;
             int base0 = _baseMulti;
@@ -137,8 +152,8 @@ namespace Jatify.UI
                 }
             }
             Reqs();
-            var text = _g.m_recipeDecription != null ? _g.m_recipeDecription.text : "";
-            var name = _g.m_recipeName != null ? _g.m_recipeName.text : "";
+            var text = _g.m_recipeDecription != null && _g.m_recipeDecription.enabled ? _g.m_recipeDecription.text : "";
+            var name = _g.m_recipeName != null && _g.m_recipeName.enabled ? _g.m_recipeName.text : "";   // nothing selected: Valheim turns them off, its "Placeholder Item" text still in them
             var rec = _g.InCraftTab() ? Selected() : null;
             var key = name + "\n" + text + RecipeView.IsFav(rec);
             if (key == _shown) return;
@@ -166,18 +181,18 @@ namespace Jatify.UI
             // header: icon tile, name, type line
             var (tile, _) = Kit.Box(_root, "Icon", Theme.C(_t.raised), Theme.C(_t.glassLine), 10); tile.rectTransform.At(18, 16, 60, 60);
             if (icon != null) { var ic = Kit.Img(tile.rectTransform, "I", icon, Color.white, false); ic.rectTransform.At(9, 9, 42, 42); ic.preserveAspect = true; }
-            var n = Kit.Text(_root, "Name", name, Fonts.Bold, 18f, Color.white); n.rectTransform.At(90, 20, 232, 26); n.overflowMode = TextOverflowModes.Ellipsis;
+            var n = Kit.Text(_root, "Name", name, Fonts.Bold, 20f, Color.white); n.rectTransform.At(90, 18, 232, 28); n.overflowMode = TextOverflowModes.Ellipsis;
             // the item's own words under its name (type, short description): Averia italic like the description, two lines (user)
-            var type = Kit.Text(_root, "Type", string.Join(" · ", notes), Fonts.Lore, 13.5f, Theme.C(_t.mute)); type.fontStyle = FontStyles.Italic;
+            var type = Kit.Text(_root, "Type", string.Join(" · ", notes), Fonts.Lore, 15.5f, Theme.C(_t.mute)); type.fontStyle = FontStyles.Italic;
             type.textWrappingMode = TextWrappingModes.Normal; type.overflowMode = TextOverflowModes.Ellipsis; type.maxVisibleLines = 2; type.lineSpacing = -6f;
-            type.rectTransform.At(90, 45, 232, 40);   // Averia's line is taller than Space Grotesk's: an 18 px box drew nothing
+            type.rectTransform.At(90, 46, 232, 44);   // Averia's line is taller than Space Grotesk's: an 18 px box drew nothing
             float y = 90f;
             if (Knots.On) { Knots.DividerAt(_root, 18f, 88f, 350f, false, Theme.C(_t.accent)); y = 98f; }   // design .kdiv: a small knot between the name and the stats
             if (desc != null)
             {
-                var d = Kit.Text(_root, "Desc", desc, Fonts.Lore, 14f, Theme.C(_t.dim)); d.fontStyle = FontStyles.Italic;
-                d.textWrappingMode = TextWrappingModes.Normal; d.rectTransform.At(18, y, 350, 40);
-                y += Mathf.Min(60f, d.GetPreferredValues(desc, 350f, 0f).y) + 12f;
+                var d = Kit.Text(_root, "Desc", desc, Fonts.Lore, 16f, Theme.C(_t.dim)); d.fontStyle = FontStyles.Italic;
+                d.textWrappingMode = TextWrappingModes.Normal; d.rectTransform.At(18, y, 350, 46);
+                y += Mathf.Min(68f, d.GetPreferredValues(desc, 350f, 0f).y) + 12f;
             }
             y = Table("DAMAGE & DEFENCE", damage, y);
             y = Table("STATS", stats, y + 6f);
@@ -211,8 +226,8 @@ namespace Jatify.UI
                 // design .reqchip: 45 tall, 26 px icon, name over "need / have N", a green tick at the right
                 var (chip, _) = Kit.Box(_reqs, "Req", Theme.C(_t.raised), Theme.C(_t.glassLine), 9); chip.rectTransform.At((n % 2) * 183, (n / 2) * 51, 175, 45);
                 var ic = Kit.Img(chip.rectTransform, "I", data.GetIcon(), Color.white, false); ic.rectTransform.At(8, 9.5f, 26, 26); ic.preserveAspect = true;
-                var nm = Kit.Text(chip.rectTransform, "N", Localization.instance.Localize(data.m_shared.m_name), Fonts.Medium, 13f, Theme.C(_t.text)); nm.rectTransform.At(42, 5, 104, 18); nm.overflowMode = TextOverflowModes.Ellipsis;
-                var hv = Kit.Text(chip.rectTransform, "H", $"{need} / have {have}", Fonts.Mono, 11f, ok ? Theme.C(_t.mute) : Theme.C(_t.ember)); hv.rectTransform.At(42, 23, 110, 16);
+                var nm = Kit.Text(chip.rectTransform, "N", Localization.instance.Localize(data.m_shared.m_name), Fonts.Medium, 15f, Theme.C(_t.text)); nm.rectTransform.At(42, 4, 104, 20); nm.overflowMode = TextOverflowModes.Ellipsis;
+                var hv = Kit.Text(chip.rectTransform, "H", $"{need} / have {have}", Fonts.Mono, 13f, ok ? Theme.C(_t.mute) : Theme.SoftEmber(_t)); hv.rectTransform.At(42, 24, 110, 18);
                 if (ok) { var tk = Kit.IconImg(chip.rectTransform, "check", Theme.C(_t.accent), 18f); tk.rectTransform.At(149, 13.5f, 18, 18); }
                 if (++n == 4) break;                         // vanilla shows at most four too
             }
@@ -228,17 +243,17 @@ namespace Jatify.UI
         private float Table(string title, List<(string, string)> rows, float y)
         {
             if (rows.Count == 0) return y;
-            var l = Kit.Text(_root, "Label", title, Fonts.Mono, 10.5f, Theme.C(_t.mute)); l.characterSpacing = 8f; l.rectTransform.At(18, y, 300, 14);
-            y += 20f;
+            var l = Kit.Text(_root, "Label", title, Fonts.Mono, 12.5f, Theme.C(_t.mute)); l.characterSpacing = 8f; l.rectTransform.At(18, y, 300, 16);
+            y += 22f;
             foreach (var (label, value) in rows)
             {
-                var a = Kit.Text(_root, "K", label, Fonts.Medium, 13f, Theme.C(_t.dim)); a.rectTransform.At(18, y, 200, 20);
+                var a = Kit.Text(_root, "K", label, Fonts.Medium, 15f, Theme.C(_t.dim)); a.rectTransform.At(18, y, 200, 22);
                 int p = value.IndexOf(" (", StringComparison.Ordinal);
                 string main = p > 0 ? value.Substring(0, p) : value, extra = p > 0 ? value.Substring(p + 1) : "";
-                var v = Kit.Text(_root, "V", extra.Length > 0 ? $"{main} <size=11><color=#{ColorUtility.ToHtmlStringRGB(Theme.C(_t.mute))}>{extra}</color></size>" : main, Fonts.Mono, 13f, Color.white);
-                v.richText = true; v.alignment = TextAlignmentOptions.MidlineRight; v.rectTransform.At(168, y, 200, 20);
-                var sep = Kit.Img(_root, "Line", null, new Color(1f, 1f, 1f, 0.05f)); sep.rectTransform.At(18, y + 21, 350, 1);
-                y += 24f;
+                var v = Kit.Text(_root, "V", extra.Length > 0 ? $"{main} <size=13><color=#{ColorUtility.ToHtmlStringRGB(Theme.C(_t.mute))}>{extra}</color></size>" : main, Fonts.Mono, 15f, Color.white);
+                v.richText = true; v.alignment = TextAlignmentOptions.MidlineRight; v.rectTransform.At(168, y, 200, 22);
+                var sep = Kit.Img(_root, "Line", null, new Color(1f, 1f, 1f, 0.05f)); sep.rectTransform.At(18, y + 23, 350, 1);
+                y += 26f;
             }
             return y;
         }

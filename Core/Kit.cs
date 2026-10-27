@@ -20,7 +20,8 @@ namespace Jatify.UI
     {
         private static readonly Dictionary<int, Sprite> _round = new Dictionary<int, Sprite>();
         private static readonly Dictionary<int, Sprite> _ring = new Dictionary<int, Sprite>();
-        private static Sprite _circle, _star, _lock, _fadeLine, _glow, _vgrad;
+        private static Sprite _circle, _star, _lock, _fadeLine, _glow;
+        private static readonly System.Collections.Generic.Dictionary<(Color, Color, Color), Sprite> _vgrads = new System.Collections.Generic.Dictionary<(Color, Color, Color), Sprite>();   // a few, one per look (boss bar, rarity wash)
         private static readonly Dictionary<string, Sprite> _icons = new Dictionary<string, Sprite>();
 
         // The design's icons (its SVG symbols rendered to 64 px white PNGs, embedded); tint with Image.color.
@@ -112,11 +113,20 @@ namespace Jatify.UI
 
         internal static TextMeshProUGUI Text(Transform parent, string name, string text, TMP_FontAsset font, float size, Color color)
         {
-            var t = Node(parent, name).gameObject.AddComponent<TextMeshProUGUI>();
-            if (font != null) t.font = font;
+            var t = Quiet(Node(parent, name).gameObject, font ?? Fonts.Medium);
             t.fontSize = size; t.color = color; t.text = text;
             t.textWrappingMode = TextWrappingModes.NoWrap; t.raycastTarget = false;
             t.overflowMode = TextOverflowModes.Overflow;
+            return t;
+        }
+
+        // a text whose font is set before it wakes: switched on with no font, TextMeshPro looks for its default (LiberationSans
+        // SDF, which Valheim doesn't ship) and logs a warning, one per text we make (user report: ~190 lines on load)
+        internal static TextMeshProUGUI Quiet(GameObject go, TMP_FontAsset font)
+        {
+            bool was = go.activeSelf; go.SetActive(false);
+            var t = go.AddComponent<TextMeshProUGUI>(); if (font != null) t.font = font;
+            go.SetActive(was);
             return t;
         }
 
@@ -237,13 +247,13 @@ namespace Jatify.UI
         // top to bottom, white: a bar's shading (tint it white so these colours show)
         internal static Sprite VGradient(Color top, Color mid, Color bottom)
         {
-            if (_vgrad != null) return _vgrad;
+            if (_vgrads.TryGetValue((top, mid, bottom), out var have) && have != null) return have;
             var tex = new Texture2D(1, 32, TextureFormat.RGBA32, false) { name = "jatify-vgrad", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
             var px = new Color[32];
             for (int y = 0; y < 32; y++) { float f = 1f - y / 31f; px[y] = f < 0.45f ? Color.Lerp(top, mid, f / 0.45f) : Color.Lerp(mid, bottom, (f - 0.45f) / 0.55f); }   // row 0 is the bottom
             tex.SetPixels(px); tex.Apply(false, true);
-            _vgrad = Sprite.Create(tex, new Rect(0, 0, 1, 32), new Vector2(0.5f, 0.5f), 100f); _vgrad.name = tex.name;
-            return _vgrad;   // ponytail: one gradient (the boss bar's); key by colours when a second one is needed
+            var sp = Sprite.Create(tex, new Rect(0, 0, 1, 32), new Vector2(0.5f, 0.5f), 100f); sp.name = tex.name;
+            return _vgrads[(top, mid, bottom)] = sp;
         }
 
         private static Sprite Make(string name, int n, System.Func<float, float, float> dist, Vector4 border)
@@ -280,7 +290,7 @@ namespace Jatify.UI
             {
                 var go = new GameObject("jatify-measure"); Object.DontDestroyOnLoad(go);
                 var cv = go.AddComponent<Canvas>(); cv.enabled = false;
-                _measure = Node(go.transform, "T").gameObject.AddComponent<TextMeshProUGUI>();
+                _measure = Quiet(Node(go.transform, "T").gameObject, t.font);
                 _measure.textWrappingMode = TextWrappingModes.NoWrap; _measure.raycastTarget = false;
             }
             _measure.font = t.font; _measure.fontSize = t.fontSize; _measure.fontStyle = t.fontStyle;
@@ -298,7 +308,7 @@ namespace Jatify.UI
             foreach (var s in _round.Values) Kill(s);
             foreach (var s in _ring.Values) Kill(s);
             _round.Clear(); _ring.Clear();
-            Kill(_circle); Kill(_star); Kill(_lock); Kill(_fadeLine); Kill(_glow); Kill(_vgrad); _circle = _star = _lock = _fadeLine = _glow = _vgrad = null;
+            Kill(_circle); Kill(_star); Kill(_lock); Kill(_fadeLine); Kill(_glow); foreach (var v in _vgrads.Values) Kill(v); _vgrads.Clear(); _circle = _star = _lock = _fadeLine = _glow = null;
             foreach (var s in _icons.Values) Kill(s);
             _icons.Clear(); _vanilla.Clear();
         }

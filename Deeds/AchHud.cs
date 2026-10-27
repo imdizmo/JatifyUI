@@ -47,8 +47,9 @@ namespace Jatify.UI.Deeds
 
         internal void Tick()
         {
-            // Y folds the tracker to its header and back (hint in the bottom-left corner); not while typing or in a menu
-            if (Input.GetKeyDown(KeyCode.Y) && !Typing.Active && !InventoryGui.IsVisible() && !Menu.IsVisible() && !Console.IsVisible() && !TextInput.IsVisible() && !Minimap.IsOpen()
+            // the Tracker key (U) folds the tracker to its header and back (hint in the bottom-left corner); not while typing or in a menu
+            var tk = HotKeys.Tracker?.Value ?? new BepInEx.Configuration.KeyboardShortcut(KeyCode.U);
+            if (tk.MainKey != KeyCode.None && tk.IsDown() && !Typing.Active && !InventoryGui.IsVisible() && !Menu.IsVisible() && !Console.IsVisible() && !TextInput.IsVisible() && !Minimap.IsOpen()
                 && (Chat.instance == null || !Chat.instance.HasFocus()))
                 Cfg.TrackerCollapsed.Value = !Cfg.TrackerCollapsed.Value;
             TickTracker();

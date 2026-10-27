@@ -42,7 +42,7 @@ namespace Jatify.UI
         private static void OnExtraChanged(object _, EventArgs __)
         {
             var p = Player.m_localPlayer;
-            if (_busy || p == null || _applied < 0 || Extra.Value == _applied) return;
+            if (_busy || p == null || _applied < 0 || Extra.Value == _applied || Azu.Drives) return;   // AzuEPI: its own Extra Inventory Rows
             var inv = p.GetInventory(); int oldStart = Base + _applied, newStart = Base + Extra.Value, bands = SpecialRows.Rows;
             int newH = newStart + bands;
             var moves = new List<(ItemDrop.ItemData it, Vector2i to)>();
@@ -87,7 +87,7 @@ namespace Jatify.UI
         // After a (re)load while a player is already in the world.
         internal static void Apply()
         {
-            var p = Player.m_localPlayer; if (p == null) return;
+            var p = Player.m_localPlayer; if (p == null || Azu.Drives) return;   // AzuEPI owns the grid
             var inv = p.GetInventory();
             Base = Mathf.Clamp(inv.GetHeight(), 1, 9);
             if (p.TryGetUniqueKeyValue("invrows", out var v) && int.TryParse(v, out var r)) Base = Mathf.Clamp(r, 1, 9);
@@ -132,7 +132,7 @@ namespace Jatify.UI
         // Before unload: everything into vanilla rows, then the vanilla size (nothing dropped).
         internal static void Remove()
         {
-            var p = Player.m_localPlayer; if (p == null) return;
+            var p = Player.m_localPlayer; if (p == null || Azu.Drives) return;   // AzuEPI: shrinking would cut off its rows
             var inv = p.GetInventory();
             int left = Pack(inv);
             inv.SetHeight(Base);
@@ -196,6 +196,7 @@ namespace Jatify.UI
             if (Player.m_localPlayer != null && __instance != Player.m_localPlayer) return true;
             rows = Mathf.Clamp(rows, 0, 9);
             ExtraRows.Base = rows;
+            if (Azu.Drives) return true;   // AzuEPI sizes the grid (vanilla + its rows + its equipment rows)
             __instance.AddUniqueKeyValue("invrows", rows.ToString());
             var inv = __instance.GetInventory();
             inv.SetHeight(rows + ExtraRows.Extra.Value + SpecialRows.Rows);
@@ -213,7 +214,7 @@ namespace Jatify.UI
         private static void Prefix(Player __instance, out bool __state)
         {
             __state = false;
-            if (__instance != Player.m_localPlayer) return;
+            if (__instance != Player.m_localPlayer || Azu.Drives) return;   // AzuEPI saves its own layout
             var inv = __instance.GetInventory();
             int before = ExtraRows.InOurRows(inv);
             if (before == 0) return;

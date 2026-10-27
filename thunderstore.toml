@@ -4,7 +4,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "Jatify"
 name = "JatifyUI"
-versionNumber = "0.1.1"
+versionNumber = "0.2.0"
 description = "A new interface for all of Valheim: dark glass, Norse lettering and Celtic knotwork on every window, plus a Compendium, smarter chests, stations on Auto, map pins and more. Most parts can be switched off."
 websiteUrl = "https://github.com/imdizmo/JatifyUI"
 containsNsfwContent = false

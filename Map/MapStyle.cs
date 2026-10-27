@@ -46,7 +46,9 @@ namespace Jatify.UI
             };
             for (int i = 0; i < PinKinds.Names.Length; i++) k.Add((PinKinds.Names[i], new[] { Minimap.PinType.Icon3 }, i + 1));
             k.Add(("Boss", new[] { Minimap.PinType.Boss }, 0)); k.Add(("Hildir", new[] { Minimap.PinType.Hildir1, Minimap.PinType.Hildir2, Minimap.PinType.Hildir3 }, 0));
-            k.Add(("Death", new[] { Minimap.PinType.Death }, 0)); k.Add(("Bed", new[] { Minimap.PinType.Bed }, 0)); k.Add(("Vehicles", new[] { MapMarks.Vehicle }, 0)); k.Add(("Players", new[] { Minimap.PinType.Player }, 0));
+            k.Add(("Death", new[] { Minimap.PinType.Death }, 0)); k.Add(("Bed", new[] { Minimap.PinType.Bed }, 0)); k.Add(("Vehicles", MapMarks.VehicleTypes, 0));
+            k.Add(("Bounties", MapMarks.BountyTypes, 0)); k.Add(("Treasure", MapMarks.TreasureTypes, 0));   // EpicLoot's adventure pins (its own toggles sit in the vanilla panel we hide); their types are filled in once its map has them, so without it no pin matches and the chips never show
+            k.Add(("Players", new[] { Minimap.PinType.Player }, 0));
             return k;
         }
         // design PLACEABLE: the five vanilla icons, then our kinds
@@ -179,6 +181,7 @@ namespace Jatify.UI
             foreach (var c in _chips)
             {
                 bool on = has[c.kind] || Kinds[c.kind].label == "Players";
+                if (on && c.icon.sprite == null && Kinds[c.kind].kind == 0) c.icon.sprite = Sprite(Kinds[c.kind].types[0]);   // a mod's pin type known only after the panel was built
                 c.line.gameObject.SetActive(on); if (!on) continue;
                 c.line.rectTransform.At(15 + (n % 2) * (ChipW + 6), 112 + (n / 2) * 35, ChipW, 30); n++;
             }
@@ -191,18 +194,28 @@ namespace Jatify.UI
         {
             var (_, types, kind) = Kinds[i];
             if (kind > 0) return !PinKinds.Hidden.Contains(kind);
-            var v = Visible(_for); return v != null && (int)types[0] < v.Length && v[(int)types[0]];   // Vehicle's slot exists once MapMarks has grown the array
+            var v = Visible(_for); return v != null && (int)types[0] >= 0 && (int)types[0] < v.Length && v[(int)types[0]];   // Vehicle's slot exists once MapMarks has grown the array
         }
         private static bool AnyShown() { for (int i = 0; i < Kinds.Count; i++) if (Shown(i)) return true; return false; }
         private static void SetShown(int i, bool on)
         {
             var (_, types, kind) = Kinds[i];
             if (kind > 0) { if (on) PinKinds.Hidden.Remove(kind); else PinKinds.Hidden.Add(kind); }
-            else { var v = Visible(_for); if (v == null) return; foreach (var ty in types) if ((int)ty < v.Length) v[(int)ty] = on; }
+            else
+            {
+                var v = Visible(_for); if (v == null) return;
+                foreach (var ty in types)
+                {
+                    if ((int)ty < 0 || (int)ty >= v.Length || v[(int)ty] == on) continue;
+                    if (ty == MapMarks.BountyTypes[0] || ty == MapMarks.TreasureTypes[0]) ToggleFilter.Invoke(_for, new object[] { ty });   // through vanilla's toggle: EpicLoot follows it to keep its own filter state
+                    else v[(int)ty] = on;
+                }
+            }
             PinUpdate(_for) = true; _listKey = null;
         }
 
-        private static Sprite Sprite(Minimap.PinType ty) => SpriteOf.Invoke(_for, new object[] { ty }) as Sprite;
+        private static readonly System.Reflection.MethodInfo ToggleFilter = AccessTools.Method(typeof(Minimap), "ToggleIconFilter");
+        private static Sprite Sprite(Minimap.PinType ty) => (int)ty < 0 ? null : SpriteOf.Invoke(_for, new object[] { ty }) as Sprite;
 
         // the pins we list: what you placed or found, not live markers (players, pings, events)
         private static bool Listed(Minimap.PinData p) => p.m_type != MapMarks.Vehicle && p.m_type != Minimap.PinType.Player && p.m_type != Minimap.PinType.Ping && p.m_type != Minimap.PinType.Shout && p.m_type != Minimap.PinType.RandomEvent && p.m_type != Minimap.PinType.EventArea && p.m_type != Minimap.PinType.None;

@@ -14,6 +14,7 @@ namespace Jatify.UI
     internal static class StoreWindow
     {
         private const float X0 = 150, Y0 = 150, W = 760, H = 760, Tile = 132, Gap = 13, Foot = 210;
+        internal static RectTransform Win;   // the window (EpicLoot's trader panel docks beside it)
         private static readonly AccessTools.FieldRef<StoreGui, Trader> TraderOf = AccessTools.FieldRefAccess<StoreGui, Trader>("m_trader");
         private static readonly AccessTools.FieldRef<StoreGui, Trader.TradeItem> Selected = AccessTools.FieldRefAccess<StoreGui, Trader.TradeItem>("m_selectedItem");
         private static readonly System.Reflection.MethodInfo Select = AccessTools.Method(typeof(StoreGui), "SelectItem");
@@ -27,6 +28,8 @@ namespace Jatify.UI
             if (!open) { if (_root != null) Close(); Plates(true); return; }
             Hide(g, true); Plates(false);
             if (_root == null) Build();
+            float x0 = EpicSkin.TraderPanel() != null ? 16f : X0;   // EpicLoot's trader panel open: we move left, it docks on our right
+            if (Win != null && !Mathf.Approximately(Win.anchoredPosition.x, x0)) Win.anchoredPosition = new Vector2(x0, Win.anchoredPosition.y);
             if (Time.unscaledTime < _next) return; _next = Time.unscaledTime + 0.25f;
             var items = TraderOf(g).GetAvailableItems(); int coins = Coins(g); var sel = Selected(g);
             var vals = Valuables(g);
@@ -55,7 +58,7 @@ namespace Jatify.UI
         private static List<ItemDrop.ItemData> Valuables(StoreGui g)
         {
             var list = new List<ItemDrop.ItemData>(); Player.m_localPlayer.GetInventory().GetValuableItems(list);
-            list.RemoveAll(v => v.m_shared.m_name == g.m_coinPrefab.m_itemData.m_shared.m_name); return list;
+            list.RemoveAll(v => v.m_shared.m_name == g.m_coinPrefab.m_itemData.m_shared.m_name || Epic.Keep(v)); return list;
         }
 
         // Valheim's store: kept open (its walk-away close, its buying) but invisible and out of the pointer's way
@@ -70,7 +73,7 @@ namespace Jatify.UI
         {
             var t = Plugin.Instance.ThemeData;
             _root = Kit.Node(Root.Canvas.transform, "jatify-store").Fill(); Notices.OnTop(_root); _root.gameObject.AddComponent<GraphicRaycaster>();
-            var (win, wfill) = Card.Box(_root, "Window", t); win.raycastTarget = true; Knots.Corners(win, wfill, Card.R, Theme.C(t.accent)); var w = win.rectTransform.At(X0, Y0, W, H);
+            var (win, wfill) = Card.Box(_root, "Window", t); win.raycastTarget = true; Knots.Corners(win, wfill, Card.R, Theme.C(t.accent)); var w = win.rectTransform.At(X0, Y0, W, H); Win = w;
             var eb = Kit.Text(w, "Eyebrow", "TRADER", Fonts.Mono, 10.5f, Theme.C(t.mute)); eb.characterSpacing = 8f; eb.rectTransform.At(24, 14, 200, 14);
             _title = Kit.Text(w, "Title", "", Fonts.Norse, 26f, Color.white); _title.rectTransform.At(24, 28, 400, 28);
             var (chip, _) = Kit.Box(w, "Coins", Theme.C(t.raised), Theme.C(t.glassLine), 8); chip.rectTransform.At(W - 24 - 40 - 10 - 150, 18, 150, 36);

@@ -12,9 +12,14 @@ namespace Jatify.UI
     // Rule for every new feature: whatever Awake/Start adds (patches, objects, textures, events,
     // statics) has an undo in Teardown.
     [BepInPlugin(Guid, "Jatify UI", Version)]
+    // mods we work with load before us when installed (not required): their API and patches are there when we look
+    [BepInDependency(Epic.Guid, BepInDependency.DependencyFlags.SoftDependency)]
+    [BepInDependency("Azumatt.AzuCraftyBoxes", BepInDependency.DependencyFlags.SoftDependency)]
+    [BepInDependency("aedenthorn.CraftFromContainers", BepInDependency.DependencyFlags.SoftDependency)]
+    [BepInDependency(Azu.Guid, BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
-        public const string Guid = "jatify.ui", Version = "0.1.1";
+        public const string Guid = "jatify.ui", Version = "0.2.0";
         internal static Plugin Instance;
         private Harmony _harmony;
         private Theme _theme;
@@ -82,6 +87,8 @@ namespace Jatify.UI
         private void Start()
         {
             if (Headless || _harmony == null) return;
+            Epic.Started = true;   // every plugin has run its Awake: "not installed" is final now
+            Safe("epicloot", () => Epic.Hook(_harmony));
             if (Campfire.Module.Standalone) { Log.Warn("the standalone Campfire plugin is installed: Jatify UI's built-in Campfire stays off (remove the standalone one to use the Start Screen switches)"); return; }
             Safe("campfire-init", () => Campfire.Module.Init(string.IsNullOrEmpty(Info.Location) ? null : System.IO.Path.GetDirectoryName(Info.Location)));
             if (Campfire.Module.On) Patch(campfire: true);
@@ -152,12 +159,12 @@ namespace Jatify.UI
             Safe("mod-slot-lift", ModSlots.TickStaged);
 #if JATIFY_DEV
             if (Dev.Build) Safe("test-panel", TestPanel.Tick);   // F8 test kit and shot.request: dev builds only
-            Safe("config-page", () => ConfigPage.Open?.Tick());
             if (Dev.Build) Safe("devshot", DevShot.Tick);
 #endif
+            Safe("config-page", () => ConfigPage.Open?.Tick());   // release builds too (key capture, closing with the menu)
         }
 
-        private void LateUpdate() { if (Headless) return; Safe("vanilla-hud", VanillaHud.Tick); Safe("minimap", () => VanillaMinimap.Tick(Root.MapHole)); Safe("layout", InventoryStyle.Layout); Safe("notices", Notices.Tick); Safe("save-badge", SaveBadge.Tick); Safe("chest-peek", ChestPeek.Tick); Safe("graves", Graves.Tick); Safe("cursor", CursorSkin.Tick); Safe("hover-card", HoverCard.Tick); Safe("item-tip", ItemTip.Tick); } // after the game's own HUD update and animators
+        private void LateUpdate() { if (Headless) return; Safe("vanilla-hud", VanillaHud.Tick); Safe("minimap", () => VanillaMinimap.Tick(Root.MapHole)); Safe("layout", InventoryStyle.Layout); Safe("notices", Notices.Tick); Safe("save-badge", SaveBadge.Tick); Safe("chest-peek", ChestPeek.Tick); Safe("graves", Graves.Tick); Safe("cursor", CursorSkin.Tick); Safe("hover-card", HoverCard.Tick); Safe("item-tip", ItemTip.Tick); Safe("epic-skin", EpicSkin.Tick); Safe("azu-hold", AzuHold.Tick); } // after the game's own HUD update and animators
 
         private static void DevTeardown()
         {
@@ -191,6 +198,7 @@ namespace Jatify.UI
 
         private void Teardown()
         {
+            Safe("epicloot-unhook", Epic.Unhook); Safe("azu-hold", AzuHold.Remove); Safe("azu-panels", InventoryStyle.AzuRestore); Safe("epic-skin-restore", EpicSkin.Restore);
             try { ModSlots.Remove(); } catch (Exception e) { Log.Error("mod slots: " + e); }   // into the save data before anything else
             ExtraRows.Unbind();
             try { ExtraRows.Remove(); } catch (Exception e) { Log.Error("extra rows: " + e); } // before unpatching: pack, shrink, nothing dropped
@@ -204,7 +212,7 @@ namespace Jatify.UI
             VanillaMinimap.Restore();
             InventoryStyle.Restore();
             CraftingStyle.Restore();
-            BuildMenu.Destroy(); PlayersPage.Close(); Smelters.Clear(); OreScout.Clear(); EnemyBars.Restore(); DamageNumbers.Clear(); AlertFlash.Destroy(); TargetHealth.Destroy();
+            Safe("texts-embed", Pages.CloseEmbedded); BuildMenu.Destroy(); PlayersPage.Close(); Smelters.Clear(); OreScout.Clear(); EnemyBars.Restore(); DamageNumbers.Clear(); AlertFlash.Destroy(); TargetHealth.Destroy();
             BuildStyle.Restore();
             PlaceCard.Destroy(); ChestAssign.Destroy(); StoreWindow.Destroy();
             MapStyle.Restore();

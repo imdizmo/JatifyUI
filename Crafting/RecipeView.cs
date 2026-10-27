@@ -83,7 +83,7 @@ namespace Jatify.UI
             if (CraftFilter.ByAvail)
             {
                 y = Section($"READY TO CRAFT · {ready.Count}", Theme.C(_t.accent), ready, sel, g, y);
-                y = Section($"MISSING SOMETHING · {missing.Count}", Theme.C(_t.ember), missing, sel, g, y + 8f);
+                y = Section($"MISSING SOMETHING · {missing.Count}", Theme.SoftEmber(_t), missing, sel, g, y + 8f);
             }
             else y = Section($"ALL RECIPES · {entries.Count}", Theme.C(_t.mute), entries, sel, g, y);
             _content.sizeDelta = new Vector2(0f, y + 10f);
@@ -92,7 +92,7 @@ namespace Jatify.UI
         private float Section(string title, Color c, List<Entry> list, int sel, InventoryGui g, float y)
         {
             if (list.Count == 0) return y;
-            var l = Kit.Text(_content, "Label", title, Fonts.Mono, 10.5f, c); l.characterSpacing = 8f; l.rectTransform.At(10, y, 220, 16);
+            var l = Kit.Text(_content, "Label", title, Fonts.Mono, 12.5f, c); l.characterSpacing = 8f; l.rectTransform.At(10, y, 220, 18);   // crafting text: +2 px (user)
             y += 22f;
             if (CraftFilter.Grid)
             {
@@ -106,16 +106,17 @@ namespace Jatify.UI
         private float Row(Entry e, float y, bool on, InventoryGui g)
         {
             var miss = e.Can ? "" : Missing(e);
-            float h = miss.Length > 0 ? 46f : 40f;
+            float h = miss.Length > 0 ? 52f : 44f;
             var (bg, fill) = Kit.Box(_content, "Row", on ? Theme.C(_t.accentSoft) : new Color(0, 0, 0, 0), on ? Theme.C(_t.accent) : new Color(0, 0, 0, 0), 8);
             bg.rectTransform.At(4, y, 226, h);
+            if (e.Item != null && Epic.On) { var tile = Kit.Node(bg.rectTransform, "RarityTile").At(6, (h - 32) / 2f, 32, 32); new RarityBg(tile, null, null, 7).Set(e.Item); }   // upgrading your own item: its rarity
             var icon = Kit.Img(bg.rectTransform, "Icon", e.Recipe.m_item.m_itemData.GetIcon(), e.Can ? Color.white : new Color(0.6f, 0.6f, 0.6f, 0.9f), false);
             icon.rectTransform.At(8, (h - 28) / 2f, 28, 28); icon.preserveAspect = true;
-            var name = Kit.Text(bg.rectTransform, "Name", Name(e), Fonts.Medium, 13.5f, e.Can ? Theme.C(_t.text) : Theme.C(_t.mute));
+            var name = Kit.Text(bg.rectTransform, "Name", Name(e), Fonts.Medium, 15.5f, e.Can ? Theme.C(_t.text) : Theme.C(_t.mute));
             bool fav = IsFav(e.Recipe);
-            name.rectTransform.At(46, miss.Length > 0 ? 6 : 0, fav ? 160 : 176, miss.Length > 0 ? 20 : h); name.alignment = TextAlignmentOptions.MidlineLeft; name.overflowMode = TextOverflowModes.Ellipsis;
+            name.rectTransform.At(46, miss.Length > 0 ? 6 : 0, fav ? 160 : 176, miss.Length > 0 ? 22 : h); name.alignment = TextAlignmentOptions.MidlineLeft; name.overflowMode = TextOverflowModes.Ellipsis;
             if (fav) { var fs = Kit.Img(bg.rectTransform, "Fav", Kit.Star(), Theme.C(_t.stamina), false); fs.rectTransform.At(208, miss.Length > 0 ? 11 : (h - 10) / 2f, 10, 10); }
-            if (miss.Length > 0) { var m = Kit.Text(bg.rectTransform, "Missing", "Missing: " + miss, Fonts.Medium, 11f, Theme.C(_t.ember)); m.rectTransform.At(46, 25, 176, 16); m.overflowMode = TextOverflowModes.Ellipsis; }
+            if (miss.Length > 0) { var m = Kit.Text(bg.rectTransform, "Missing", "Missing: " + miss, Fonts.Medium, 13f, Theme.SoftEmber(_t)); m.rectTransform.At(46, 28, 176, 18); m.overflowMode = TextOverflowModes.Ellipsis; }
             Click(bg, fill, e, g, on);
             return y + h + 4f;
         }
@@ -127,9 +128,10 @@ namespace Jatify.UI
             bg.rectTransform.At(x, y, 42, 42);
             var icon = Kit.Img(bg.rectTransform, "Icon", e.Recipe.m_item.m_itemData.GetIcon(), e.Can ? Color.white : new Color(0.45f, 0.45f, 0.45f, 1f), false);
             icon.rectTransform.At(6, 6, 30, 30); icon.preserveAspect = true;
+            if (e.Item != null && Epic.On) new RarityBg(bg.rectTransform, icon, on ? null : bg, 8).Set(e.Item);   // the picked cell keeps its accent border
             if (e.Recipe.m_amount > 1) { var c = Kit.Text(bg.rectTransform, "Count", e.Recipe.m_amount.ToString(), Fonts.Mono, 10f, Color.white); c.alignment = TextAlignmentOptions.TopRight; c.rectTransform.At(2, 1, 37, 14); }
             if (IsFav(e.Recipe)) { var fs = Kit.Img(bg.rectTransform, "Fav", Kit.Star(), Theme.C(_t.stamina), false); fs.rectTransform.At(4, 4, 9, 9); }
-            if (!e.Can) { var dot = Kit.Img(bg.rectTransform, "Dot", Kit.Circle(), Theme.C(_t.ember), false); dot.rectTransform.At(32, 32, 6, 6); }
+            if (!e.Can) { var dot = Kit.Img(bg.rectTransform, "Dot", Kit.Circle(), Theme.SoftEmber(_t), false); dot.rectTransform.At(32, 32, 6, 6); }
             Click(bg, fill, e, g, on);
             var tip = bg.gameObject.AddComponent<UITooltip>(); var vt = g.m_playerGrid.m_elementPrefab.GetComponent<UITooltip>();
             if (vt != null) { tip.m_tooltipPrefab = vt.m_tooltipPrefab; tip.Set(Name(e), e.Can ? "" : "Missing: " + Missing(e)); ItemTip.For(tip, () => e.Recipe.m_item.m_itemData, e.Item != null ? e.Item.m_quality + 1 : 1, crafting: true, note: e.Can ? null : "Missing: " + Missing(e)); }

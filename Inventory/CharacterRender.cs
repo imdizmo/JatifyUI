@@ -21,6 +21,9 @@ namespace Jatify.UI
         private static readonly System.Reflection.FieldInfo[] VisState = typeof(VisEquipment).GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public)
             .Where(f => (f.Name.EndsWith("Item") || f.Name.EndsWith("ItemVariant") || f.Name.EndsWith("ItemQuality") || f.Name == "m_skinColor" || f.Name == "m_hairColor" || f.Name == "m_modelIndex") && !f.Name.StartsWith("m_current") && (f.FieldType == typeof(int) || f.FieldType == typeof(string) || f.FieldType == typeof(Vector3))).ToArray();
         private static readonly Vector3 Studio = new Vector3(0f, 6000f, 0f);
+        internal static VisEquipment Doll;   // the figure's
+        private static readonly HarmonyLib.AccessTools.FieldRef<VisEquipment, ZNetView> VisNView = HarmonyLib.AccessTools.FieldRefAccess<VisEquipment, ZNetView>("m_nview");
+        private static readonly System.Reflection.FieldInfo[] Shown = typeof(VisEquipment).GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).Where(f => f.Name.StartsWith("m_current") && f.Name.EndsWith("Hash") && f.FieldType == typeof(int)).ToArray();   // what it really built (a vanity look differs from the item)
         private GameObject _doll; private VisEquipment _dollVis; private Animator[] _anims = new Animator[0];
         private float _nextSync, _born;
         private readonly RawImage _view;
@@ -99,7 +102,7 @@ namespace Jatify.UI
             foreach (var c in _doll.GetComponents<Component>())
                 if (!(c is Transform) && !(c is VisEquipment) && !(c is ZNetView) && !(c is Animator) && !(c is LODGroup)) Object.Destroy(c);
             foreach (var col in _doll.GetComponentsInChildren<Collider>(true)) Object.Destroy(col);
-            _dollVis = _doll.GetComponent<VisEquipment>();
+            _dollVis = Doll = _doll.GetComponent<VisEquipment>();
             _anims = _doll.GetComponentsInChildren<Animator>(true);
             foreach (var a in _anims) { a.updateMode = AnimatorUpdateMode.Normal; a.keepAnimatorStateOnDisable = true; }
             _born = Time.unscaledTime; _nextSync = 0f;
@@ -110,6 +113,7 @@ namespace Jatify.UI
         private void Sync(Player p)
         {
             var src = p.GetComponent<VisEquipment>(); if (src == null || _dollVis == null) return;
+            var nv = VisNView(src); if (VisNView(_dollVis) != nv) VisNView(_dollVis) = nv;   // the player's network data: what it shows to others (AzuEPI's vanity looks live there); same values, so nothing new is written
             int sig = 17; foreach (var f in VisState) { var v = f.GetValue(src); sig = sig * 31 + (v != null ? v.GetHashCode() : 0); f.SetValue(_dollVis, v); }
             var zdo = src.GetComponent<ZNetView>()?.GetZDO();   // body, skin and hair live in the character's network data
             if (zdo != null)
@@ -119,6 +123,7 @@ namespace Jatify.UI
                 _dollVis.SetHairColor(zdo.GetVec3(ZDOVars.s_hairColor, Vector3.one));
                 sig = sig * 31 + zdo.GetInt(ZDOVars.s_modelIndex) + zdo.GetVec3(ZDOVars.s_skinColor, Vector3.one).GetHashCode() * 7 + zdo.GetVec3(ZDOVars.s_hairColor, Vector3.one).GetHashCode() * 13;
             }
+            foreach (var f in Shown) sig = sig * 31 + (int)f.GetValue(_dollVis);
             if (sig != _sig) { _sig = sig; _redraw = 3; }
             // the layers the figure is drawn on, refreshed with the outfit rather than every frame
             int mask = 0; foreach (var r in _doll.GetComponentsInChildren<Renderer>(false)) if (!IsEffect(r)) mask |= 1 << r.gameObject.layer; _mask = mask;
@@ -175,7 +180,7 @@ namespace Jatify.UI
             Restore();
             if (_camGo != null) Object.Destroy(_camGo);
             if (_doll != null) Object.Destroy(_doll);
-            _doll = null; _dollVis = null; _anims = new Animator[0];
+            _doll = null; _dollVis = null; Doll = null; _anims = new Animator[0];
             if (_rt != null) { _rt.Release(); Object.Destroy(_rt); }
             _rt = null; _cam = null; _camGo = null; _scene = new Light[0];
             if (_view != null) Object.Destroy(_view.gameObject);

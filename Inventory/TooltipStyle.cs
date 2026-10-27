@@ -8,6 +8,7 @@ namespace Jatify.UI
     // Valheim makes a tooltip object on each hover and destroys it when hidden, so it is restyled as
     // it appears (glass background, our fonts) and needs no undo; unloading just hides the current one.
     [HarmonyPatch(typeof(UITooltip), nameof(UITooltip.OnHoverStart))]
+    [HarmonyAfter(Epic.Guid)]   // EpicLoot moves the text into a scroll view and its background onto that view's Content first
     internal static class TooltipStyle
     {
         private static readonly AccessTools.FieldRef<GameObject> Current = AccessTools.StaticFieldRefAccess<GameObject>(AccessTools.Field(typeof(UITooltip), "m_tooltip"));
@@ -23,10 +24,12 @@ namespace Jatify.UI
             if (tip == null || T == null) return;
             if (tip.transform.Find("jatify") != null) { Divider(tip); return; }
             Kit.Node(tip.transform, "jatify").gameObject.SetActive(false); // styled marker
+            var box = Utils.FindChild(tip.transform, "Scroll View") != null ? Utils.FindChild(tip.transform, "Content")?.GetComponent<Image>() : null;   // EpicLoot's: the card is its Content (the old Bkg goes at frame end)
             bool first = true;
             foreach (var img in tip.GetComponentsInChildren<Image>(true))
             {
                 if (img.sprite == null || img.GetComponent<Mask>() != null) continue;
+                if (box != null && img != box) { if (img.transform.parent == tip.transform && img.name == "Bkg") img.color = Color.clear; continue; }
                 if (first)
                 {   // the card style: glass and its 1 px outline (an outline image under it, inset fill on top)
                     img.sprite = Kit.Rounded(Card.R); img.type = Image.Type.Sliced; img.color = Theme.C(T.glass); first = false;

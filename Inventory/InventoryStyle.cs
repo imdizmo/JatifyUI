@@ -87,6 +87,13 @@ namespace Jatify.UI
                 InvActions.Sort(p);
                 if (_sortText != null) _sortText.text = "Sort · " + InvActions.SortModes[InvActions.SortMode];
             });
+            if (Azu.Drives)
+            {   // AzuEPI's own screens, opened by its (hidden) toggle buttons; icon buttons after Sort
+                var tipPrefab = grid.m_elementPrefab.GetComponent<UITooltip>()?.m_tooltipPrefab; float ax = 505f;
+                ax = IconAction(head, ax, "tab-eye", "Vanity", "Change how your gear looks without changing its stats (AzuEPI)", "AzuEPI_VanityToggleButton", tipPrefab, t);
+                ax = IconAction(head, ax, "shield-knot", "Loadouts", "Save sets of gear and put one on at once (AzuEPI)", "AzuEPI_LoadoutsToggleButton", tipPrefab, t);
+                IconAction(head, ax, "tab-book", "Stats", "Your full character sheet (AzuEPI)", "AzuEPI_StatsToggleButton", tipPrefab, t);
+            }
             _armorShown = _wShown = _wMaxShown = -1;
             _eq = new Equipment(_frame, t, grid.m_elementPrefab.GetComponent<UITooltip>()?.m_tooltipPrefab);
             var mask = grid.GetComponent<RectMask2D>();                    // our rows sit outside vanilla's grid rect: do not clip them
@@ -248,6 +255,7 @@ namespace Jatify.UI
             if (y == 0) return new Vector2(x * Pitch, 0f);
             if (y < SpecialRows.Start) return new Vector2(x * Pitch, 117f + (y - 1) * Pitch);
             int band = y - SpecialRows.Start;
+            if (!SpecialRows.On) return new Vector2(x * Pitch, BeltTop - 123f + band * Pitch);   // AzuEPI's equipment / quick cells: rows under the grid, lined up with it
             if (BeltRows) return new Vector2(66f + x * Pitch, BeltTop - 123f + band * Pitch);          // a row under the grid, after its label
             if (BeltBlocks) return new Vector2(band * BlockStep + (x % 2) * Pitch, BlockTop - 123f + (x / 2) * Pitch);   // 2 x 3 blocks under the grid
             return new Vector2(179f - 445f + band * 90f, 548f - 123f + x * Pitch);                   // a column under the equipment
@@ -278,11 +286,123 @@ namespace Jatify.UI
         private static StatsCard _stats;
         internal static float FrameH => PanelBottom + 18f - 32f;
 
+        // one of AzuEPI's cells: its armour slots hide while they hold what the equipment panel already shows (or nothing);
+        // every other one shows, with the slot's name while empty. A cell holding an item it doesn't wear always shows.
+        private static void AzuCell(Transform c, InventoryElement el, Inventory inv, Vector2 origin)
+        {
+            var d = CellDesign(el.Position.x, el.Position.y); var rt = (RectTransform)c; var at = origin + new Vector2(d.x, -d.y);
+            if (rt.anchoredPosition != at) rt.anchoredPosition = at;   // AzuEPI places them in its own panel each update: ours, every frame
+            var slot = Azu.SlotAt(inv, el.Position.x, el.Position.y); var it = inv.GetItemAt(el.Position.x, el.Position.y);
+            bool show = !slot.Known && it != null;   // its slots are drawn by its own cells (AzuSlotCell); a grid cell only for an item no slot of its holds
+            if (c.gameObject.activeSelf != show) c.gameObject.SetActive(show);
+            var nm = c.Find("jatify-azuname") as RectTransform;
+            if (nm == null)
+            {
+                var tx = Kit.Text(c, "jatify-azuname", "", Fonts.Mono, 8.5f, new Color(1f, 1f, 1f, 0.35f)); tx.alignment = TMPro.TextAlignmentOptions.Center; tx.textWrappingMode = TMPro.TextWrappingModes.Normal;
+                tx.rectTransform.Fill(4f); tx.raycastTarget = false; nm = tx.rectTransform;
+            }
+            var t = nm.GetComponent<TMPro.TextMeshProUGUI>(); var want = it == null && slot.Known ? slot.Name : "";
+            if (t.text != want) t.text = want;
+            AzuBind(c);
+        }
+
+        // its slot name / key label (it sets it big, wrapped and auto-sized over the whole cell): our small top line
+        private static void AzuBind(Transform cell)
+        {
+            var b = cell.Find("binding")?.GetComponent<TMP_Text>(); if (b == null || !b.enableAutoSizing) return;
+            Label(b, Fonts.Mono, 8.5f, new Color(1f, 1f, 1f, 0.45f), TextAlignmentOptions.Top, new Vector2(0.5f, 1f), new Vector2(0f, -4f), new Vector2(Slot - 8f, 12f));
+            b.textWrappingMode = TextWrappingModes.NoWrap; b.overflowMode = TextOverflowModes.Ellipsis;
+        }
+
+        // its HUD quick-slot bar: unseen (our tools bar shows its quick slots; put back on unload)
+        private static CanvasGroup _azuBar;
+        private static void AzuQuickBar()
+        {
+            if (_azuBar == null)
+            {
+                var bar = Hud.instance != null ? Hud.instance.m_rootObject.transform.Find("AzuEPI_QuickAccessBar") : null; if (bar == null) return;
+                _azuBar = bar.GetComponent<CanvasGroup>(); if (_azuBar == null) { _azuBar = bar.gameObject.AddComponent<CanvasGroup>(); _azuHidden.Add(_azuBar); }
+            }
+            if (_azuBar.alpha != 0f) { _azuBar.alpha = 0f; _azuBar.blocksRaycasts = false; }
+        }
+
+        private static void AzuSlotCell(InventoryElement e, Inventory inv, RectTransform cell00, RectTransform root)
+        {
+            var rt = (RectTransform)e.transform; var slot = Azu.SlotAt(inv, e.Position.x, e.Position.y); var it = inv.GetItemAt(e.Position.x, e.Position.y);
+            var doll = Azu.DollSlot(slot);
+            bool show = slot.Known ? doll != null || !(slot.Armour && (it == null || it.m_equipped)) : it != null;   // the equipment panel shows worn armour; its doll cells always show; a cell left from a removed slot only if it holds something
+            if (e.gameObject.activeSelf != show) e.gameObject.SetActive(show);
+            if (!show) return;
+            int extraAt = doll == null && !slot.Quick ? _azuExtras.IndexOf(e) : -1;   // other mods' slots (Jewelcrafting's rings, its config's custom slots, ...)
+            RectTransform over = doll != null ? _eq?.DollCell(doll) : extraAt >= 0 ? _eq?.ExtraCell(extraAt) : null;   // its equipment on the doll, where ours is; other mods' slots beside the ammo and key pouch
+            if ((doll != null || extraAt >= 0) && over == null) { e.gameObject.SetActive(false); return; }   // the Skills tab is showing
+            int quick = slot.Quick ? _azuQuick.IndexOf(e) : -1;   // quick slots: the first row under the grid, by order (it packs its cells one after another)
+            if (slot.Quick && quick < 0) _azuScan = 0f;   // a quick slot just added: look again next frame
+            var d = quick >= 0 ? CellDesign(quick % 8, Azu.NormalRows + quick / 8) : CellDesign(e.Position.x, e.Position.y);
+            var size = over != null ? over.rect.size : cell00.sizeDelta; var scaleFrom = over != null ? over : root;
+            float k = scaleFrom.lossyScale.x / Mathf.Max(0.0001f, rt.parent.lossyScale.x);
+            if (Mathf.Abs(rt.localScale.x - k) > 0.0001f) rt.localScale = new Vector3(k, k, 1f);
+            var pivot = over != null ? new Vector2(0.5f, 0.5f) : cell00.pivot;
+            if (rt.pivot != pivot) rt.pivot = pivot;
+            if (rt.sizeDelta != size) rt.sizeDelta = size;
+            var at = over != null ? over.TransformPoint(over.rect.center) : cell00.position + root.TransformVector(new Vector3(d.x, -d.y, 0f));
+            if ((rt.position - at).sqrMagnitude > 0.01f) rt.position = at;
+            AzuBind(rt);
+        }
+
+        // AzuEPI's own inventory screen (its wood panel, character page and preview, tab buttons, side panels): ours draws
+        // the inventory, so they go unseen (a group, put back on unload); they keep working underneath
+        // (its slot cells live on its character page: that page stays, its preview and name go)
+        private static readonly string[] AzuPanelNames = { "AzuEPI_PlayerBkg", "AzuEPI_PlayerPreview", "AzuEPI_CharacterName", "AzuEPI_CharacterPageBkg", "AzuEPI_ToggleButtonsGlg", "AzuEPI_DropAllButton" };
+        private static readonly string[] AzuScreens = { "AzuEPI_VanityPanel", "AzuEPI_StatsPanel", "AzuEPI_LoadoutPanel", "AzuEPI_LoadoutsRootPanel" };   // opened from our header: restyled while open
+        private static readonly List<InventoryElement> _azuSlots = new List<InventoryElement>();   // its slot cells, moved out of our grid
+        private static readonly List<InventoryElement> _azuExtras = new List<InventoryElement>(), _azuQuick = new List<InventoryElement>();   // of those, other mods' slots (not on the doll, not quick), and its quick slots
+        private static readonly List<CanvasGroup> _azuHidden = new List<CanvasGroup>(); private static float _azuScan;
+        private static bool _azuScreenShown; private static readonly List<(CanvasGroup cg, bool ours, float alpha, bool blocks)> _underScreen = new List<(CanvasGroup, bool, float, bool)>();
+        private static void AzuPanels(InventoryGui g)
+        {
+            bool screen = false;   // one of its screens open: our crafting panel steps away (it covers it, as it hides Valheim's)
+            foreach (var n in AzuScreens) { var s = g.m_crafting.transform.Find(n); if (s != null && s.gameObject.activeSelf) { screen = true; break; } }
+            if (screen != _azuScreenShown)
+            {   // everything on the crafting side that is not its own (our recipes, search, filters, tabs, title) goes unseen
+                _azuScreenShown = screen;
+                if (screen)
+                    foreach (Transform c in g.m_crafting.transform)
+                    {
+                        if (c.name.StartsWith("AzuEPI_") || c.name == "jatify-panel") continue;   // our panel and its border stay: its screens stand on it
+                        var cg = c.GetComponent<CanvasGroup>(); bool ours = cg == null; if (ours) cg = c.gameObject.AddComponent<CanvasGroup>();
+                        _underScreen.Add((cg, ours, cg.alpha, cg.blocksRaycasts)); cg.alpha = 0f; cg.blocksRaycasts = false;
+                    }
+                else
+                {   // back exactly as they were (Valheim's own list stays hidden by ours)
+                    foreach (var (cg, ours, a, b) in _underScreen) { if (cg == null) continue; if (ours) UnityEngine.Object.Destroy(cg); else { cg.alpha = a; cg.blocksRaycasts = b; } }
+                    _underScreen.Clear();
+                }
+            }
+            if (Time.unscaledTime < _azuScan) return; _azuScan = Time.unscaledTime + 1f;
+            _azuSlots.Clear();
+            foreach (var e in g.GetComponentsInChildren<InventoryElement>(true)) if (e.name.StartsWith("AzuEPI_Slot")) _azuSlots.Add(e);
+            var inv = Player.m_localPlayer?.GetInventory(); _azuExtras.Clear();
+            _azuQuick.Clear();
+            if (inv != null) foreach (var e in _azuSlots) { var sl = Azu.SlotAt(inv, e.Position.x, e.Position.y); if (sl.Known && sl.Quick) _azuQuick.Add(e); else if (sl.Known && Azu.DollSlot(sl) == null) _azuExtras.Add(e); }
+            System.Comparison<InventoryElement> order = (a, b) => a.Position.y != b.Position.y ? a.Position.y.CompareTo(b.Position.y) : a.Position.x.CompareTo(b.Position.x);
+            _azuExtras.Sort(order); _azuQuick.Sort(order);
+            foreach (var t in g.GetComponentsInChildren<Transform>(true))
+            {
+                if (System.Array.IndexOf(AzuScreens, t.name) >= 0 && t.gameObject.activeInHierarchy) { if (t.parent == g.m_crafting.transform && t.GetSiblingIndex() != t.parent.childCount - 1) t.SetAsLastSibling(); EpicSkin.Skin(t); var bg = t.parent == g.m_crafting.transform ? t.GetComponent<Image>() : null; if (bg != null && bg.color.a > 0f) bg.color = Color.clear; continue; }   // its own backdrop off: ours shows   // over our crafting panel, which it replaces while open
+                if (System.Array.IndexOf(AzuPanelNames, t.name) < 0) continue;
+                var cg = t.GetComponent<CanvasGroup>(); if (cg == null) { cg = t.gameObject.AddComponent<CanvasGroup>(); _azuHidden.Add(cg); }
+                if (cg.alpha != 0f) { cg.alpha = 0f; cg.blocksRaycasts = false; cg.interactable = false; }
+            }
+        }
+        internal static void AzuRestore() { if (_azuScreenShown) { _azuScreenShown = false; foreach (var (cg, ours, a, b) in _underScreen) { if (cg == null) continue; if (ours) UnityEngine.Object.Destroy(cg); else { cg.alpha = a; cg.blocksRaycasts = b; } } _underScreen.Clear(); } foreach (var cg in _azuHidden) if (cg != null) UnityEngine.Object.Destroy(cg); _azuHidden.Clear(); }
+
         private static void LayBelts()
         {
             if (_beltLine == null || _beltsLaid == SpecialRows.Start) return;
             _beltsLaid = SpecialRows.Start;
-            _trash?.MoveTo(914f - 160f, TrashTop - 32f);
+            foreach (var l in _beltLabels) if (l != null && l.gameObject.activeSelf != SpecialRows.On) l.gameObject.SetActive(SpecialRows.On);   // AzuEPI: its cells carry their own names
+            _trash?.MoveTo(914f - 160f, Azu.Drives ? PanelBottom - 32f - 8f : TrashTop - 32f);   // AzuEPI: its quick slots fill the row under the grid, so the bottom right corner
             if (BeltRows)
             {
                 _beltLine.At(285, BeltTop - 32f - 15f, 529, 1);
@@ -327,6 +447,23 @@ namespace Jatify.UI
             return x + w + 6f;
         }
 
+        private static float IconAction(RectTransform head, float x, string icon, string title, string text, string azuButton, GameObject tipPrefab, ThemeData t)
+        {
+            var (b, f) = Kit.Box(head, "jatify-azu-" + title, Theme.C(t.raised), Theme.C(t.glassLine), 8);
+            var rt = b.rectTransform; rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0f, 0.5f); rt.anchoredPosition = new Vector2(x, 0f); rt.sizeDelta = new Vector2(30f, 30f);
+            Kit.IconImg(b.rectTransform, icon, Theme.C(t.dim), 16f).rectTransform.At(7, 7, 16, 16);
+            b.raycastTarget = true; var btn = b.gameObject.AddComponent<Button>(); btn.targetGraphic = f;
+            var cb = btn.colors; cb.highlightedColor = new Color(1.3f, 1.3f, 1.35f); btn.colors = cb;
+            btn.onClick.AddListener(() =>
+            {
+                var g = InventoryGui.instance; if (g == null) return;
+                foreach (var tr in g.GetComponentsInChildren<Button>(true)) if (tr.name == azuButton) { tr.onClick.Invoke(); _azuScan = 0f; return; }   // restyled on the next frame, not a second later
+                Log.Warn("AzuEPI: no " + azuButton + " (its option may be off)");
+            });
+            if (tipPrefab != null) { var tip = b.gameObject.AddComponent<UITooltip>(); tip.m_tooltipPrefab = tipPrefab; tip.Set(title, text); }
+            return x + 36f;
+        }
+
         private static RectTransform Chip(Transform head, float right, float w, string label, ThemeData t, out TextMeshProUGUI value)
         {
             var (o, _) = Kit.Box(head, label, Theme.C(t.raised), Theme.C(t.glassLine), 8);
@@ -369,7 +506,7 @@ namespace Jatify.UI
             {
                 var d = CellDesign(e.Position.x, e.Position.y);   // vanilla put it at (x, -y) * pitch from the first cell
                 rt.anchoredPosition += new Vector2(d.x - e.Position.x * Pitch, -(d.y - e.Position.y * Pitch));
-                if (e.Position.y == SpecialRows.EqRow || (e.Position.y >= SpecialRows.Start && e.Position.x >= SpecialRows.Width)) e.gameObject.SetActive(false); // reserved rows are 6 wide; the worn-armour row is hidden
+                if (SpecialRows.On && (e.Position.y == SpecialRows.EqRow || (e.Position.y >= SpecialRows.Start && e.Position.x >= SpecialRows.Width))) e.gameObject.SetActive(false); // reserved rows are 6 wide; the worn-armour row is hidden (AzuEPI's cells: never hidden here)
             }
             rt.sizeDelta = new Vector2(Slot, Slot);
             var bg = e.GetComponent<Image>();
@@ -410,6 +547,7 @@ namespace Jatify.UI
         internal static void Tick()
         {
             if (_for != null && _eq != null && !InventoryGui.IsVisible()) { _eq.Idle(); _trash?.Place(_for.m_playerGrid); }   // the character camera must not run with the inventory closed
+            if (!SpecialRows.On) AzuQuickBar();
             if (_for == null || _frame == null || !InventoryGui.IsVisible()) return;
             var p = Player.m_localPlayer; if (p == null) return;
             ChestPanel.Tick();
@@ -418,15 +556,26 @@ namespace Jatify.UI
             _trash?.Place(_for.m_playerGrid);
             _trash?.TickDelete();
             var inv = p.GetInventory(); int used = 0, locked = 0, slots = 0;
+            Vector2 origin = default; bool azu = !SpecialRows.On;
+            if (azu) { AzuPanels(_for); foreach (Transform c in _for.m_playerGrid.m_gridRoot) { var e0 = c.GetComponent<InventoryElement>(); if (e0 != null && e0.Position.x == 0 && e0.Position.y == 0) { origin = ((RectTransform)c).anchoredPosition; break; } } }
             foreach (Transform c in _for.m_playerGrid.m_gridRoot)
             {
                 var el = c.GetComponent<InventoryElement>(); var lk = c.Find("jatify-lock")?.GetComponent<Image>();
+                if (el != null && azu && el.Position.y >= SpecialRows.Start && lk == null) { AzuCell(c, el, inv, origin); continue; }   // cells it added later (more slots), never styled: still ours to hide
                 if (el == null || lk == null) continue;
-                bool isLocked = InvActions.Locked(el.Position.x, el.Position.y);
+                bool isLocked = InvActions.Locked(el.Position.x, el.Position.y), ownLock = !azu || InvActions.Locks.Contains(el.Position.y * 128 + el.Position.x);   // AzuEPI's favourites: its border shows them, not our padlock
+                if (azu) { var fb = el.m_queued != null && el.m_queued.transform.childCount > 0 ? el.m_queued.transform.Find("AzuEPIFavoritingBorder")?.GetComponent<Image>() : null; if (fb != null && fb.sprite != Kit.Ring(10)) { fb.sprite = Kit.Ring(10); fb.type = Image.Type.Sliced; } }   // its square border: our rounded ring, its colours
+                isLocked &= ownLock;
                 if (lk.enabled != isLocked) { lk.enabled = isLocked; var dm = c.Find("jatify-dim")?.GetComponent<Image>(); if (dm) dm.enabled = isLocked; }
                 var st = c.Find("jatify-star")?.GetComponent<Image>();
                 if (st) { bool q = el.m_quality != null && el.m_quality.isActiveAndEnabled && el.m_quality.text.Length > 0 && el.m_quality.text != "1"; if (st.enabled != q) st.enabled = q; }
+                if (azu && el.Position.y >= SpecialRows.Start) AzuCell(c, el, inv, origin);
                 if (el.Position.y >= 1 && el.Position.y < SpecialRows.Start) { slots++; if (isLocked) locked++; if (inv.GetItemAt(el.Position.x, el.Position.y) != null) used++; }
+            }
+            if (azu)
+            {   // its slot cells, wherever it parented them: placed (in screen space) where our layout puts that cell
+                RectTransform cell00 = null; foreach (Transform c in _for.m_playerGrid.m_gridRoot) { var e0 = c.GetComponent<InventoryElement>(); if (e0 != null && e0.Position.x == 0 && e0.Position.y == 0) { cell00 = (RectTransform)c; break; } }
+                if (cell00 != null) foreach (var e in _azuSlots) if (e != null) AzuSlotCell(e, inv, cell00, (RectTransform)_for.m_playerGrid.m_gridRoot);
             }
             var counts = $"{slots} SLOTS · USED {used} · LOCKED {locked}";
             if (_invLabel != null && counts != _countsShown) { _countsShown = counts; _invLabel.text = counts; }
@@ -439,7 +588,7 @@ namespace Jatify.UI
                 _weightFill.rectTransform.anchorMax = new Vector2(k, 1f);
                 _weightFill.color = Theme.C(k > 1f - 0.001f ? _t.health : k > 0.85f ? _t.ember : _t.stamina);
             }
-            _stats?.Place(!BeltColumns && _eq != null && !_eq.OnSkills, StatsTop - 32f);
+            _stats?.Place(!BeltColumns && _eq != null && !_eq.OnSkills, StatsTop - 32f + Equipment.ExtraRowsBelow(_azuExtras.Count));   // under other mods' slots (AzuEPI)
             _stats?.Tick(p, _eq != null ? _eq.Block : 0f);
         }
 
@@ -531,7 +680,7 @@ namespace Jatify.UI
                 foreach (var e in Elements(__instance))
                 {
                     int r = e.Position.y - SpecialRows.Start, x = e.Position.x;
-                    if (r >= 0 && r < SpecialRows.Count && x < SpecialRows.Width) HudView.CapOn((RectTransform)e.transform, HudView.Short(SpecialRows.Keys[r, x].Value), t);
+                    if (SpecialRows.On && r >= 0 && r < SpecialRows.Count && x < SpecialRows.Width) HudView.CapOn((RectTransform)e.transform, HudView.Short(SpecialRows.Keys[r, x].Value), t);
                 }
             // design: just the count ("50"), not vanilla's "38/50"
             foreach (var e in Elements(__instance))

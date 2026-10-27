@@ -1,3 +1,5 @@
+using System.Linq;
+using HarmonyLib;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -16,10 +18,12 @@ namespace Jatify.UI
         private readonly TextMeshProUGUI _held, _heldQ;
         private readonly Image _heldStar;
         private readonly Bar _hp, _st, _ei;
+        private readonly Bar[] _gauges = new Bar[3];
         private readonly Slot[] _slots = new Slot[8];
-        private readonly Slot[] _tools = new Slot[6], _food = new Slot[6], _meads = new Slot[6];
+        private readonly Slot[] _tools = new Slot[8], _food = new Slot[6], _meads = new Slot[6];   // tools: 6, or AzuEPI's quick slots (up to 8)
         private readonly RectTransform _power;
         private readonly Image _powerIcon, _powerCd;
+        private readonly EpicAbilities _abilities;
         private readonly RectTransform _buffs;
         private readonly List<Buff> _buffPool = new List<Buff>();
         private readonly List<StatusEffect> _effects = new List<StatusEffect>();
@@ -30,7 +34,8 @@ namespace Jatify.UI
         internal bool RaidShown => _raid != null && _raid.Shown;
         private readonly MinimapFrame _minimap;
         private readonly RectTransform _invKeys, _dock;
-        private RectTransform _hintsL, _hintsR, _hintsPlace, _side, _chestKeys;
+        private RectTransform _hintsL, _hintsR, _hintsPlace, _side, _chestKeys, _setHints;
+        private string _setKey = ""; private float _setNext;
         internal readonly Deeds.AchHud Ach;
         internal RectTransform MapHole => _root.gameObject.activeSelf ? _minimap.Hole : null;
         private string _heldName;
@@ -52,6 +57,7 @@ namespace Jatify.UI
             _hp = new Bar(dock, "HP", 47, 28, 440, 18, C(t.health), t);
             _st = new Bar(dock, "ST", 47, 52, 440, 14, C(t.stamina), t);
             _ei = new Bar(dock, "EITR", 47, 72, 440, 14, C(t.eitr), t);
+            for (int i = 0; i < _gauges.Length; i++) { _gauges[i] = new Bar(dock, "", 47, 72, 440, 14, C(t.ember), t); _gauges[i].Root.gameObject.SetActive(false); }   // adrenaline (trinkets) and mod gauges copied from it
             var (bar, barFill) = Kit.Box(dock, "Hotbar", C(t.glass), C(t.glassLine), 12); _barPanels[0] = (bar, barFill);
             bar.rectTransform.At(0, 96, 534, 72);
             for (int i = 0; i < 8; i++) { _slots[i] = new Slot(bar.transform, i, 7 + i * 66, 7, t); _slots[i].Bar = true; }
@@ -60,7 +66,7 @@ namespace Jatify.UI
             // tools bar: 6 small slots in a glass group, 14 px left of the hotbar, bottoms aligned
             var (tb, tbFill) = Kit.Box(dock, "ToolsBar", C(t.glass), C(t.glassLine), 12); _barPanels[1] = (tb, tbFill);
             tb.rectTransform.At(-14 - 318, 96 + 14, 318, 58);
-            for (int i = 0; i < 6; i++) { _tools[i] = new Slot(tb.transform, "", 6 + i * 52, 6, 46f, t).Cap(1); _tools[i].Bar = true; }
+            for (int i = 0; i < _tools.Length; i++) { _tools[i] = new Slot(tb.transform, "", 6 + i * 52, 6, 46f, t).Cap(1); _tools[i].Bar = true; _tools[i].Shown(i < 6); }
             // food and meads: stacked labelled columns on the right edge from y 290
             var side = _side = Kit.Node(_root, "Sidebars");
             side.anchorMin = side.anchorMax = side.pivot = new Vector2(1f, 1f); side.anchoredPosition = new Vector2(-28f, -290f); side.sizeDelta = new Vector2(58f, 700f);
@@ -79,6 +85,8 @@ namespace Jatify.UI
             cap.rectTransform.At(16, 42, 20, 18);
             var key = Kit.Text(cap.rectTransform, "K", "F", Fonts.Mono, 10.5f, C(t.text)); key.alignment = TextAlignmentOptions.Center; key.rectTransform.Fill();
 
+            _abilities = Epic.On ? new EpicAbilities(dock, t) : null;   // EpicLoot's abilities beside it
+
             // buffs: right 230, top 24, laid out right to left, wrapping at 420 px
             _buffs = Kit.Node(_root, "Buffs");
             _buffs.anchorMin = _buffs.anchorMax = _buffs.pivot = new Vector2(1f, 1f);
@@ -89,10 +97,10 @@ namespace Jatify.UI
             _flags = new CheatFlags(_root, t);   // left of the compass
             _minimap = new MinimapFrame(_root, t);
             Ach = new Deeds.AchHud(_root, t);
-            _hintsL = Hints(_root, false, t, ("Tab", "Inventory"), ("M", "Map"), ("Y", "Tracker"));
+            _hintsL = Hints(_root, false, t, ("Tab", "Inventory"), ("M", "Map"), (Short(HotKeys.Tracker?.Value ?? new BepInEx.Configuration.KeyboardShortcut(KeyCode.U)), "Tracker"));
             _hintsR = Hints(_root, true, t, ("LMB", "Attack"), ("RMB", "Block"), ("MMB", "Secondary"), ("Space", "Dodge"));
             _hintsPlace = Hints(_root, true, t, ("LMB", "Place"), ("MMB", "Remove"), ("RMB", "Menu"), ("Wheel", "Rotate"), ("Q / E", "Snap"));
-            _invKeys = KeyBar(_root, t, ("LMB", "Move"), ("RMB", "Use / equip"), ("Shift+LMB", "Split stack"), ("Alt+LMB", "Lock slot"), ("Del", "Delete"), ("Shift", "Craft ×5"), ("Ctrl F", "Search"), ("Esc", "Close"));
+            _invKeys = KeyBar(_root, t, ("LMB", "Move"), ("RMB", "Use / equip"), ("Shift+LMB", "Split stack"), ("Alt+LMB", Azu.Favouriting ? "Favourite" : "Lock slot"), ("Del", "Delete"), ("Shift", "Craft ×5"), ("Ctrl F", "Search"), ("Esc", "Close"));
             _chestKeys = KeyBar(_root, t, ("LMB", "Move stack"), ("Shift+LMB", "Split stack"), ("Alt+LMB", "Lock slot"), ("Ctrl Q", "Put similar"), ("Ctrl E", "Take everything"), ("Esc", "Close"));   // design: chest open
         }
 
@@ -119,16 +127,19 @@ namespace Jatify.UI
             float maxE = p.GetMaxEitr();
             if (_ei.Root.gameObject.activeSelf != maxE > 0f) _ei.Root.gameObject.SetActive(maxE > 0f);
             if (maxE > 0f) _ei.Set(p.GetEitr(), maxE);
+            Gauges();
 
             var inv = p.GetInventory();
-            for (int i = 0; i < 8; i++) _slots[i].Set(inv.GetItemAt(i, 0));
-            int sr = SpecialRows.Start; bool have = inv.GetHeight() >= sr + SpecialRows.Count;
+            for (int i = 0; i < 8; i++) { var it = inv.GetItemAt(i, 0); _slots[i].Set(it, Ammo(inv, it)); }
+            int sr = SpecialRows.Start; bool have = SpecialRows.On && inv.GetHeight() >= sr + SpecialRows.Count;   // AzuEPI: no Food / Tools / Meads rows
             for (int i = 0; i < 6; i++)
             {
                 _food[i].Set(have ? inv.GetItemAt(i, sr) : null);
-                _tools[i].Set(have ? inv.GetItemAt(i, sr + 1) : null);
+                if (!Azu.Drives) { var it = have ? inv.GetItemAt(i, sr + 1) : null; _tools[i].Set(it, Ammo(inv, it)); }
                 _meads[i].Set(have ? inv.GetItemAt(i, sr + 2) : null);
             }
+
+            if (Azu.Drives) AzuQuick(p, inv);
 
             var held = p.GetCurrentWeapon();
             if (held != null && held.m_dropPrefab == null) held = null; // bare hands are a weapon too, without a prefab
@@ -154,6 +165,7 @@ namespace Jatify.UI
                 _powerCd.fillAmount = cd > 0f ? Mathf.Clamp01(cd / max) : 0f;
             }
 
+            _abilities?.Tick();
             TickBuffs(p);
             _compass.Tick(); _raid.Tick(); _flags.Tick(); _mount.Tick(p); KeyLabels();
             _minimap.Tick(p);
@@ -163,9 +175,11 @@ namespace Jatify.UI
             if (_invKeys.gameObject.activeSelf != (invOpen && !chestOpen)) _invKeys.gameObject.SetActive(invOpen && !chestOpen);
             if (_chestKeys.gameObject.activeSelf != chestOpen) _chestKeys.gameObject.SetActive(chestOpen);
             bool screen = invOpen || StoreGui.IsVisible();   // a full window open: the inventory, or the trader's shop (user: the HUD drew over it)
-            foreach (var r in new[] { _dock, _hintsL, _side, _buffs, _compass.Root, _flags.Box }) if (r.gameObject.activeSelf == screen) r.gameObject.SetActive(!screen); // the inventory screen has no dock
+            foreach (var r in new[] { _dock, _hintsL, _buffs, _compass.Root, _flags.Box }) if (r.gameObject.activeSelf == screen) r.gameObject.SetActive(!screen); // the inventory screen has no dock
+            bool side = !screen && !Azu.Drives; if (_side.gameObject.activeSelf != side) _side.gameObject.SetActive(side);   // AzuEPI: no Food / Meads rows to show
             bool placing = !invOpen && p.InPlaceMode();   // hammer, hoe, cultivator: the corner shows placing keys instead of combat
             if (_hintsR.gameObject.activeSelf != (!screen && !placing)) _hintsR.gameObject.SetActive(!screen && !placing);
+            SetHints(!screen && !placing);
             if (_hintsPlace.gameObject.activeSelf != placing) _hintsPlace.gameObject.SetActive(placing);
         }
 
@@ -229,6 +243,77 @@ namespace Jatify.UI
             return row;
         }
 
+        // Valheim's adrenaline bar (worn trinkets) and the gauges mods copy from it (EpicLoot: Shield Throw, Kinetic Quake):
+        // they sit where our HP and stamina bars are, in Valheim's look. Drawn here in the row under stamina instead, from
+        // each one's fill and text; theirs hidden (a copy made later inherits the hiding, and shows here too)
+        private readonly List<(GuiBar bar, TMP_Text text, string label)> _gaugeSrc = new List<(GuiBar, TMP_Text, string)>();
+        private float _gaugeScan;
+        private static readonly AccessTools.FieldRef<Humanoid, ItemDrop.ItemData> TrinketOf = AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>("m_trinketItem");
+        private void Gauges()
+        {
+            var h = Hud.instance; if (h == null) return;
+            if (Time.unscaledTime >= _gaugeScan)
+            {   // ponytail: rescan every 2 s for panels mods add (a copy keeps the "Stamina/adrenaline_fast" path)
+                _gaugeScan = Time.unscaledTime + 2f; _gaugeSrc.Clear();
+                var root = h.m_adrenalineBarFast != null ? h.m_adrenalineBarFast.transform.parent?.parent?.parent : null;   // hudroot
+                if (root != null)
+                    foreach (Transform panel in root)
+                    {
+                        var fast = panel.Find("Stamina/adrenaline_fast")?.GetComponent<GuiBar>(); if (fast == null) continue;
+                        var cg = panel.GetComponent<CanvasGroup>() ?? panel.gameObject.AddComponent<CanvasGroup>(); cg.alpha = 0f; cg.blocksRaycasts = false;
+                        var label = panel.name == "adrenalinepanel" ? "ADRENALINE" : System.Text.RegularExpressions.Regex.Replace(panel.name.Replace("EL_", "").Replace("Gauge", "").Replace("Bar", ""), "([a-z])([A-Z])", "$1 $2").ToUpperInvariant();
+                        _gaugeSrc.Add((fast, panel.Find("Stamina/adrenalineText")?.GetComponent<TMP_Text>(), label));
+                    }
+            }
+            var pl = Player.m_localPlayer; bool trinket = pl != null && TrinketOf(pl) != null;
+            // shown: a mod gauge while its own bar is up; adrenaline whenever a trinket is worn, even at 0 (as HP and
+            // stamina: Valheim hides it when it drains, and the row would jump each time)
+            System.Func<(GuiBar bar, TMP_Text text, string label), bool> up = g => g.bar != null && (g.label == "ADRENALINE" ? trinket : g.bar.transform.parent.gameObject.activeInHierarchy);
+            int n = 0;
+            foreach (var g in _gaugeSrc) if (up(g) && n < _gauges.Length) n++;
+            bool eitr = _ei.Root.gameObject.activeSelf; int cells = n + (eitr ? 1 : 0);   // they share Eitr's row (the action bar is right under it)
+            float gap = 8f, w = cells > 0 ? (440f - gap * (cells - 1)) / cells : 440f; int i = 0;
+            _ei.Width(47f, eitr && n > 0 ? w : 440f);
+            float x0 = eitr ? 47f + w + gap : 47f;
+            foreach (var g in _gaugeSrc)
+            {
+                if (!up(g) || i >= _gauges.Length) continue;
+                float k; string txt;
+                if (g.label == "ADRENALINE") { float max = pl.GetMaxAdrenaline(); k = max > 0f ? pl.GetAdrenaline() / max : 0f; txt = Mathf.FloorToInt(pl.GetAdrenaline()).ToString(); }   // from the player: Valheim's bar is off at 0
+                else { var bar = g.bar.transform.Find("bar") as RectTransform; var area = (RectTransform)g.bar.transform; k = bar != null && area.rect.width > 0f ? bar.rect.width / area.rect.width : 0f; txt = g.text != null ? g.text.text : ""; }
+                var gb = _gauges[i++]; if (!gb.Root.gameObject.activeSelf) gb.Root.gameObject.SetActive(true);
+                gb.Width(x0 + (i - 1) * (w + gap), w); gb.SetRaw(k, txt, g.label);
+            }
+            for (; i < _gauges.Length; i++) if (_gauges[i].Root.gameObject.activeSelf) _gauges[i].Root.gameObject.SetActive(false);
+        }
+
+        // EpicLoot's set-ability keys (Shield Throw T, ...): it adds them to Valheim's combat hints, which we hide, only
+        // while the ability can be used; shown here as keycaps above the right-hand hints, read every half second
+        private static readonly List<(string key, string what)> _setItems = new List<(string, string)>();
+        private void SetHints(bool show)
+        {
+            if (Time.unscaledTime >= _setNext)
+            {
+                _setNext = Time.unscaledTime + 0.5f; _setItems.Clear();
+                var kh = KeyHints.instance;
+                if (kh != null && kh.m_combatHints != null)
+                    foreach (var tr in kh.m_combatHints.GetComponentsInChildren<Transform>(false))
+                    {
+                        if (!tr.name.StartsWith("EL_")) continue;
+                        string key = "", what = "";
+                        foreach (var x in tr.GetComponentsInChildren<TMP_Text>(true)) { if (x.name == "Key") key = x.text; else if (what.Length == 0) what = x.text; }
+                        if (key.Length > 0) _setItems.Add((key, System.Text.RegularExpressions.Regex.Replace(what, "<[^>]+>", "").Trim()));
+                    }
+                var sig = string.Join("|", _setItems);
+                if (sig != _setKey)
+                {
+                    _setKey = sig; if (_setHints != null) Object.Destroy(_setHints.gameObject); _setHints = null;
+                    if (_setItems.Count > 0) { _setHints = Hints(_root, true, _t, _setItems.ToArray()); _setHints.anchoredPosition = new Vector2(_setHints.anchoredPosition.x, 64f); }
+                }
+            }
+            if (_setHints != null && _setHints.gameObject.activeSelf != show) _setHints.gameObject.SetActive(show);
+        }
+
         // The inventory's key bar (design: centred glass bar at the bottom while the inventory is open).
         private static RectTransform KeyBar(Transform parent, ThemeData t, params (string key, string what)[] items)
         {
@@ -265,11 +350,45 @@ namespace Jatify.UI
 
         // the slot keys as set (SpecialRows.Keys: food, tools, meads), once a second so a rebind shows without a reload
         private float _nextKeys;
+        // AzuEPI: its quick slots (Alt + Z ...) in the tools bar, its keys on the caps; the bar as wide as it has slots.
+        // Its own HUD bar is hidden by InventoryStyle.AzuQuickBar. Looked up every 2 s (its slots can change with its config).
+        private readonly List<Vector2i> _quick = new List<Vector2i>(); private readonly List<string> _quickKeys = new List<string>(); private float _quickAt; private int _quickShown = -1;
+        private void AzuQuick(Player p, Inventory inv)
+        {
+            if (Time.unscaledTime >= _quickAt)
+            {
+                _quickAt = Time.unscaledTime + 2f; _quick.Clear(); _quickKeys.Clear();
+                for (int y = Azu.NormalRows; y < inv.GetHeight() && _quick.Count < _tools.Length; y++)
+                    for (int x = 0; x < inv.GetWidth() && _quick.Count < _tools.Length; x++)
+                    { var sl = Azu.SlotAt(inv, x, y); if (sl.Known && sl.Quick) { _quick.Add(new Vector2i(x, y)); _quickKeys.Add(sl.Name.Replace(" + ", " ").Replace("+", " ")); } }
+            }
+            int n = Azu.QuickOnHud ? _quick.Count : 0;
+            if (n != _quickShown)
+            {
+                _quickShown = n; float w = 6 + n * 52;
+                _barPanels[1].line.rectTransform.At(-14 - w, 96 + 14, w, 58);
+                _barPanels[1].line.gameObject.SetActive(n > 0);
+                for (int i = 0; i < _tools.Length; i++) _tools[i].Shown(i < n);
+            }
+            for (int i = 0; i < n; i++) { var it = inv.GetItemAt(_quick[i].x, _quick[i].y); _tools[i].Set(it, Ammo(inv, it)); _tools[i].Key(_quickKeys[i]); }
+        }
+
+        // a weapon that shoots (bow, crossbow, a mod's): how much of its ammo you carry, worn ammo included; -1 for anything else
+        private static int Ammo(Inventory inv, ItemDrop.ItemData w)
+        {
+            var t = w?.m_shared.m_ammoType; if (string.IsNullOrEmpty(t)) return -1;
+            var k = w.m_shared.m_itemType; if (k == ItemDrop.ItemData.ItemType.Ammo || k == ItemDrop.ItemData.ItemType.AmmoNonEquipable) return -1;
+            int n = 0;
+            foreach (var i in inv.GetAllItems()) { var ik = i.m_shared.m_itemType; if (i.m_shared.m_ammoType == t && (ik == ItemDrop.ItemData.ItemType.Ammo || ik == ItemDrop.ItemData.ItemType.AmmoNonEquipable)) n += i.m_stack; }
+            return n;
+        }
+
         private void KeyLabels()
         {
+            if (Azu.Drives) return;   // the tools bar carries AzuEPI's keys
             if (SpecialRows.Keys == null || Time.unscaledTime < _nextKeys) return;
             _nextKeys = Time.unscaledTime + 1f;
-            var rows = new[] { _food, _tools, _meads };
+            var rows = new[] { _food, _tools.Take(6).ToArray(), _meads };
             for (int r = 0; r < rows.Length; r++)
                 for (int i = 0; i < rows[r].Length && i < SpecialRows.Width; i++) rows[r][i]?.Key(Short(SpecialRows.Keys[r, i].Value));
         }
@@ -311,7 +430,7 @@ namespace Jatify.UI
             return _buffPool[i];
         }
 
-        internal void Destroy() { if (_root != null) Object.Destroy(_root.gameObject); }
+        internal void Destroy() { foreach (var g in _gaugeSrc) { var cg = g.bar != null ? g.bar.transform.parent.parent.GetComponent<CanvasGroup>() : null; if (cg != null) cg.alpha = 1f; } _abilities?.Restore(); if (_root != null) Object.Destroy(_root.gameObject); }
 
         internal static Color C(string hex) => Theme.C(hex);
 
@@ -320,8 +439,8 @@ namespace Jatify.UI
         {
             internal readonly RectTransform Root;
             private readonly RectTransform _fill;
-            private readonly TextMeshProUGUI _val;
-            private readonly float _w, _h;
+            private readonly TextMeshProUGUI _val, _label;
+            private float _w; private readonly float _h;
             private int _shownCur = -1, _shownMax = -1;
 
             internal Bar(Transform parent, string label, float x, float y, float w, float h, Color color, ThemeData t)
@@ -332,10 +451,24 @@ namespace Jatify.UI
                 var f = Kit.Panel(Root, "Value", color, h / 2f);
                 _fill = f.rectTransform; _fill.anchorMin = new Vector2(0f, 0f); _fill.anchorMax = new Vector2(0f, 1f); _fill.pivot = new Vector2(0f, 0.5f);
                 _fill.anchoredPosition = Vector2.zero; _fill.sizeDelta = new Vector2(w, 0f);
-                var b = Kit.Text(Root, "Label", label, Fonts.Mono, 10f, new Color(1f, 1f, 1f, 0.75f)); b.characterSpacing = 6f;
+                var b = _label = Kit.Text(Root, "Label", label, Fonts.Mono, 10f, new Color(1f, 1f, 1f, 0.75f)); b.characterSpacing = 6f;
                 b.rectTransform.At(9, 0, 80, h); b.alignment = TextAlignmentOptions.MidlineLeft;
                 _val = Kit.Text(Root, "Number", "", Fonts.Mono, 11f, Color.white);
                 _val.rectTransform.At(w - 8 - 120, 0, 120, h); _val.alignment = TextAlignmentOptions.MidlineRight;
+            }
+
+            // a gauge drawn from another bar: its fill (0..1), its own text, a label
+            internal void SetRaw(float k, string text, string label)
+            {
+                k = Mathf.Clamp01(k);
+                _fill.sizeDelta = new Vector2(k <= 0f ? 0f : Mathf.Max(_h, _w * k), 0f); _fill.gameObject.SetActive(k > 0f);
+                if (_val.text != text) _val.text = text; if (_label.text != label) _label.text = label;
+            }
+            internal void Width(float x, float w)
+            {
+                if (Mathf.Approximately(_w, w) && Mathf.Approximately(Root.anchoredPosition.x, x)) return;
+                _w = w; Root.anchoredPosition = new Vector2(x, Root.anchoredPosition.y); Root.sizeDelta = new Vector2(w, Root.sizeDelta.y);
+                _val.rectTransform.anchoredPosition = new Vector2(w - 8 - 120, _val.rectTransform.anchoredPosition.y);
             }
 
             internal void Set(float cur, float max)
@@ -363,6 +496,7 @@ namespace Jatify.UI
             internal Slot(Transform parent, int i, float x, float y, ThemeData t) : this(parent, (i + 1).ToString(), x, y, 60f, t) { }
 
             // size 60 (hotbar) or 46 (tools, food, meads); key may be "" for none
+            private readonly RarityBg _rar;
             internal Slot(Transform parent, string key, float x, float y, float size, ThemeData t)
             {
                 _t = t; _y = y;
@@ -371,6 +505,7 @@ namespace Jatify.UI
                 (_line, _tile) = Kit.Box(parent, "Slot" + key, C(t.raised), C(t.glassLine), s > 50f ? 10 : 9);
                 _rt = _line.rectTransform.At(x, y, s, s);
                 _icon = Kit.Img(_rt, "Icon", null, Color.white, false); _icon.rectTransform.At(inset, inset, s - 2 * inset, s - 2 * inset); _icon.preserveAspect = true; _icon.enabled = false; // an Image without a sprite draws a white square
+                _rar = new RarityBg(_rt, _icon, null, s > 50f ? 9 : 8);   // its border marks what you hold: rarity shows as the background only
                 var k = _key = Kit.Text(_rt, "Key", key, Fonts.Mono, s > 50f ? 10f : 9.5f, C(t.dim)); k.fontStyle = TMPro.FontStyles.Bold; k.rectTransform.At(pad, pad - 2, s - 2 * pad, 14); k.overflowMode = TextOverflowModes.Overflow;   // bold and brighter: readable on the small slots (user)
                 _star = Kit.Img(_rt, "Star", Kit.Star(), C(t.stamina), false); _star.rectTransform.At(s - pad - 19, pad, 9, 9);
                 _quality = Kit.Text(_rt, "Quality", "", Fonts.Mono, 10f, C(t.stamina)); _quality.rectTransform.At(s - pad - 8, pad - 2, 8, 14);
@@ -385,6 +520,8 @@ namespace Jatify.UI
             // the key as a solid keycap outside the slot (design, user: "Shift Z" overflowed, "Alt N" was hard to read):
             // 1 on its top edge (tools), 2 to its left (food, meads); the modifier small and dim, the key white
             private RectTransform _cap; private int _capAt; private string _keyRaw;
+            internal void Shown(bool on) { if (_rt.gameObject.activeSelf != on) _rt.gameObject.SetActive(on); }
+
             internal Slot Cap(int at)
             {
                 _capAt = at; var (b, _) = Kit.Box(_rt, "KeyCap", new Color(0.047f, 0.047f, 0.055f, 0.94f), C(_t.line2), 5); _cap = b.rectTransform;
@@ -403,12 +540,13 @@ namespace Jatify.UI
                 if (_capAt == 1) _cap.At((s - w) / 2f, -15f, w, 17f); else _cap.At(-8f - w, (s - 17f) / 2f, w, 17f);
             }
 
-            internal void Set(ItemDrop.ItemData it)
+            // ammo: for a bow or crossbow, how much of its ammo you carry (shown where a stack count goes, even 0)
+            internal void Set(ItemDrop.ItemData it, int ammo = -1)
             {
                 bool on = it != null && it.m_equipped;
-                if (it != _item) { _item = it; _icon.sprite = it?.GetIcon(); _icon.enabled = it != null; _stack = _q = _durPct = -1; }
-                int stack = it != null && it.m_shared.m_maxStackSize > 1 ? it.m_stack : 0;
-                if (stack != _stack) { _stack = stack; _count.text = stack > 0 ? stack.ToString() : ""; }
+                if (it != _item) { _item = it; _icon.sprite = it?.GetIcon(); _icon.enabled = it != null; _stack = _q = _durPct = -1; _rar.Set(it); }
+                int stack = ammo >= 0 ? ammo : it != null && it.m_shared.m_maxStackSize > 1 ? it.m_stack : 0;
+                if (stack != _stack) { _stack = stack; _count.text = stack > 0 || ammo >= 0 ? stack.ToString() : ""; }
                 int q = it?.m_quality ?? 0;
                 if (q != _q) { _q = q; bool show = q > 1; _star.enabled = show; _quality.text = show ? q.ToString() : ""; }
                 int d = it != null && it.m_shared.m_useDurability ? Mathf.RoundToInt(100f * Mathf.Clamp01(it.m_durability / Mathf.Max(1f, it.GetMaxDurability()))) : -2;

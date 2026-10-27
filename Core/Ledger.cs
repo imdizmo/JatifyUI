@@ -71,10 +71,12 @@ namespace Jatify.UI
         }
 
         // Own: an object WE created; undo destroys its whole GameObject.
-        internal T Own<T>(T c) where T : Component { if (c != null) _undo.Add(() => { if (c != null) UnityEngine.Object.Destroy(c.gameObject); }); return c; }
+        // Unity destroys at the end of the frame, but a restyle rebuilds in the same frame and finds by name: the old object is
+        // taken out of the tree and switched off at once, so nothing new is wired to what is about to vanish
+        internal T Own<T>(T c) where T : Component { if (c != null) _undo.Add(() => { if (c != null) { var go = c.gameObject; go.SetActive(false); go.transform.SetParent(null, false); UnityEngine.Object.Destroy(go); } }); return c; }
 
         // Added: a component we added to a VANILLA object; undo removes only that component.
-        internal T Added<T>(T c) where T : Component { if (c != null) _undo.Add(() => { if (c != null) UnityEngine.Object.Destroy(c); }); return c; }
+        internal T Added<T>(T c) where T : Component { if (c != null) _undo.Add(() => { if (c != null) UnityEngine.Object.DestroyImmediate(c); }); return c; }   // at once: a restyle's GetComponent must not find it again
 
         internal void Undo()
         {

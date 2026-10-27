@@ -5,7 +5,7 @@ namespace Jatify.UI
     // Jatify UI's own options (shown on the Jatify UI page; saved by BepInEx in jatify.ui.cfg).
     internal static class Cfg
     {
-        internal static ConfigEntry<bool> SlotBackdrops, Tracker, TrackerCollapsed, Banners, CompassPins, CharacterView, InstantEquip, SkillBanner, PickupFloat, Messages, ConfirmDelete, CharacterIdle, CraftFromChests, BuildFromChests, JatifyCursor, Knotwork, CompUndiscovered, CompDevInfo, GraveReequip, GraveCompass, GraveTouch;
+        internal static ConfigEntry<bool> SlotBackdrops, Tracker, TrackerCollapsed, Banners, CompassPins, CharacterView, InstantEquip, SkillBanner, PickupFloat, Messages, ConfirmDelete, CharacterIdle, CraftFromChests, BuildFromChests, JatifyCursor, Knotwork, CompUndiscovered, CompDevInfo, GraveReequip, GraveCompass, GraveTouch, UtilityTogether;
         internal enum Regear { Everything, ArmourOnly, ArmourAndWeapons }
         internal static ConfigEntry<Regear> GraveReequipWhat;
         internal static ConfigEntry<int> PinRange, StackRange, CursorSize, MapPinSize, MapNameSize, MapZoomIn;
@@ -48,6 +48,8 @@ namespace Jatify.UI
             ConfirmDelete = c.Bind("Inventory", "ConfirmDelete", true, "Ask before the trash or the Delete key destroys an item. Turned off by 'Don't ask again' in that prompt.");
             CraftFromChests = c.Bind("Inventory", "CraftFromChests", true, "Crafting counts and takes materials from nearby chests (Chest Range) unless a chest is switched to Excluded from crafting.");
             BuildFromChests = c.Bind("Inventory", "BuildFromChests", true, "Building counts and takes materials from nearby chests too.");
+            UtilityTogether = c.Bind("Inventory", "UtilityTogether", true, "Belt, Wishbone and Wisplight are worn together, each in its own slot; off: one at a time as in Valheim (right-click a slot to wear that one). With AzuEPI installed this sets its 'One Utility Item At A Time' (a server enforcing AzuEPI's config decides).");
+            UtilityTogether.SettingChanged += (_, __) => { ModSlots.Sync(Player.m_localPlayer); Azu.UtilityRule(); };   // worn / not worn at once
             InstantEquip = c.Bind("Inventory", "InstantEquip", true, "Armour goes on and off at once, without Valheim's equip delay (right click and drag alike).");
         }
     }

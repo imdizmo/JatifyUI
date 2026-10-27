@@ -8,8 +8,13 @@ a lot of small conveniences you stop noticing after an hour.
 - **Needs:** BepInEx. Nothing else.
 - **Better with:** [VNEI](https://thunderstore.io/c/valheim/p/MSchmoecker/VNEI/), which fills the Compendium with every
   creature, drop and station recipe in your game, modded ones included.
+- **Works with:** [EpicLoot](https://thunderstore.io/c/valheim/p/RandyKnapp/EpicLoot/) (rarity, enchanting, ring slots and
+  more in Jatify UI's look), [AzuExtendedPlayerInventory](https://thunderstore.io/c/valheim/p/Azumatt/AzuExtendedPlayerInventory/)
+  (its slots, quick slots, vanity, loadouts and stats drawn by Jatify UI) and
+  [AzuCraftyBoxes](https://thunderstore.io/c/valheim/p/Azumatt/AzuCraftyBoxes/) (it pays for crafting from chests; Jatify UI counts
+  through it).
 - **Language:** English only for now.
-- **Version:** 0.1.0, made for Valheim 1.0.20.
+- **Version:** 0.2.0, made for Valheim 1.0.20.
 - **Controls:** mouse and keyboard; there's no gamepad support yet.
 
 Most parts can be switched off on their own, and taking the mod out keeps your character and items (see *Taking it
@@ -123,6 +128,8 @@ out*).
       as long as those rows have room. Jatify warns you when they don't.
 - **Reserved rows** for food, tools and meads:
     - Each slot has its own key (see *Keys*).
+    - The food and meads rows take only food and meads; the tools row takes anything you want on a key (a knife, a
+      circlet, a weapon to swap to).
     - Pickups never land there by accident.
 - **Where pickups land:** the bag rows first, the hotbar last, never a locked slot.
 - **Worn gear** leaves the grid for an equipment column around a live view of your character, with durability on each
@@ -245,7 +252,7 @@ Seven tabs beside your inventory:
 - **Crafting**.
 - **Achievements:**
     - Categories, progress, and the date you earned each one.
-    - Track any of them in the top-left corner; Y folds the tracker to its header.
+    - Track any of them in the top-left corner; U folds the tracker to its header (a setting).
     - A *Statistics* page shows your all-time numbers.
 - **Trophies**.
 - **Texts:** the runestones and lore you've read.
@@ -304,9 +311,9 @@ Seven tabs beside your inventory:
 | Ping where you look | Alt + middle mouse |
 | Area pickup | hold Left Shift while picking |
 | Open a station's Auto card | hold Left Shift while using it |
-| Fold the achievement tracker | Y |
+| Fold the achievement tracker | U |
 
-Most of these can be changed under `Keys`; Ctrl + Q, Ctrl + E, Ctrl + F, Alt + click and Y are fixed. Food and mead
+Most of these can be changed under `Keys`; Ctrl + Q, Ctrl + E, Ctrl + F and Alt + click are fixed. Food and mead
 slots 4–6, `Merge`, `Sort` and the chest buttons are free to bind.
 
 ---

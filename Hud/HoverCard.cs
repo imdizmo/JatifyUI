@@ -15,19 +15,22 @@ namespace Jatify.UI
         // "[<b><color=yellow>LeftShift</color> + <color=yellow>E</color></b>] Add coal from Inventory & Nearby Containers")
         private static readonly Regex KeyLine = new Regex(@"^\s*\[(?=[^\]]*<color)(.*?)\]\s*(.*)$", RegexOptions.Compiled);
         private static readonly Regex Tags = new Regex("<[^>]+>", RegexOptions.Compiled);
+        private static readonly Regex FirstColor = new Regex(@"^\s*<color=(#[0-9a-fA-F]{6,8})>", RegexOptions.Compiled);
+        internal static Color TitleColor = Color.white;
         internal static string Title = ""; internal static readonly List<(string key, string what)> Actions = new List<(string, string)>(); internal static readonly List<string> Notes = new List<string>();
         private static RectTransform _root; private static CanvasGroup _cg; private static string _raw;
 
         internal static void Parse(string raw)
         {
-            Title = ""; Actions.Clear(); Notes.Clear();
+            Title = ""; TitleColor = Color.white; Actions.Clear(); Notes.Clear();
             if (string.IsNullOrEmpty(raw)) return;
             foreach (var line in raw.Split('\n'))
             {
                 var m = KeyLine.Match(line);
                 if (m.Success) { Actions.Add((Tags.Replace(m.Groups[1].Value, "").Trim(), Tags.Replace(m.Groups[2].Value, "").Trim())); continue; }
                 var plain = Tags.Replace(line, "").Trim(); if (plain.Length == 0) continue;
-                if (Title.Length == 0 && Actions.Count == 0) Title = plain; else Notes.Add(plain);
+                if (Title.Length == 0 && Actions.Count == 0) { Title = plain; var c = FirstColor.Match(line); TitleColor = c.Success && ColorUtility.TryParseHtmlString(c.Groups[1].Value, out var tc) ? tc : Color.white; }   // a name's colour (EpicLoot's rarity) stays
+                else Notes.Add(plain);
             }
         }
 
@@ -57,7 +60,7 @@ namespace Jatify.UI
             var (bg, _) = Card.Box(_root, "Card", t);
             float y = Card.Pad - 2f, w = 160f;
             var parts = new List<RectTransform>();
-            if (Title.Length > 0) { var n = Kit.Text(bg.rectTransform, "Name", Title, Fonts.Bold, Card.Title, Color.white); n.rectTransform.At(Card.Pad, y, 320, 20); w = Mathf.Max(w, Kit.W(n) + 2 * Card.Pad); y += 24f; }
+            if (Title.Length > 0) { var n = Kit.Text(bg.rectTransform, "Name", Title, Fonts.Bold, Card.Title, TitleColor); n.rectTransform.At(Card.Pad, y, 320, 20); w = Mathf.Max(w, Kit.W(n) + 2 * Card.Pad); y += 24f; }
             foreach (var note in Notes) { var n = Kit.Text(bg.rectTransform, "Note", note, Fonts.Medium, Card.Body, Theme.C(t.dim)); n.rectTransform.At(Card.Pad, y, 320, 18); w = Mathf.Max(w, Kit.W(n) + 2 * Card.Pad); y += 20f; }
             foreach (var (key, what) in Actions) { float rw = Row(bg.rectTransform, key, what, Card.Pad, y, t); w = Mathf.Max(w, rw + 2 * Card.Pad); y += 24f; }
             bg.rectTransform.At(0, 0, Mathf.Min(w, 360f), y + Card.Pad - 6f);

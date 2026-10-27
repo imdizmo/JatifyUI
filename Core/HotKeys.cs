@@ -9,10 +9,11 @@ namespace Jatify.UI
     // Never while you type, in a menu, the console or the big map.
     internal static class HotKeys
     {
-        internal static ConfigEntry<KeyboardShortcut> Ping, QuickStack, Restock, Merge, Sort, PutAll, PutSimilar, TakeAll, TakeSimilar, ChestSort;
+        internal static ConfigEntry<KeyboardShortcut> Tracker, Ping, QuickStack, Restock, Merge, Sort, PutAll, PutSimilar, TakeAll, TakeSimilar, ChestSort;
 
         internal static void Bind(ConfigFile c)
         {
+            Tracker = c.Bind("Keys", "Tracker", new KeyboardShortcut(KeyCode.U), "Folds the achievement tracker to its header and back (was Y, which EpicLoot's Spirit Animal uses).");
             Ping = c.Bind("Keys", "PingAtCrosshair", new KeyboardShortcut(KeyCode.Mouse2, KeyCode.LeftAlt), "Pings the spot under the crosshair for everyone, without opening the map.");
             QuickStack = c.Bind("Keys", "QuickStack", new KeyboardShortcut(KeyCode.P), "Puts what nearby chests already hold into them (Chest Range), inventory open or closed.");
             Restock = c.Bind("Keys", "Restock", new KeyboardShortcut(KeyCode.L), "Tops up your stacks from nearby chests, inventory open or closed.");

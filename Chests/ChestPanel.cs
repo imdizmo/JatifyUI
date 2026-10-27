@@ -37,6 +37,17 @@ namespace Jatify.UI
 
         internal static Container Open => _g != null && _g.m_container != null && _g.m_container.gameObject.activeInHierarchy ? Current(_g) : null;
 
+        // an inventory another mod shows in the container panel that is no chest (EpicLoot's socket grid): our frame and
+        // grid layout, its own title, none of the chest tools (they act on a Container)
+        private static System.Reflection.FieldInfo _socketItem; private static bool _socketLooked;
+        private static ItemDrop.ItemData OpenFor()
+        {
+            if (!_socketLooked) { _socketLooked = true; var t = Epic.On ? AccessTools.TypeByName("EpicLoot.ShardStones.SocketsUI") : null; _socketItem = t != null ? AccessTools.Field(t, "OpenEquipment") : null; }
+            return _socketItem?.GetValue(null) as ItemDrop.ItemData;
+        }
+
+        internal static Inventory Foreign => _g != null && _g.m_container != null && _g.m_container.gameObject.activeInHierarchy && Current(_g) == null ? Grid(_g)?.GetInventory() : null;
+
         // ---- build ------------------------------------------------------------------------------
         internal static void Build(InventoryGui g, ThemeData t, Ledger l)
         {
@@ -187,9 +198,12 @@ namespace Jatify.UI
         internal static void Layout()
         {
             var c = Open; if (_frame == null) return;
-            if (_infoFade != null) { bool hide = c != null; _infoFade.alpha = hide ? 0f : 1f; _infoFade.blocksRaycasts = !hide; _infoFade.interactable = !hide; }
-            if (c == null || Root.Canvas == null) return;
-            var inv = c.GetInventory(); int cols = inv.GetWidth(), rows = inv.GetHeight();
+            var inv = c != null ? c.GetInventory() : Foreign;
+            if (_infoFade != null) { bool hide = inv != null; _infoFade.alpha = hide ? 0f : 1f; _infoFade.blocksRaycasts = !hide; _infoFade.interactable = !hide; }
+            if (inv == null || Root.Canvas == null) return;
+            bool chest = c != null;
+            if (chest != _chestMode) { _chestMode = chest; foreach (var part in new[] { _tools, _searchBox, _onlyTile, _wbar, _sw }) if (part != null) part.gameObject.SetActive(chest); }   // only on a switch: the chest code shows / hides some of them itself
+            int cols = inv.GetWidth(), rows = inv.GetHeight();
             // tall, narrow containers (wardrobe 5 x 10) are shown wider; only the cells move, each keeps its slot
             int shownCols = Wide(cols, rows), shownRows = (cols * rows + shownCols - 1) / shownCols;
             Reflow(Grid(_g), shownCols);
@@ -217,13 +231,14 @@ namespace Jatify.UI
             float k = canvas.lossyScale.x / _frame.parent.lossyScale.x;
             if (Mathf.Abs(_frame.localScale.x - k) > 0.0001f) _frame.localScale = new Vector3(k, k, 1f);
             _frame.position = canvas.TransformPoint(new Vector3(left - canvas.rect.width / 2f, canvas.rect.height / 2f - Top, 0f));
-            float tw = _toolsW - (_canRename ? 0f : _renameW);
+            float tw = chest ? _toolsW - (_canRename ? 0f : _renameW) : 0f;
             _tools.At(pw - Pad - tw, 13, tw, Btn);
             _name.rectTransform.At(58, 10, pw - 58 - tw - Pad - 12, 23); _sub.rectTransform.At(58, 33, pw - 58 - tw - Pad - 12, 16);
             float only = 190f; _searchBox.At(Pad, 56, pw - 2 * Pad - only - 8, Search); _onlyTile.At(pw - Pad - only, 57, only, 30);
             _wbar.At(Pad, h - 12 - 22, 280, 22); _sw.At(pw - Pad - 33 - _craftW - 2, h - 12 - 22, 33 + _craftW + 2, 22);
         }
         private static readonly Vector3[] _c = new Vector3[4];
+        private static bool _chestMode = true;
 
         private const int MaxCols = 10;   // the panel widens for it (Layout)
         private static readonly AccessTools.FieldRef<InventoryGrid, List<InventoryElement>> Elements = AccessTools.FieldRefAccess<InventoryGrid, List<InventoryElement>>("m_elements");
@@ -252,7 +267,16 @@ namespace Jatify.UI
 
         internal static void Tick()
         {
-            var c = Open; if (c == null || _frame == null) { _shown = null; return; }
+            var c = Open;
+            if (c == null && _frame != null && Foreign is Inventory other)
+            {   // another mod's grid: its title (EpicLoot: "Sockets: <item>"), how full it is
+                _shown = null;
+                var of = OpenFor(); _icon.sprite = of != null ? of.GetIcon() : null; _icon.enabled = _icon.sprite != null;   // EpicLoot's sockets: the item they belong to
+                var title = _g.m_containerName != null ? _g.m_containerName.text : ""; if (_name.text != title) _name.text = title;
+                var sub = $"{other.NrOfItems()} of {other.GetWidth() * other.GetHeight()} slots"; if (_sub.text != sub) _sub.text = sub;
+                return;
+            }
+            if (c == null || _frame == null) { _shown = null; return; }
             var inv = c.GetInventory();
             if (c != _shown)
             {
@@ -404,6 +428,13 @@ namespace Jatify.UI
             var c = Open; var p = Player.m_localPlayer; if (c == null || p == null) return null;
             var chest = c.GetInventory(); var bag = p.GetInventory();
             var list = chest.GetAllItems().Where(i => !IsLocked(i.m_gridPos.x, i.m_gridPos.y)).ToList();
+            if (!similar && c.GetComponent<TombStone>() != null)
+            {   // a grave: Valheim's own grave take-all (as the use key on it), so what you wore goes back on (ours, and AzuEPI's into its
+                // slots and quick slots). It refuses a grave that is open, so the panel closes first.
+                if (chest.NrOfItems() == 0) return "Nothing to take";
+                InventoryGui.instance.Hide();
+                return c.TakeAll(p) ? null : "Inventory is full";
+            }
             if (!similar)
             {
                 if (list.Count == 0) return "Nothing to take";
@@ -432,6 +463,7 @@ namespace Jatify.UI
         internal static string DoSort()
         {
             var c = Open; if (c == null) return null;
+            if (c.GetComponent<TombStone>() != null) return "A grave keeps its order (take everything to get your gear back on)";   // AzuEPI reads its slot items by position
             var inv = c.GetInventory(); int w = inv.GetWidth(), h = inv.GetHeight();
             var items = inv.GetAllItems().Where(i => !IsLocked(i.m_gridPos.x, i.m_gridPos.y)).ToList();
             foreach (var grp in items.GroupBy(i => (i.m_shared.m_name, i.m_quality, i.m_worldLevel)).Where(g => g.Count() > 1 && g.First().m_shared.m_maxStackSize > 1))
@@ -453,6 +485,6 @@ namespace Jatify.UI
 
         private static string N(ItemDrop.ItemData i) => Localization.instance.Localize(i.m_shared.m_name);
 
-        internal static void Restore() { _frame = null; _g = null; _infoFade = null; _shown = null; _tip = null; _tipFor = null; _search = null; _query = ""; _found = null; _tipShow = null; }
+        internal static void Restore() { _chestMode = true; _socketLooked = false; _socketItem = null; _frame = null; _g = null; _infoFade = null; _shown = null; _tip = null; _tipFor = null; _search = null; _query = ""; _found = null; _tipShow = null; }
     }
 }

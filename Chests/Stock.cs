@@ -81,6 +81,7 @@ namespace Jatify.UI
             {
                 if (_other.HasValue) return _other.Value;
                 var hit = Array.Find(Others, BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey);
+                if (hit == null && !Epic.Started) return false;   // plugins still loading: not final yet
                 if (hit != null) Log.Warn($"{hit} is installed: it pays for crafts and builds from chests, Jatify UI's own steps aside (only one mod may pay)");
                 _other = hit != null;
                 return _other.Value;
@@ -185,6 +186,56 @@ namespace Jatify.UI
             _nearFrame = -1;
             if (amount > 0) Log.Warn($"stock: {amount} x {name} could not be taken (gone meanwhile)");
         }
+
+        // EpicLoot's enchanting table spends from the chests near you too. Stackable materials only: gear is what it edits
+        // in place (enchant, disenchant, sockets), and an edit inside a chest can be undone when the chest reloads, after
+        // the cost was paid (with sockets, the stones come back twice). EpicLoot names items by prefab or by shared name.
+        private static string Shared(string n) => n == null || n.StartsWith("$") ? n : ObjectDB.instance?.GetItemPrefab(n)?.GetComponent<ItemDrop>()?.m_itemData.m_shared.m_name ?? n;
+
+        internal static List<ItemDrop.ItemData> TableItems()
+        {
+            var list = new List<ItemDrop.ItemData>(); var p = Player.m_localPlayer;
+            if (p == null || !On) return list;
+            int wl = Game.m_worldLevel;
+            foreach (var c in Near(p)) foreach (var it in c.GetInventory().GetAllItems())
+                if (it.m_shared.m_maxStackSize > 1 && it.m_worldLevel >= wl && !ChestPanel.IsLockedIn(c, it.m_gridPos.x, it.m_gridPos.y)) list.Add(it);
+            return list;
+        }
+
+        internal static int TableCount(string name) { var p = Player.m_localPlayer; return p == null || !On ? 0 : InChests(p, Shared(name)); }
+
+        internal static int TableTake(string name, int amount)
+        {
+            var p = Player.m_localPlayer; if (p == null || !On || amount <= 0) return 0;
+            name = Shared(name); int taken = 0;
+            foreach (var c in Near(p))
+            {
+                if (taken >= amount) break;
+                var inv = c.GetInventory(); int k = Mathf.Min(inv.CountItems(name, -1, true), amount - taken);
+                if (k <= 0 || !Ward(c) || !Access(c, p.GetPlayerID())) continue;
+                var nv = View(c); if (!nv.IsOwner()) nv.ClaimOwnership();
+                inv.RemoveItem(name, k, -1, true); taken += k;
+            }
+            _nearFrame = -1; return taken;
+        }
+
+        internal static int TableTakeExact(ItemDrop.ItemData it, int amount)
+        {
+            var c = Holder(it); if (c == null || amount <= 0) return 0;
+            var nv = View(c); if (!nv.IsOwner()) nv.ClaimOwnership();
+            int k = Mathf.Min(amount, it.m_stack); c.GetInventory().RemoveItem(it, k); _nearFrame = -1; return k;
+        }
+
+        // EpicLoot's save handler, as its docs show it: only the owner saves; never reload first
+        internal static bool TableSave(ItemDrop.ItemData it)
+        {
+            var c = Holder(it); var nv = c != null ? View(c) : null;
+            if (nv == null || !nv.IsOwner()) return false;
+            InvChanged(c.GetInventory(), false, false); return true;
+        }
+        private static readonly Action<Inventory, bool, bool> InvChanged = AccessTools.MethodDelegate<Action<Inventory, bool, bool>>(AccessTools.Method(typeof(Inventory), "Changed"));
+
+        private static Container Holder(ItemDrop.ItemData it) { var p = Player.m_localPlayer; if (p == null || it == null) return null; foreach (var c in Near(p)) if (c.GetInventory().ContainsItem(it)) return c; return null; }
     }
 
     [HarmonyPatch(typeof(Player))]
@@ -234,7 +285,7 @@ namespace Jatify.UI
         [HarmonyPostfix, HarmonyPatch("UpdatePlacement")] private static void PlacePost() => Stock.Building = false;
 
         // paying: bag first, then chests
-        [HarmonyPrefix, HarmonyPatch("ConsumeResources")]
+        [HarmonyPrefix, HarmonyPatch("ConsumeResources"), HarmonyAfter(Epic.Guid)]   // after EpicLoot's lucky craft has made the costs free
         private static bool ConsumeResources(Player __instance, Piece.Requirement[] requirements, int qualityLevel, int itemQuality, int multiplier)
         {
             if (__instance != Player.m_localPlayer || !Stock.On) return true;

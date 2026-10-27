@@ -15,9 +15,19 @@ namespace Jatify.UI
         internal const int Count = 3, Width = 6, Rows = Count + 1;   // + the hidden equipment row
         internal static int EqRow => Start + Count;
         internal static readonly string[] Names = { "FOOD", "TOOLS", "MEADS" };
-        internal static int Start => ExtraRows.Base + ExtraRows.Extra.Value;     // first reserved row
-        internal static bool Is(Inventory inv, int y) => IsPlayer(inv) && y >= Start && y < Start + Rows;
+        internal static bool On => !Azu.Drives;   // AzuEPI owns the grid: no rows of ours (it has its own equipment and quick-slot cells)
+        internal static int Start => On ? ExtraRows.Base + ExtraRows.Extra.Value : Azu.NormalRows;   // first reserved row (AzuEPI: its first equipment row; the bag is above either way)
+        internal static bool Is(Inventory inv, int y) => On && IsPlayer(inv) && y >= Start && y < Start + Rows;
         internal static bool IsPlayer(Inventory inv) => inv != null && Player.m_localPlayer != null && inv == Player.m_localPlayer.GetInventory();
+
+        // tools as players mean it, also other mods' (by type and skill, not by name): hammer / hoe / cultivator, pickaxes,
+        // axes, the fishing rod, torches. They land in a free Tools slot when picked up or crafted.
+        internal static bool IsTool(ItemDrop.ItemData it)
+        {
+            if (it == null) return false; var s = it.m_shared; var k = s.m_itemType;
+            return k == ItemDrop.ItemData.ItemType.Tool || k == ItemDrop.ItemData.ItemType.Torch || s.m_buildPieces != null
+                || s.m_skillType == Skills.SkillType.Pickaxes || s.m_skillType == Skills.SkillType.Axes || s.m_skillType == Skills.SkillType.Fishing;
+        }
 
         internal static bool Accepts(int row, ItemDrop.ItemData it)
         {
@@ -27,9 +37,7 @@ namespace Jatify.UI
             switch (row)
             {
                 case 0: return food;
-                case 1:   // tools as players mean it: hammer / hoe / cultivator, pickaxes, axes, the fishing rod, torches
-                    return k == ItemDrop.ItemData.ItemType.Tool || k == ItemDrop.ItemData.ItemType.Torch || s.m_buildPieces != null
-                        || s.m_skillType == Skills.SkillType.Pickaxes || s.m_skillType == Skills.SkillType.Axes || s.m_skillType == Skills.SkillType.Fishing;
+                case 1: return true;   // the Tools row takes anything you put there (user): a knife, a circlet, a weapon to swap to by key; IsTool goes there on its own
                 case 2: return k == ItemDrop.ItemData.ItemType.Consumable && !food;
                 default: return false;
             }
@@ -67,7 +75,7 @@ namespace Jatify.UI
         internal static void TickKeys()
         {
             var p = Player.m_localPlayer;
-            if (Keys == null || p == null || InventoryGui.IsVisible() || Menu.IsVisible() || Chat.instance != null && Chat.instance.HasFocus() || Console.IsVisible() || TextInput.IsVisible() || Minimap.IsOpen()) return;
+            if (!On || Keys == null || p == null || InventoryGui.IsVisible() || Menu.IsVisible() || Chat.instance != null && Chat.instance.HasFocus() || Console.IsVisible() || TextInput.IsVisible() || Minimap.IsOpen()) return;
             for (int r = 0; r < Count; r++)
                 for (int i = 0; i < Width; i++)
                 {
@@ -111,7 +119,7 @@ namespace Jatify.UI
 
         internal static bool Blocks(string name)
         {
-            if (Keys == null || name == null) return false;
+            if (!On || Keys == null || name == null) return false;   // AzuEPI's quick-slot keys are its own
             if (_frame != UnityEngine.InputSystem.LowLevel.InputState.updateCount) { _frame = UnityEngine.InputSystem.LowLevel.InputState.updateCount; Claim(); }   // per input update, not per frame: Valheim updates input mid-frame
             return _blocked.Count > 0 && _blocked.Contains(name);
         }
@@ -176,11 +184,12 @@ namespace Jatify.UI
             AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>("m_helmetItem"), AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>("m_chestItem"),
             AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>("m_legItem"), AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>("m_shoulderItem"),
             AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>("m_utilityItem"), AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>("m_trinketItem"),
-        };
+            AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>("m_ammoItem"),   // the equipped ammo stack too (it shows on the doll; spares stay in the bag)
+        };   // cells 0-6; the last one (7) is ModSlots' lift cell
         private static readonly System.Action<Inventory> Changed = inv => AccessTools.Method(typeof(Inventory), "Changed").Invoke(inv, new object[] { false, false });
         private static float _next;
 
-        private static bool Ready(Player p) => p != null && p.GetInventory().GetHeight() >= SpecialRows.Start + SpecialRows.Rows;
+        private static bool Ready(Player p) => SpecialRows.On && p != null && p.GetInventory().GetHeight() >= SpecialRows.Start + SpecialRows.Rows;
 
         // every worn piece into its cell; anything unworn in the row back out
         internal static void Park(Player p)
@@ -245,11 +254,19 @@ namespace Jatify.UI
         internal enum Order { Vanilla, UnderHotbar }
         internal static BepInEx.Configuration.ConfigEntry<Order> Pickup;
 
+        [System.ThreadStatic] internal static ItemDrop.ItemData Adding;   // the item Inventory.AddItem is placing (AddingPatch)
+
         private static void Postfix(Inventory __instance, bool topFirst, ref Vector2i __result)
         {
             var me = Player.m_localPlayer;
+            if (Adding != null && SpecialRows.IsPlayer(__instance) && SpecialRows.On && SpecialRows.IsTool(Adding))
+            {   // a tool picked up or crafted: a free Tools slot first
+                int ty = SpecialRows.Start + 1;
+                for (int x = 0; x < SpecialRows.Width; x++) if (__instance.GetItemAt(x, ty) == null && !InvActions.Locked(x, ty)) { __result = new Vector2i(x, ty); return; }
+            }
             if (Pickup != null && Pickup.Value == Order.UnderHotbar && me != null && __instance == me.GetInventory())
-            {   // PickupOrder: the bag rows first, the hotbar last, never a locked slot or a reserved row
+            {
+                if (!SpecialRows.On && __result.y >= SpecialRows.Start) return;   // AzuEPI chose one of its equipment / quick cells (it equips there): its call   // PickupOrder: the bag rows first, the hotbar last, never a locked slot or a reserved row
                 int rows = SpecialRows.Start; __result = new Vector2i(-1, -1);
                 for (int n = 1; n <= rows; n++)
                 {
@@ -271,6 +288,13 @@ namespace Jatify.UI
         }
     }
 
+    [HarmonyPatch(typeof(Inventory), nameof(Inventory.AddItem), typeof(ItemDrop.ItemData))]
+    internal static class AddingPatch
+    {
+        private static void Prefix(ItemDrop.ItemData item) => FindEmptySlotPatch.Adding = item;
+        private static System.Exception Finalizer(System.Exception __exception) { FindEmptySlotPatch.Adding = null; return __exception; }
+    }
+
     [HarmonyPatch(typeof(Inventory), nameof(Inventory.GetEmptySlots))]
     internal static class EmptySlotsPatch
     {
@@ -280,7 +304,7 @@ namespace Jatify.UI
             int reservedEmpty = 0;   // reserved rows and locked cells: empty, but no item is ever placed there
             for (int y = 0; y < __instance.GetHeight(); y++)
                 for (int x = 0; x < __instance.GetWidth(); x++)
-                    if (__instance.GetItemAt(x, y) == null && (y >= SpecialRows.Start || InvActions.Locked(x, y))) reservedEmpty++;
+                    if (__instance.GetItemAt(x, y) == null && (SpecialRows.On ? y >= SpecialRows.Start || InvActions.Locked(x, y) : y < SpecialRows.Start && InvActions.Locked(x, y))) reservedEmpty++;   // AzuEPI counts its own cells itself
             __result = Mathf.Max(0, __result - reservedEmpty);
         }
     }
@@ -303,6 +327,24 @@ namespace Jatify.UI
     internal static class HaveEmptySlotPatch
     {
         private static void Postfix(Inventory __instance, ref bool __result) { if (__result && SpecialRows.IsPlayer(__instance)) __result = __instance.GetEmptySlots() > 0; }
+    }
+
+    // a drop onto a taken cell is a swap, done by Valheim in three steps (take ours out, move theirs to our old cell, put ours
+    // in). The row guard below refuses a step, but by then the first item was already out: it vanished. So the swap is
+    // checked whole, both ways, before it starts: refused, nothing moves (and the item stays in hand).
+    [HarmonyPatch(typeof(InventoryGrid), nameof(InventoryGrid.DropItem))]
+    internal static class SwapIntoSpecialPatch
+    {
+        private static bool Prefix(InventoryGrid __instance, Inventory fromInventory, ItemDrop.ItemData item, Vector2i pos, ref bool __result)
+        {
+            var to = __instance.GetInventory(); if (to == null || item == null) return true;
+            var there = to.GetItemAt(pos.x, pos.y);
+            bool ok = Fits(to, pos.x, pos.y, item) && (there == null || there == item || Fits(fromInventory, item.m_gridPos.x, item.m_gridPos.y, there));
+            if (ok) return true;
+            __result = false; return false;
+        }
+
+        private static bool Fits(Inventory inv, int x, int y, ItemDrop.ItemData it) => !SpecialRows.Is(inv, y) || (x < SpecialRows.Width && SpecialRows.Accepts(y - SpecialRows.Start, it));
     }
 
     [HarmonyPatch(typeof(Inventory), nameof(Inventory.MoveItemToThis), typeof(Inventory), typeof(ItemDrop.ItemData), typeof(int), typeof(int), typeof(int))]

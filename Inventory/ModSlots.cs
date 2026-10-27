@@ -21,6 +21,17 @@ namespace Jatify.UI
         internal const string Key = "jatify.store";
         internal const int W = 4, H = 4, KeyRow = 1;
         internal static readonly string[] Utility = { "$item_wishbone", "$item_demister" };
+        internal const int RingX = 2;   // row 0: cells 2 and 3 are the two ring slots
+
+        // rings (EpicLoot's and other mods'): utility items, so worn alone they push the belt off; here two of them sit
+        // beside it. A mod with its own ring slots (AzuEPI) keeps them its way.
+        internal static bool RingsOn => !BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey("Azumatt.AzuExtendedPlayerInventory");
+        internal static bool IsRing(ItemDrop.ItemData it)
+        {
+            if (it == null || it.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Utility || it.m_dropPrefab == null) return false;
+            var n = it.m_dropPrefab.name;
+            return (n.EndsWith("Ring") && !n.EndsWith("Earring")) || n == "Andvaranaut";
+        }
         private static Inventory _inv;
         private static Player _for;
         private static readonly HashSet<StatusEffect> _applied = new HashSet<StatusEffect>();
@@ -28,12 +39,28 @@ namespace Jatify.UI
         private static readonly AccessTools.FieldRef<Humanoid, HashSet<StatusEffect>> VanillaSe = AccessTools.FieldRefAccess<Humanoid, HashSet<StatusEffect>>("m_equipmentStatusEffects");
         private static HashSet<string> _keys;
 
+        // UtilityTogether off: of the belt, Wishbone and Wisplight only one is worn. _active: which of our two slots (-1: the belt / none)
+        internal const string ActiveKey = "jatify.utility";
+        private static int _active = -1;
+        internal static bool Together => Azu.Drives || Cfg.UtilityTogether.Value;   // AzuEPI wears them, by its rule (which our setting sets)
+        internal static bool Active(int x) => x >= Utility.Length || Together || _active == x;   // rings are not part of it
+        private static readonly AccessTools.FieldRef<Humanoid, ItemDrop.ItemData> Belt = AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>("m_utilityItem");
+        internal static ItemDrop.ItemData WornUtility(Player p) => Belt(p);
+        internal static void Wear(Player p, int x)
+        {
+            if (Together || For(p) == null) return;
+            _active = x;
+            if (x >= 0 && Belt(p) != null) p.UnequipItem(Belt(p), false);
+            Sync(p);
+        }
+
         // the store for the local player, loaded from its save data on first use
         internal static Inventory For(Player p)
         {
             if (p == null) return null;
             if (_for == p && _inv != null) return _inv;
             _for = p; _applied.Clear();
+            _active = p.m_customData.TryGetValue(ActiveKey, out var a) && int.TryParse(a, out var ai) ? ai : -1;
             _inv = new Inventory("JatifySlots", null, W, H);
             if (p.m_customData.TryGetValue(Key, out var data) && data.Length > 0)
             {
@@ -50,7 +77,7 @@ namespace Jatify.UI
         internal static bool Allows(int x, int y, ItemDrop.ItemData it)
         {
             if (it == null) return false;
-            if (y == 0) return x < Utility.Length && it.m_shared.m_name == Utility[x];
+            if (y == 0) return !Azu.Drives && (x < Utility.Length ? it.m_shared.m_name == Utility[x] : x < RingX + 2 && RingsOn && IsRing(it));   // AzuEPI: its own Wishbone / Demister / ring slots
             return y >= KeyRow && IsKey(it);
         }
 
@@ -78,6 +105,7 @@ namespace Jatify.UI
             if (p.IsItemEquiped(it)) p.UnequipItem(it, false);
             if (!inv.AddItem(it, new Vector2i(x, y))) return false;
             bag.RemoveItem(it);
+            if (y == 0 && x < Utility.Length && !Together) Wear(p, x);   // put on = worn, the others come off
             Sync(p);
             return true;
         }
@@ -98,15 +126,18 @@ namespace Jatify.UI
         private static readonly System.Reflection.MethodInfo SetupDrag = AccessTools.Method(typeof(InventoryGui), "SetupDragItem");
         private static readonly AccessTools.FieldRef<InventoryGui, ItemDrop.ItemData> Carried = AccessTools.FieldRefAccess<InventoryGui, ItemDrop.ItemData>("m_dragItem");
         internal static Vector2i Stage => new Vector2i(7, SpecialRows.EqRow);
-        private static ItemDrop.ItemData _staged; private static Vector2i _home;
+        private static ItemDrop.ItemData _staged; private static Vector2i _home, _stageAt;
 
         internal static bool PickUp(Player p, int x, int y)
         {
             var inv = For(p); var it = inv?.GetItemAt(x, y); var bag = p.GetInventory(); var g = InventoryGui.instance;
-            if (it == null || g == null || bag.GetHeight() <= Stage.y || bag.GetItemAt(Stage.x, Stage.y) != null) return false;
-            if (!bag.AddItem(it, Stage)) return false;   // into the player's inventory first; the store lets go only then
+            if (it == null || g == null) return false;
+            var stage = Azu.Drives ? FreeBagCell(bag) : Stage;   // AzuEPI: no hidden row of ours, so a free bag cell holds it while it is in hand
+            if (stage.x < 0) { p.Message(MessageHud.MessageType.Center, "Make room in your bag to take a key out", 0, Kit.Icon("key")); return false; }
+            if (bag.GetHeight() <= stage.y || bag.GetItemAt(stage.x, stage.y) != null) return false;
+            if (!bag.AddItem(it, stage)) return false;   // into the player's inventory first; the store lets go only then
             inv.RemoveItem(it);
-            _staged = it; _home = new Vector2i(x, y);
+            _staged = it; _home = new Vector2i(x, y); _stageAt = stage;
             Sync(p);
             SetupDrag.Invoke(g, new object[] { it, bag, it.m_stack });
             return true;
@@ -120,11 +151,18 @@ namespace Jatify.UI
             if (p == null) { _staged = null; return; }
             if (g != null && Carried(g) == _staged) return;                  // still in hand
             var bag = p.GetInventory(); var it = _staged; _staged = null;
-            if (!bag.ContainsItem(it) || it.m_gridPos.x != Stage.x || it.m_gridPos.y != Stage.y) return;   // placed somewhere: done
+            if (!bag.ContainsItem(it) || it.m_gridPos.x != _stageAt.x || it.m_gridPos.y != _stageAt.y) return;   // placed somewhere: done
             var inv = For(p); if (inv == null) return;
             var home = inv.GetItemAt(_home.x, _home.y) == null && Allows(_home.x, _home.y, it) ? _home : (IsKey(it) ? FreeKeyCell(inv) : new Vector2i(-1, -1));
             if (home.x < 0) return;                                            // no room: it stays in the hidden cell, still in the inventory
             if (inv.AddItem(it, home)) { bag.RemoveItem(it); Sync(p); }
+        }
+
+        private static Vector2i FreeBagCell(Inventory bag)
+        {
+            int rows = SpecialRows.Start;
+            for (int n = 1; n <= rows; n++) { int y = n % rows; for (int x = 0; x < bag.GetWidth(); x++) if (bag.GetItemAt(x, y) == null && !InvActions.Locked(x, y)) return new Vector2i(x, y); }   // bag rows, the action bar last
+            return new Vector2i(-1, -1);
         }
 
         internal static int KeyCount(Player p) { var inv = For(p); int n = 0; if (inv != null) foreach (var it in inv.GetAllItems()) if (it.m_gridPos.y >= KeyRow) n++; return n; }
@@ -153,15 +191,26 @@ namespace Jatify.UI
         {
             if (p == null || _inv == null) return;
             var seman = Seman(p); var want = new HashSet<StatusEffect>();
-            for (int x = 0; x < Utility.Length; x++) { var se = _inv.GetItemAt(x, 0)?.m_shared.m_equipStatusEffect; if (se != null) want.Add(se); }
+            if (!Azu.Drives) for (int x = 0; x < W; x++) { var se = _inv.GetItemAt(x, 0)?.m_shared.m_equipStatusEffect; if (se != null && Active(x)) want.Add(se); }   // AzuEPI wears them itself
             foreach (var se in want) if (!seman.HaveStatusEffect(se.NameHash())) seman.AddStatusEffect(se, false, 0, 0f);
             foreach (var se in _applied) if (!want.Contains(se) && !VanillaSe(p).Contains(se)) seman.RemoveStatusEffect(se.NameHash(), true);
             _applied.Clear(); _applied.UnionWith(want);
+            Epic.Refresh(p);
+        }
+
+        // what is worn in the utility slots (row 0), for mods that count equipped items
+        internal static List<ItemDrop.ItemData> Worn(Player p)
+        {
+            var list = new List<ItemDrop.ItemData>();
+            if (p == null || p != _for || _inv == null) return list;
+            for (int x = 0; x < W; x++) { var it = _inv.GetItemAt(x, 0); if (it != null && Active(x)) list.Add(it); }
+            return list;
         }
 
         internal static void Save(Player p)
         {
             if (p == null || p != _for || _inv == null) return;
+            if (_active >= 0) p.m_customData[ActiveKey] = _active.ToString(); else p.m_customData.Remove(ActiveKey);
             if (_inv.NrOfItems() == 0) { p.m_customData.Remove(Key); return; }
             var pkg = new ZPackage(); _inv.Save(pkg);
             p.m_customData[Key] = Convert.ToBase64String(pkg.GetArray());
@@ -240,12 +289,46 @@ namespace Jatify.UI
     {
         private static bool Prefix(Humanoid __instance, ItemDrop.ItemData item, ref bool __result)
         {
-            if (!(__instance is Player p) || p != Player.m_localPlayer || item == null || item.m_equipped) return true;   // m_equipped: a load re-equipping; left to Valheim
+            if (!(__instance is Player p) || p != Player.m_localPlayer || item == null || item.m_equipped || Azu.Drives) return true;   // AzuEPI: its own slots   // m_equipped: a load re-equipping; left to Valheim
             int x = Array.IndexOf(ModSlots.Utility, item.m_shared.m_name); var inv = ModSlots.For(p);
+            if (x < 0 && ModSlots.RingsOn && ModSlots.IsRing(item) && inv != null) x = inv.GetItemAt(ModSlots.RingX, 0) == null || inv.GetItemAt(ModSlots.RingX + 1, 0) != null ? ModSlots.RingX : ModSlots.RingX + 1;   // a ring: the free ring slot (both full: the first)
             if (x < 0 || inv == null || !p.GetInventory().ContainsItem(item)) return true;
             if (inv.GetItemAt(x, 0) != null && !ModSlots.Take(p, x, 0)) return true;   // bag full: Valheim's way
             __result = ModSlots.Put(p, item, x, 0);
             return !__result;
+        }
+    }
+
+    // UtilityTogether off: a belt put on takes our Wishbone / Wisplight off (they stay in their slots, unworn)
+    [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.EquipItem))]
+    internal static class ModSlotOneUtilityPatch
+    {
+        private static void Postfix(Humanoid __instance, ItemDrop.ItemData item, bool __result)
+        {
+            if (!__result || !(__instance is Player p) || p != Player.m_localPlayer || ModSlots.Together || item == null || ModSlots.WornUtility(p) != item) return;
+            ModSlots.Wear(p, -1);
+        }
+    }
+
+    // a character worn under AzuEPI (it wears belt, Wishbone, Wisplight and rings at once, all in the bag), loaded without it:
+    // Valheim would put them on one by one into its single utility slot, keeping only the last. Before it does, a worn
+    // Wishbone / Wisplight (and ring) goes into our slot for it, so the belt keeps Valheim's.
+    [HarmonyPatch(typeof(Player), "EquipInventoryItems")]
+    internal static class ModSlotReclaimPatch
+    {
+        private static void Prefix(Player __instance)
+        {
+            if (__instance != Player.m_localPlayer || Azu.Drives) return;
+            var inv = ModSlots.For(__instance); if (inv == null) return; int n = 0;
+            foreach (var it in __instance.GetInventory().GetAllItems().Where(i => i.m_equipped).ToList())
+            {
+                int x = Array.IndexOf(ModSlots.Utility, it.m_shared.m_name);
+                if (x < 0 && ModSlots.RingsOn && ModSlots.IsRing(it)) x = inv.GetItemAt(ModSlots.RingX, 0) == null ? ModSlots.RingX : inv.GetItemAt(ModSlots.RingX + 1, 0) == null ? ModSlots.RingX + 1 : -1;
+                if (x < 0 || inv.GetItemAt(x, 0) != null) continue;
+                it.m_equipped = false;
+                if (ModSlots.Put(__instance, it, x, 0)) n++; else it.m_equipped = true;
+            }
+            if (n > 0) Log.Info($"mod slots: {n} worn item(s) back into their slots (worn together under another mod)");
         }
     }
 

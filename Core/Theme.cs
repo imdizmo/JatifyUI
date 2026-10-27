@@ -20,6 +20,7 @@ namespace Jatify.UI
         public string accent = "#22D67E";
         public string accentSoft = "#22D67E24";
         public string ember = "#F2703A";
+        public string warnText = "#F59B75";     // softer orange for warning text in the crafting panel (user)
         public string emberSoft = "#F2703A29";
         public string health = "#E5484D";
         public string stamina = "#F5B942";
@@ -72,6 +73,7 @@ namespace Jatify.UI
         }
 
         internal static Color C(string hex) => ColorUtility.TryParseHtmlString(hex, out var c) ? c : Color.magenta;
+        internal static Color SoftEmber(ThemeData t) => C(t.warnText);   // the crafting panel's warnings: a softer orange (user)
 
         public void Dispose() { if (_watch != null) { _watch.EnableRaisingEvents = false; _watch.Dispose(); _watch = null; } }
     }

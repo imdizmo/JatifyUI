@@ -133,6 +133,7 @@ namespace Jatify.UI
         private float Row(ConfigEntryBase e, float y)
         {
             var desc = e.Description?.Description ?? "";
+            var note = Inert(e); if (note != null) desc = $"<color=#{ColorUtility.ToHtmlStringRGB(Theme.C(_t.stamina))}>{note}</color>" + (desc.Length > 0 ? "\n" + desc : "");
             float h = 44f;
             var label = Kit.Text(_content, "Label", Nice(e.Definition.Key), Fonts.Medium, 16f, Color.white); label.rectTransform.At(0, y + 6, 470, 22);
             if (desc.Length > 0)
@@ -143,6 +144,16 @@ namespace Jatify.UI
             }
             Editor(e, y + (h - 32f) / 2f);
             return y + h + 4f;
+        }
+
+        // a setting another installed mod has taken over: said on its row, so nobody wonders why it does nothing
+        private static string Inert(ConfigEntryBase e)
+        {
+            if (!Azu.Drives) return null;
+            if (e == ExtraRows.Extra) return "AzuEPI is installed and manages your inventory rows (its Extra Inventory Rows setting): this one does nothing.";
+            var k = e.Definition.Key; if (e.Definition.Section == "Keys" && (k.StartsWith("FoodSlot") || k.StartsWith("ToolSlot") || k.StartsWith("MeadSlot")))
+                return "AzuEPI is installed: there are no Food / Tools / Meads rows. Its quick slots use its own keys (its Quick Slot Hotkeys).";
+            return null;
         }
 
         private static string Nice(string key) => System.Text.RegularExpressions.Regex.Replace(key, "(?<=[a-z])([A-Z])", " $1");

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
 using TMPro;
@@ -19,6 +20,15 @@ namespace Jatify.UI
         private static AccessTools.FieldRef<Humanoid, ItemDrop.ItemData> F(string n) => AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>(n);
 
         private readonly EqSlot[] _slots;
+        private static Equipment _current;
+
+        // the worn item under the pointer on the doll (other mods' "hovered item" shortcuts: EpicLoot's socket overlay)
+        internal static ItemDrop.ItemData UnderPointer()
+        {
+            var e = _current; if (e == null || e._root == null || !e._root.gameObject.activeInHierarchy) return null;
+            foreach (var s in e._slots) { var it = s.UnderPointer(); if (it != null) return it; }
+            return null;
+        }
         internal float Block;                                  // for the stats card
         internal bool OnSkills => _onSkills;
         private readonly RectTransform _root, _doll;
@@ -86,7 +96,7 @@ namespace Jatify.UI
             internal KeyPouch(RectTransform doll, ThemeData t, GameObject tooltipPrefab)
             {
                 var (line, fill) = Kit.Box(doll, "Keys", Theme.C(t.raised), Theme.C(t.glassLine), 9);
-                var rt = line.rectTransform.At(192, 288, 46, 46); line.raycastTarget = true;
+                var rt = line.rectTransform.At(ModSlots.RingsOn ? 126 : 52, 288, 46, 46); line.raycastTarget = true;   // AzuEPI: after the ammo, other mods' slots after it
                 _hint = Kit.IconImg(rt, "key", new Color(1f, 1f, 1f, 0.3f), 24f); _hint.rectTransform.At(11, 11, 24, 24);   // our swamp-key drawing (assets/svg/key.svg)
                 _icon = Kit.Img(rt, "Icon", null, Color.white, false); _icon.rectTransform.Fill(8f); _icon.preserveAspect = true; _icon.enabled = false;
                 _count = Kit.Text(rt, "Count", "", Fonts.Mono, 10.5f, Color.white); _count.alignment = TextAlignmentOptions.BottomRight; _count.rectTransform.Fill(5f);
@@ -143,6 +153,7 @@ namespace Jatify.UI
 
         internal Equipment(RectTransform panel, ThemeData t, GameObject tooltipPrefab)
         {
+            _current = this;
             _t = t;
             // area left of the grid: 300 wide, from the panel's top edge down
             _root = Kit.Node(panel, "jatify-equipment").At(19, 67, 240, 420);   // design: x 179, y 99 on screen
@@ -157,9 +168,16 @@ namespace Jatify.UI
                 new EqSlot(_doll, "Chest", Chest, 0, 136, t, tooltipPrefab), new EqSlot(_doll, "Legs", Legs, 0, 204, t, tooltipPrefab),
                 new EqSlot(_doll, "Trinket", Trinket, 180, 0, t, tooltipPrefab), new EqSlot(_doll, "Belt", Utility, 180, 68, t, tooltipPrefab),
                 new EqSlot(_doll, "Wishbone", null, 180, 136, t, tooltipPrefab, 60f, 0, 0), new EqSlot(_doll, "Wisplight", null, 180, 204, t, tooltipPrefab, 60f, 1, 0),
-                new EqSlot(_doll, "Main hand", Main, 2, 281, t, tooltipPrefab), new EqSlot(_doll, "Off hand", Off, 70, 281, t, tooltipPrefab),
-                new EqSlot(_doll, "Ammo", Ammo, 138, 288, t, tooltipPrefab, 46f),
-            };
+            }.Concat(ModSlots.RingsOn
+                ? new[]
+                {   // rings under the two columns (they replaced the hands: weapons show on the action bar and the figure); ammo and keys between
+                    new EqSlot(_doll, "Ring", null, 0, 281, t, tooltipPrefab, 60f, ModSlots.RingX, 0), new EqSlot(_doll, "Ring", null, 180, 281, t, tooltipPrefab, 60f, ModSlots.RingX + 1, 0),
+                    new EqSlot(_doll, "Ammo", Ammo, 70, 288, t, tooltipPrefab, 46f),
+                }
+                : new[]
+                {   // AzuEPI (it has the ring slots): no hands either (they show on the action bar and the figure); ammo, the key pouch, then other mods' slots
+                    new EqSlot(_doll, "Ammo", Ammo, 0, 288, t, tooltipPrefab, 46f),
+                }).ToArray();
             _pouch = new KeyPouch(_doll, t, tooltipPrefab);
             // middle: the numbers that matter for what you wear
             _render = new CharacterRender(_doll, 64, 0, 112, 230);
@@ -167,6 +185,24 @@ namespace Jatify.UI
             _name = Kit.Text(_doll, "Name", "", Fonts.Norse, 18f, Theme.C(t.text)); _name.alignment = TextAlignmentOptions.Center;
             _name.rectTransform.At(40, 236, 160, 24); _name.overflowMode = TextOverflowModes.Ellipsis;
             // armour and block live in the stats card now (user)
+        }
+
+        // where a doll cell is on screen (AzuEPI's own cells are laid over ours), or null while the doll is not showing
+        internal RectTransform DollCell(string name) => _doll.gameObject.activeInHierarchy ? _slots.FirstOrDefault(s => s.Name == name)?.Rect : null;
+
+        // other mods' slots (AzuEPI's list) in the ammo / key row and under it, 44 px: placeholders its cells are laid over
+        internal const int ExtraPerRow = 5, ExtraBeside = 3; internal const float ExtraPitch = 49f;
+        internal static float ExtraRowsBelow(int n) => n <= ExtraBeside ? 0f : (n - ExtraBeside + ExtraPerRow - 1) / ExtraPerRow * ExtraPitch;   // what the stats card moves down
+        private readonly List<RectTransform> _extra = new List<RectTransform>();
+        internal RectTransform ExtraCell(int i)
+        {
+            if (!_doll.gameObject.activeInHierarchy) return null;
+            while (_extra.Count <= i)
+            {   // the first 3 beside the ammo and key pouch, then rows of 5
+                int n = _extra.Count, m = n - ExtraBeside;
+                _extra.Add(Kit.Node(_doll, "Extra" + n).At(n < ExtraBeside ? 104 + n * 46 : m % ExtraPerRow * ExtraPitch, n < ExtraBeside ? 289 : 289 + ExtraPitch + m / ExtraPerRow * ExtraPitch, 44, 44));
+            }
+            return _extra[i];
         }
 
         private void Label(string text, float x, float y, ThemeData t)
@@ -214,7 +250,7 @@ namespace Jatify.UI
                 case "Key": return ModSlots.IsKey(it) ? "That pouch cell is taken" : "Only keys go in the key pouch";
                 case "Wishbone": return "Only a Wishbone goes here";
                 case "Wisplight": return "Only a Wisplight goes here";
-                case "Main hand": case "Off hand": return $"{name} can't be held there";
+                case "Ring": return "Only a ring goes here";
                 default: return $"{name} doesn't go in the {slot.ToLowerInvariant()} slot";
             }
         }
@@ -229,8 +265,6 @@ namespace Jatify.UI
                 case "Legs": return k == ItemDrop.ItemData.ItemType.Legs;
                 case "Belt": return k == ItemDrop.ItemData.ItemType.Utility;
                 case "Trinket": return k == ItemDrop.ItemData.ItemType.Trinket;
-                case "Main hand": return k == ItemDrop.ItemData.ItemType.OneHandedWeapon || k == ItemDrop.ItemData.ItemType.TwoHandedWeapon || k == ItemDrop.ItemData.ItemType.TwoHandedWeaponLeft || k == ItemDrop.ItemData.ItemType.Bow || k == ItemDrop.ItemData.ItemType.Tool || k == ItemDrop.ItemData.ItemType.Torch;
-                case "Off hand": return k == ItemDrop.ItemData.ItemType.Shield || k == ItemDrop.ItemData.ItemType.Torch;
                 case "Ammo": return k == ItemDrop.ItemData.ItemType.Ammo;
                 default: return false;
             }
@@ -239,8 +273,7 @@ namespace Jatify.UI
         private static Sprite Ghost(string slot)
         {
             string prefab = slot == "Head" ? "HelmetLeather" : slot == "Cape" ? "CapeDeerHide" : slot == "Chest" ? "ArmorLeatherChest" : slot == "Legs" ? "ArmorLeatherLegs"
-                : slot == "Belt" ? "BeltStrength" : slot == "Wishbone" ? "Wishbone" : slot == "Wisplight" ? "Demister" : slot == "Main hand" ? "SwordBronze"
-                : slot == "Off hand" ? "ShieldWood" : slot == "Ammo" ? "ArrowWood" : slot == "Key" ? "CryptKey" : null;
+                : slot == "Belt" ? "BeltStrength" : slot == "Wishbone" ? "Wishbone" : slot == "Wisplight" ? "Demister" : slot == "Ring" ? "SilverRing" : slot == "Ammo" ? "ArrowWood" : slot == "Key" ? "CryptKey" : null;
             if (ObjectDB.instance == null) return null;
             if (slot == "Trinket")
                 foreach (var go in ObjectDB.instance.m_items) { var d = go ? go.GetComponent<ItemDrop>() : null; if (d != null && d.m_itemData.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Trinket) return d.m_itemData.GetIcon(); }
@@ -251,9 +284,10 @@ namespace Jatify.UI
         {
             private readonly AccessTools.FieldRef<Humanoid, ItemDrop.ItemData> _get;
             private readonly int _cx, _cy;   // a ModSlots cell when _get is null
-            private readonly Image _icon, _durFill;
+            private TextMeshProUGUI _count, _spare; private int _shownCount = -1, _shownSpare = -1;   // stacking gear (ammo): the stack in the slot, and "+n" spares of it in the bag
+            private readonly Image _icon, _durFill; private readonly RarityBg _rarity;   // rarity (EpicLoot): its background behind the icon, the border tinted
             private readonly RectTransform _dur;
-            private readonly Image _hint; private readonly string _name;
+            private readonly Image _hint; private readonly string _name; private readonly RectTransform _rt;
             private readonly UITooltip _tip;
             private ItemDrop.ItemData _item;
             private int _durPct = -1;
@@ -263,7 +297,7 @@ namespace Jatify.UI
             {
                 _get = get; _t = t; _cx = cx; _cy = cy;
                 var (line, fill) = Kit.Box(parent, name, Theme.C(t.raised), Theme.C(t.glassLine), size > 50f ? 10 : 9);
-                var rt = line.rectTransform.At(x, y, size, size);
+                var rt = _rt = line.rectTransform.At(x, y, size, size);
                 line.raycastTarget = true;
                 var btn = line.gameObject.AddComponent<Button>();
                 btn.targetGraphic = fill; btn.transition = Selectable.Transition.ColorTint;
@@ -288,12 +322,13 @@ namespace Jatify.UI
                 {   // right click: take it off (our slots: into the bag)
                     var p = Player.m_localPlayer; if (p == null || !InventoryGui.IsVisible() || DragItem(InventoryGui.instance) != null) return;
                     var cur = _get != null ? _get(p) : ModSlots.At(p, _cx, _cy); if (cur == null) return;
-                    if (_get == null) ModSlots.Take(p, _cx, _cy); else p.UnequipItem(cur, true);
+                    if (_get == null && _cy == 0 && !ModSlots.Active(_cx)) ModSlots.Wear(p, _cx);   // one utility at a time: wear this one
+                    else if (_get == null) ModSlots.Take(p, _cx, _cy); else p.UnequipItem(cur, true);
                 };
                 // empty slot: a faint icon of what goes there (design), the name in the tooltip
                 string ic = name == "Head" ? "helm" : name == "Cape" ? "cape" : name == "Chest" ? "chest" : name == "Legs" ? "legs" : name == "Belt" ? "belt"
-                          : name == "Trinket" ? "rune" : name == "Wishbone" ? "wishbone" : name == "Wisplight" ? "wisp" : name == "Key" ? "lock"
-                          : name == "Main hand" ? "sword" : name == "Off hand" ? "shield" : "arrow";
+                          : name == "Trinket" ? "rune" : name == "Wishbone" ? "wishbone" : name == "Wisplight" ? "wisp" : name == "Ring" ? "rune" : name == "Key" ? "lock"
+                          : "arrow";
                 // design: a faint, greyed picture of what goes there; Valheim's own item icons where we have one
                 var ghost = Ghost(name);
                 _hint = ghost != null ? Kit.Img(rt, "Hint", ghost, new Color(0.55f, 0.55f, 0.6f, 0.3f), false) : Kit.IconImg(rt, ic, new Color(1f, 1f, 1f, 0.22f), size > 50f ? 28f : 22f);
@@ -301,22 +336,40 @@ namespace Jatify.UI
                 _hint.rectTransform.anchorMin = _hint.rectTransform.anchorMax = _hint.rectTransform.pivot = new Vector2(0.5f, 0.5f); _hint.rectTransform.anchoredPosition = Vector2.zero;
                 _name = name; if (name == "Key") _hint.enabled = false;
                 _icon = Kit.Img(rt, "Icon", null, Color.white, false); _icon.rectTransform.Fill(size > 50f ? 12f : 8f); _icon.preserveAspect = true; _icon.enabled = false;
+                _rarity = new RarityBg(rt, _icon, line, size > 50f ? 9 : 8);
                 var (dl, _) = Kit.Box(rt, "Durability", new Color(1f, 1f, 1f, 0.1f), new Color(1f, 1f, 1f, 0.1f), 2);
                 _dur = dl.rectTransform.At(6, size - 7, size - 12, 3);
                 _durFill = Kit.Panel(_dur, "Value", Theme.C(t.accent), 2); var r = _durFill.rectTransform; r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one; r.offsetMin = r.offsetMax = Vector2.zero;
                 _dur.gameObject.SetActive(false);
+                _count = Kit.Text(rt, "Count", "", Fonts.Mono, size > 50f ? 11f : 10f, Theme.C(t.text)); _count.alignment = TextAlignmentOptions.BottomRight;
+                _count.rectTransform.At(4, size - 20, size - 9, 16);
+                _spare = Kit.Text(rt, "Spare", "", Fonts.Mono, size > 50f ? 9.5f : 8.5f, Theme.C(t.mute)); _spare.alignment = TextAlignmentOptions.TopRight;
+                _spare.rectTransform.At(4, 3, size - 8, 13);   // the top of the slot (user)
                 if (tooltipPrefab != null) { _tip = line.gameObject.AddComponent<UITooltip>(); _tip.m_tooltipPrefab = tooltipPrefab; ItemTip.For(_tip, () => _item, worn: true); }   // the detailed card for what is worn
             }
 
+            internal string Name => _name; internal RectTransform Rect => _rt;
+            internal ItemDrop.ItemData UnderPointer() => _item != null && _rt != null && _rt.gameObject.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint(_rt, Input.mousePosition, null) ? _item : null;
+
             internal void Tick(Player p)
             {
+                bool azu = (_get == null && _cy == 0 || System.Array.IndexOf(Azu.DollNames, _name) >= 0) && Azu.Drives;   // AzuEPI: its own equipment cells laid here instead of ours (it keeps gear in them worn or not)
+                if (_rt.gameObject.activeSelf == azu) _rt.gameObject.SetActive(!azu);
+                if (azu) return;
                 var it = _get != null ? _get(p) : ModSlots.At(p, _cx, _cy);
                 if (it != _item)
                 {
                     _item = it;
                     _icon.sprite = it?.GetIcon(); _icon.enabled = it != null; _hint.enabled = it == null && _name != "Key"; _durPct = -1;
+                    _rarity.Set(it);
                     if (_tip != null) _tip.Set(it == null ? _name : it.m_shared.m_name, it == null ? "Empty" : it.GetTooltip());
                 }
+                float a = _get == null && _cy == 0 && !ModSlots.Active(_cx) ? 0.35f : 1f;   // kept here but not worn (one utility at a time)
+                if (_icon.color.a != a) _icon.color = new Color(1f, 1f, 1f, a);
+                int n = it != null && it.m_shared.m_maxStackSize > 1 ? it.m_stack : 0, spare = 0;   // the stack in the slot, as on any slot; spares of the same ammo in the bag as a dim "+n" over it
+                if (n > 0) foreach (var o in p.GetInventory().GetAllItems()) if (o != it && o.m_shared.m_name == it.m_shared.m_name && o.m_quality == it.m_quality) spare += o.m_stack;
+                if (n != _shownCount) { _shownCount = n; _count.text = n > 0 ? n.ToString() : ""; }
+                if (spare != _shownSpare) { _shownSpare = spare; _spare.text = spare > 0 ? "+" + spare : ""; }
                 int d = it != null && it.m_shared.m_useDurability ? Mathf.RoundToInt(100f * Mathf.Clamp01(it.m_durability / Mathf.Max(1f, it.GetMaxDurability()))) : -2;
                 if (d != _durPct)
                 {

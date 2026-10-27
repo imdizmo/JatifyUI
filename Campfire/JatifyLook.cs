@@ -78,8 +78,8 @@ namespace Jatify
 
         internal static TextMeshProUGUI Text(Transform parent, string s, string font, float size, Color c, TextAlignmentOptions align = TextAlignmentOptions.MidlineLeft)
         {
-            var t = Node(parent, "Text").gameObject.AddComponent<TextMeshProUGUI>();
-            t.font = Font(font); t.fontSize = size; t.color = c; t.text = s; t.alignment = align; t.raycastTarget = false;
+            var go = Node(parent, "Text").gameObject; go.SetActive(false);   // its font set before it wakes: no "LiberationSans SDF not found" warning
+            var t = go.AddComponent<TextMeshProUGUI>(); t.font = Font(font); go.SetActive(true); t.fontSize = size; t.color = c; t.text = s; t.alignment = align; t.raycastTarget = false;
             t.textWrappingMode = TextWrappingModes.NoWrap; t.overflowMode = TextOverflowModes.Ellipsis; t.richText = true;
             return t;
         }

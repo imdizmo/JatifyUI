@@ -13,7 +13,11 @@ namespace Jatify.UI
     // distance. Ships and carts move with their objects. Nothing here is saved; on unload the pins go.
     internal static class MapMarks
     {
-        internal static readonly Minimap.PinType Vehicle = (Minimap.PinType)System.Enum.GetValues(typeof(Minimap.PinType)).Length;   // past vanilla's types
+        private static readonly int Base = System.Enum.GetValues(typeof(Minimap.PinType)).Length;   // past vanilla's types
+        internal static readonly Minimap.PinType[] VehicleTypes = { (Minimap.PinType)Base };       // shared with MapStyle's Show chip
+        internal static Minimap.PinType Vehicle => VehicleTypes[0];
+        internal static readonly Minimap.PinType[] BountyTypes = { (Minimap.PinType)(-1) }, TreasureTypes = { (Minimap.PinType)(-1) };   // EpicLoot's, once its minimap has them
+        private static bool _typed; private static float _typeWait;
         private sealed class Mark { internal ZDO Zdo; internal Minimap.PinData Pin; internal bool Portal; internal Sprite Icon; }
         private static readonly Dictionary<ZDOID, Mark> _marks = new Dictionary<ZDOID, Mark>();
         private static readonly Dictionary<int, (string name, Sprite icon)> _vehicles = new Dictionary<int, (string, Sprite)>();
@@ -32,6 +36,7 @@ namespace Jatify.UI
         {
             if (mm == null || ZDOMan.instance == null || ZNetScene.instance == null || Player.m_localPlayer == null) return;
             if (_vehicles.Count == 0) Init();
+            if (!_typed && !PickType(mm)) return;
             Extend(mm);
             if (!_scanning && Time.unscaledTime >= _nextPass) { _scanning = true; _sector = 0; _seen.Clear(); }
             if (_scanning) Scan(mm);
@@ -52,6 +57,25 @@ namespace Jatify.UI
                 var piece = go.GetComponent<Piece>();
                 _vehicles[go.name.GetStableHashCode()] = (Localization.instance.Localize(piece != null && !string.IsNullOrEmpty(piece.m_name) ? piece.m_name : go.name), piece != null ? piece.m_icon : null);
             }
+        }
+
+        // other mods add pin types past vanilla's too (EpicLoot: bounties, treasure maps; BetterMap: ore, ...), numbered from
+        // the array's length when their minimap starts; ours goes after all of them, or two share a number and filters and
+        // clean-ups mix
+        private static bool PickType(Minimap mm)
+        {
+            if ((_typeWait += Time.unscaledDeltaTime) < 3f) return false;   // other mods add theirs as their minimap starts (ponytail: 3 s)
+            int type = Base, have = Visible(mm)?.Length ?? 0;
+            if (have > type) type = have;   // past every type another mod added (BetterMap's ore, ...)
+            if (Epic.On)
+            {
+                int b = Epic.PinType("BountyPinType"), t = Epic.PinType("TreasureMapPinType");
+                if (b < Base && t < Base && _typeWait < 10f) return false;   // EpicLoot's not registered yet (ponytail: 10 s, then without them)
+                type = System.Math.Max(type, System.Math.Max(b, t) + 1);
+                if (b >= Base) BountyTypes[0] = (Minimap.PinType)b; if (t >= Base) TreasureTypes[0] = (Minimap.PinType)t;
+            }
+            VehicleTypes[0] = (Minimap.PinType)type;
+            _typed = true; return true;
         }
 
         // vanilla sizes its per-type arrays to its own enum: one more slot for our Vehicle type
@@ -76,10 +100,11 @@ namespace Jatify.UI
             var gone = new List<ZDOID>();
             foreach (var kv in _marks) if (!_seen.Contains(kv.Key)) gone.Add(kv.Key);
             foreach (var id in gone) Drop(mm, id);
-            // marks left by an earlier load of the mod: unsaved portal / vehicle pins are only ever ours
+            // vehicle marks left by an earlier load of the mod: that type is only ever ours. Unsaved portal pins can be
+            // another mod's, so those are left alone (Clear removes ours on unload)
             var mine = new HashSet<Minimap.PinData>(); foreach (var mk in _marks.Values) mine.Add(mk.Pin);
             var pins = Pins(mm);
-            for (int i = pins.Count - 1; i >= 0; i--) { var p = pins[i]; if (!p.m_save && (p.m_type == Vehicle || p.m_type == Minimap.PinType.Icon4) && !mine.Contains(p)) mm.RemovePin(p); }
+            for (int i = pins.Count - 1; i >= 0; i--) { var p = pins[i]; if (!p.m_save && p.m_type == Vehicle && !mine.Contains(p)) mm.RemovePin(p); }
             _scanning = false; _nextPass = Time.unscaledTime + 2f;
         }
 

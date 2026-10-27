@@ -105,8 +105,6 @@ namespace Jatify.UI
             _l.Img(well, Kit.Rounded(10), new Color(0f, 0f, 0f, 0.28f));
             var desc = Find<Image>(c, "Decription");
             _l.Img(desc, Kit.Rounded(10), new Color(0, 0, 0, 0));   // design: the detail sits on the panel itself
-            _l.Txt(g.m_recipeName, Fonts.Bold, 22f, Theme.C(t.text));
-            _l.Txt(g.m_recipeDecription, Fonts.Lore, 15f, Theme.C(t.dim));
             foreach (Transform res in Find<Transform>(c, "Decription/requirements"))
             {
                 _l.Img(res.GetComponent<Image>(), Kit.Rounded(10), new Color(0f, 0f, 0f, 0.3f));

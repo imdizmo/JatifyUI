@@ -22,7 +22,8 @@ namespace Jatify.UI
         internal static string[] SortModes = { "Category", "Name", "Weight" };
         internal static int SortMode;
 
-        internal static bool Locked(int x, int y) { Sync(); return Locks.Contains(y * 128 + x); }
+        internal static bool Locked(int x, int y) { Sync(); return Locks.Contains(y * 128 + x) || Azu.Favourite(Player.m_localPlayer?.GetInventory(), x, y); }   // AzuEPI's favourites stay put too
+        internal static bool LockedItem(ItemDrop.ItemData it) { var p = Player.m_localPlayer; return it != null && p != null && p.GetInventory().ContainsItem(it) && Locked(it.m_gridPos.x, it.m_gridPos.y); }
 
         private static void Sync()
         {
@@ -152,6 +153,7 @@ namespace Jatify.UI
             var open = ChestPanel.Open;
             if (open != null && __instance.GetInventory() == open.GetInventory()) { ChestPanel.ToggleLock(el.Position.x, el.Position.y); return false; }   // chest slots: locks live on the chest
             if (!SpecialRows.IsPlayer(__instance.GetInventory())) return true;
+            if (Azu.Favouriting && !InvActions.Locks.Contains(el.Position.y * 128 + el.Position.x)) return true;   // AzuEPI: Alt + click favourites there (it keeps the item in place as our lock would); one action, not two. A lock of ours from before still clicks off
             if (SpecialRows.Is(__instance.GetInventory(), el.Position.y)) return false;   // reserved rows are not lockable
             InvActions.ToggleLock(el.Position.x, el.Position.y);
             return false;

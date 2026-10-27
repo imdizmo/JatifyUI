@@ -7,7 +7,7 @@ R="$(cd "$(dirname "$0")/.." && pwd)"
 VALHEIM="${VALHEIM:-/mnt/games/SteamLibrary/steamapps/common/Valheim}"
 PROFILE="${PROFILE:-$HOME/.local/share/com.kesomannen.gale/valheim/profiles/jatify-ui-dev}"
 DEST="$PROFILE/BepInEx/scripts"
-dotnet build "$R/JatifyUI.csproj" -c Release -v minimal -o "$R/build" -p:ValheimDir="$VALHEIM" -p:ProfileDir="$PROFILE" | grep -E "error|warn|Build succeeded" | sort -u
+dotnet build "$R/JatifyUI.csproj" -c Release -v minimal -o "$R/build" -p:ValheimDir="$VALHEIM" -p:ProfileDir="$PROFILE" -p:JatifyDev=true | grep -E "error|warn|Build succeeded" | sort -u
 mkdir -p "$DEST"
 # ScriptEngine reads symbols and refuses a DLL without its .pdb, so the .pdb goes first; the watcher
 # only looks at *.dll, so the DLL landing is what triggers the reload.

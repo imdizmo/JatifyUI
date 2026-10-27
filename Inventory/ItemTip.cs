@@ -33,7 +33,7 @@ namespace Jatify.UI
         private sealed class Row { internal RectTransform Rt; internal TextMeshProUGUI K, V; }
         private sealed class Col { internal TextMeshProUGUI Sect; internal readonly List<Row> Rows = new List<Row>(); }
         private static RectTransform _root, _card, _head, _cmp, _keys, _knot; private static CanvasGroup _cg;
-        private static Image _icon, _durBar, _durFill; private static RectTransform _badge; private static TextMeshProUGUI _badgeT, _name, _type, _wt, _lore, _note, _cmpTitle, _more, _moreT;
+        private static Image _icon, _durBar, _durFill; private static RectTransform _badge; private static TextMeshProUGUI _badgeT, _name, _type, _wt, _lore, _note, _cmpTitle, _more, _moreT, _magic, _magicT; private static Image _magicCard;
         private static readonly Col _left = new Col(), _right = new Col(), _cmpCol = new Col();
         private static readonly List<(RectTransform box, TextMeshProUGUI t)> _caps = new List<(RectTransform, TextMeshProUGUI)>();
         private static readonly List<TextMeshProUGUI> _capLabels = new List<TextMeshProUGUI>();
@@ -42,7 +42,7 @@ namespace Jatify.UI
         // what shows, and what it was built for
         private static UITooltip _for; private static Source _src; private static InventoryElement _el; private static InventoryGrid _grid;
         private static ItemDrop.ItemData _item; private static int _stack, _dur, _q; private static bool _eq, _knotOn; private static string _text;
-        private static GameObject _hidden;
+        private static GameObject _hidden; private static CanvasGroup[] _inner; private static int _innerAt;
 
         // ---- every frame (LateUpdate) -------------------------------------------------------------
         internal static void Tick()
@@ -53,7 +53,9 @@ namespace Jatify.UI
             var item = _src != null ? _src.Item?.Invoke() : _grid != null && _grid.GetInventory() != null ? _grid.GetInventory().GetItemAt(_el.Position.x, _el.Position.y) : null;
             if (item == null) { Hide(); return; }
             if (_root == null) Build();
-            if (tip != _hidden) { _hidden = tip; var cg = tip.GetComponent<CanvasGroup>() ?? tip.AddComponent<CanvasGroup>(); cg.alpha = 0f; cg.blocksRaycasts = false; }   // Valheim's stays (its hover logic), unseen
+            if (tip != _hidden) { _hidden = tip; var cg = tip.GetComponent<CanvasGroup>() ?? tip.AddComponent<CanvasGroup>(); cg.alpha = 0f; cg.blocksRaycasts = false; _inner = null; }   // Valheim's stays (its hover logic), unseen
+            if (_inner == null || _innerAt != Time.frameCount / 30) { _innerAt = Time.frameCount / 30; _inner = tip.GetComponentsInChildren<CanvasGroup>(true); }   // a mod's box inside it with its own group (EpicLoot's TooltipBox ignores ours)
+            foreach (var g in _inner) if (g != null && g.gameObject != tip && g.alpha != 0f) g.alpha = 0f;
             int dur = Mathf.RoundToInt(item.m_durability), q = _src != null && _src.Quality > 0 ? _src.Quality : item.m_quality;
             if (item != _item || item.m_stack != _stack || dur != _dur || q != _q || item.m_equipped != _eq || !ReferenceEquals(cur.m_text, _text) || Knots.On != _knotOn)
             {
@@ -95,11 +97,13 @@ namespace Jatify.UI
             Notices.OnTop(_root);   // over the inventory screen's canvas
             _cg = _root.gameObject.AddComponent<CanvasGroup>(); _cg.blocksRaycasts = false; _cg.interactable = false;
             var sh = Kit.Img(_root, "Shadow", Kit.Glow(), new Color(0f, 0f, 0f, 0.45f)); _shadow = sh.rectTransform;   // design: 0 14px 34px black 45 %
-            var (line, _) = Kit.Box(_root, "Card", new Color(0.063f, 0.063f, 0.071f, 0.985f), new Color(1f, 1f, 1f, 0.14f), 12); _card = line.rectTransform; _card.At(0, 0, W, 100);
+            var (line, _) = Kit.Box(_root, "Card", new Color(0.063f, 0.063f, 0.071f, 0.985f), CardLine, 12); _card = line.rectTransform; _card.At(0, 0, W, 100); _cardLine = line;
             var c = _card;
+            var clip = Kit.Node(c, "RarityClip"); clip.Fill(); var cm = clip.gameObject.AddComponent<Image>(); cm.sprite = Kit.Rounded(12); cm.type = Image.Type.Sliced; clip.gameObject.AddComponent<Mask>().showMaskGraphic = false;   // the wash keeps the card's round corners
+            _glow = Kit.Img(clip, "Rarity", Kit.VGradient(new Color(1f, 1f, 1f, 0.2f), new Color(1f, 1f, 1f, 0.05f), new Color(1f, 1f, 1f, 0f)), Color.white, false); _glow.rectTransform.At(0, 0, W, 96); _glow.gameObject.SetActive(false);
             // header: icon tile with the quality pill, name, type line, weight / value
             _head = Kit.Node(c, "Head").At(Pad, 14, Inner, 52);
-            var (tile, _) = Kit.Box(_head, "Icon", new Color(0.173f, 0.173f, 0.196f, 0.85f), new Color(1f, 1f, 1f, 0.1f), 10); tile.rectTransform.At(0, 0, 52, 52);
+            var (tile, _) = Kit.Box(_head, "Icon", new Color(0.173f, 0.173f, 0.196f, 0.85f), TileLine, 10); tile.rectTransform.At(0, 0, 52, 52); _tileLine = tile;
             _icon = Kit.Img(tile.rectTransform, "I", null, Color.white, false); _icon.preserveAspect = true; _icon.rectTransform.At(6, 6, 40, 40);
             var (bd, _) = Kit.Box(_head, "Q", Theme.C(t.stamina), Theme.C(t.stamina), 9); _badge = bd.rectTransform;
             _badgeT = Kit.Text(_badge, "T", "", Fonts.Mono, 11f, new Color(0.067f, 0.067f, 0.067f)); _badgeT.fontStyle = FontStyles.Bold; _badgeT.alignment = TextAlignmentOptions.Center; _badgeT.rectTransform.Fill();
@@ -116,12 +120,17 @@ namespace Jatify.UI
             var tr = Kit.Panel(c, "Durability", new Color(1f, 1f, 1f, 0.1f), 2); _durBar = tr;
             _durFill = Kit.Panel(tr.rectTransform, "V", Theme.C(t.accent), 2); var fr = _durFill.rectTransform; fr.anchorMin = Vector2.zero; fr.anchorMax = new Vector2(0.5f, 1f); fr.offsetMin = fr.offsetMax = Vector2.zero;
             _moreT = Kit.Text(c, "MoreLabel", "MORE", Fonts.Mono, 11f, Theme.C(t.mute)); _moreT.characterSpacing = 8f;
+            _magicCard = Kit.Panel(c, "MagicCard", Color.clear, 8); _magicCard.raycastTarget = false;   // EpicLoot's enchantments, sockets and sets: a card in the rarity colour
+            _magicT = Kit.Text(_magicCard.rectTransform, "Label", "ENCHANTMENTS", Fonts.Mono, 10.5f, Theme.C(t.mute)); _magicT.characterSpacing = 8f;
+            _magic = Kit.Text(_magicCard.rectTransform, "Lines", "", Fonts.Medium, 12.5f, Theme.C(t.text)); _magic.richText = true; _magic.textWrappingMode = TextWrappingModes.Normal; _magic.lineSpacing = 4f;
             _more = Kit.Text(c, "More", "", Fonts.Medium, 12.5f, Theme.C(t.dim)); _more.richText = true; _more.textWrappingMode = TextWrappingModes.Normal; _more.lineSpacing = 4f;
             _keys = Kit.Node(c, "Keys");
             var kl = Kit.Img(_keys, "Line", null, new Color(1f, 1f, 1f, 0.08f)); kl.rectTransform.anchorMin = new Vector2(0f, 1f); kl.rectTransform.anchorMax = Vector2.one; kl.rectTransform.pivot = new Vector2(0.5f, 1f); kl.rectTransform.sizeDelta = new Vector2(0f, 1f); kl.rectTransform.anchoredPosition = Vector2.zero;
             _root.gameObject.SetActive(false);
         }
         private static RectTransform _shadow;
+        private static Image _cardLine, _tileLine, _glow;   // rarity (EpicLoot): border, icon tile edge, a wash down from the top
+        private static readonly Color CardLine = new Color(1f, 1f, 1f, 0.14f), TileLine = new Color(1f, 1f, 1f, 0.1f);
 
         private static void Sect(Col col, Transform parent) { col.Sect = Kit.Text(parent, "Sect", "", Fonts.Mono, 11f, Theme.C(_t.mute)); col.Sect.characterSpacing = 8f; col.Sect.overflowMode = TextOverflowModes.Ellipsis; }
 
@@ -164,7 +173,7 @@ namespace Jatify.UI
 
         private struct Line { internal Cat C; internal string K, V; }
         private static readonly List<Line> _lines = new List<Line>(), _held = new List<Line>();
-        private static readonly List<string> _moreLines = new List<string>(), _setFx = new List<string>();
+        private static readonly List<string> _moreLines = new List<string>(), _setFx = new List<string>(), _magicLines = new List<string>();
         private static readonly List<(string k, string v)> _l = new List<(string, string)>(), _r = new List<(string, string)>(), _cmpRows = new List<(string, string)>();
 
         // Valheim's tooltip text -> stat lines by kind; lines we don't know go to more (rich text kept), the set paragraph to setFx
@@ -191,15 +200,25 @@ namespace Jatify.UI
         private static void Fill(ItemDrop.ItemData item, int q, bool crafting)
         {
             var t = _t; Cats(); var p = Player.m_localPlayer; var sh = item.m_shared;
-            string vanilla = _src == null && !string.IsNullOrEmpty(_for.m_text) ? Localization.instance.Localize(_for.m_text) : Localization.instance.Localize(ItemDrop.ItemData.GetTooltip(item, q, crafting, item.m_worldLevel));
+            var epic = Epic.TipData(item, q);   // EpicLoot's magic name, rarity and effects, drawn here rather than parsed from its text
+            string vanilla = _src == null && !string.IsNullOrEmpty(_for.m_text) ? Localization.instance.Localize(_for.m_text)
+                : Localization.instance.Localize((epic != null ? Epic.TextWithout(item, q, crafting) : null) ?? ItemDrop.ItemData.GetTooltip(item, q, crafting, item.m_worldLevel));
             var desc = Localization.instance.Localize(sh.m_description);
             Parse(vanilla, desc, _lines, _moreLines, _setFx);
+            EpicLines(epic);
             // header
             _icon.sprite = item.GetIcon();
             bool qual = sh.m_maxQuality > 1; _badge.gameObject.SetActive(qual);
             if (qual) { _badgeT.text = q.ToString(); float bw = Mathf.Max(18f, Kit.W(_badgeT) + 10f); _badge.At(52 + 6 - bw, -6, bw, 18); }
-            _name.text = Localization.instance.Localize(sh.m_name);
-            var station = Station(item, q); _type.text = station != null ? $"{TypeName(item)} · <color=#{Hex(t.accent)}>{station}</color>" : TypeName(item);
+            bool magic = epic != null && epic.IsMagic && !string.IsNullOrEmpty(epic.DisplayName);
+            var rarity = Epic.Color(epic);   // magic items and rarity materials
+            Color rc = default; bool tint = rarity != null && ColorUtility.TryParseHtmlString(rarity, out rc);
+            _cardLine.color = tint ? new Color(rc.r, rc.g, rc.b, 0.75f) : CardLine; _tileLine.color = tint ? new Color(rc.r, rc.g, rc.b, 0.9f) : TileLine;
+            _glow.gameObject.SetActive(tint); if (tint) _glow.color = rc;
+            var shown = magic ? epic.DisplayName : Localization.instance.Localize(sh.m_name);
+            _name.text = rarity != null ? $"<color={rarity}>{shown}</color>" : shown;
+            var station = Station(item, q); var typeName = magic && !string.IsNullOrEmpty(epic.RarityName) ? $"{(rarity != null ? $"<color={rarity}>{epic.RarityName}</color>" : epic.RarityName)} · {TypeName(item)}" : TypeName(item);
+            _type.text = station != null ? $"{typeName} · <color=#{Hex(t.accent)}>{station}</color>" : typeName;
             float wt = crafting ? item.GetNonStackedWeight() : item.GetWeight();
             var w = $"{wt:0.0} kg"; if (!crafting && item.m_stack > 1) w += $"\n<size=11><color=#{Hex(t.mute)}>{item.m_stack} × {item.GetNonStackedWeight():0.0}</color></size>";
             if (sh.m_value > 0) w += $"\nvalue {sh.m_value}" + (item.m_stack > 1 && !crafting ? $" <color=#{Hex(t.mute)}>· {item.GetValue()}</color>" : "");
@@ -217,6 +236,16 @@ namespace Jatify.UI
             Columns(item, q, crafting, p); _durBar.gameObject.SetActive(_durRowL >= 0 || _durRowR >= 0);
             float lh = Column(_left, _l, Pad, y), rh = Column(_right, _r, Pad + ColW + ColGap, y);
             if (lh > 0f || rh > 0f) y += Mathf.Max(lh, rh) + 10f;
+            // EpicLoot's lines on their card
+            bool mag = _magicLines.Count > 0; _magicCard.gameObject.SetActive(mag);
+            if (mag)
+            {
+                var a = tint ? rc : Theme.C(_t.accent);
+                _magicCard.color = new Color(a.r, a.g, a.b, 0.05f);   // the game blends in linear space: a low alpha already reads strong _magicT.color = new Color(a.r, a.g, a.b, 0.9f);
+                _magic.text = string.Join("\n", _magicLines); float gh = _magic.GetPreferredValues(_magic.text, Inner - 20f, 0f).y;
+                _magicT.rectTransform.At(10, 9, Inner - 20, 14); _magic.rectTransform.At(10, 28, Inner - 20, gh);
+                _magicCard.rectTransform.At(Pad, y, Inner, gh + 38f); y += gh + 38f + 10f;
+            }
             // what Valheim (or another mod) says that we didn't break down
             bool more = _moreLines.Count > 0; _more.gameObject.SetActive(more); _moreT.gameObject.SetActive(more);
             if (more)
@@ -232,6 +261,27 @@ namespace Jatify.UI
             else y -= 10f - 2f;
             float h = y + 12f;
             _card.sizeDelta = new Vector2(W, h); _shadow.At(-16, -16 + 14, W + 32, h + 32);
+        }
+
+        // EpicLoot's enchantments, sockets and sets: their own card (Fill draws it in the rarity colour)
+        private static void EpicLines(Epic.Tip e)
+        {
+            _magicLines.Clear();
+            if (e == null) return;
+            var add = new List<string>();
+            foreach (var fx in e.Effects) if (!string.IsNullOrEmpty(fx.Text)) add.Add(fx.Text);
+            if (e.Sockets != null && e.Sockets.Count > 0)
+            {
+                add.Add($"<color=#{Hex(_t.mute)}>Sockets {e.Sockets.Used} / {e.Sockets.Count}</color>");
+                foreach (var so in e.Sockets.Entries) if (!string.IsNullOrEmpty(so.Text)) add.Add("  " + so.Text);
+            }
+            foreach (var set in e.Sets)
+            {
+                add.Add($"<b>{set.Name}</b> <color=#{Hex(_t.mute)}>({set.Equipped} / {set.Full})</color>");
+                foreach (var b in set.Bonuses) add.Add(b.Active ? $"  ({b.Count}) {b.Text}" : $"  <color=#{Hex(_t.mute)}>({b.Count}) {Tags.Replace(b.Text, "")}</color>");
+            }
+            foreach (var x in e.Extra) if (!string.IsNullOrEmpty(x.Text)) add.Add(x.Text);
+            _magicLines.AddRange(add);
         }
 
         private static float Para(TextMeshProUGUI x, string s, float y)
@@ -405,7 +455,7 @@ namespace Jatify.UI
                 if (bag && item.IsEquipable()) Hint(item.m_equipped ? "Unequip" : "Equip", "RMB");
                 else if (bag && item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Consumable) Hint("Use", "RMB");
                 if (item.m_stack > 1) Hint("Split", "Shift", "LMB");
-                Hint("Lock", "Alt", "LMB");
+                Hint(bag && Azu.Favouriting ? "Favourite" : "Lock", "Alt", "LMB");   // AzuEPI: Alt + click favourites in the bag (chest cells still lock)
                 if (bag) Hint("Delete", "Del");
             }
             for (int i = cap; i < _caps.Count; i++) _caps[i].box.gameObject.SetActive(false);
