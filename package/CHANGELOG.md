@@ -44,10 +44,17 @@ AzuEPI keeps owning the inventory rows and slots; Jatify UI draws them.
 - The achievement tracker's key is a setting now (Keys > Tracker), U by default: Y is EpicLoot's Spirit Animal key.
 - Messages like "It's full" and "Inventory full" show a chest icon instead of a shirt.
 
+### Performance
+
+Measured in a big base with AzuCraftyBoxes and EpicLoot installed.
+
+- Inventory open: from about 10 to about 30 fps (27 chests nearby). The crafting panel no longer recounts chests every frame.
+- Build menu and placement card: from about 12 to about 40 fps (108 chests nearby). Jatify UI's own cost with the menu open went from about 21 ms to 0.3 ms a frame.
+- Stations, chest labels and dialogs no longer search the whole world on a timer.
+- Without EpicLoot installed, two lookups for its parts are no longer retried every frame.
+
 ### Bug fixes
 
-- Much smoother in big bases: with the inventory open the frame rate went from about 10 to about 30 in a base with 27 chests nearby (with AzuCraftyBoxes); the crafting panel no longer recounts chests every frame, and stations, chest labels and dialogs no longer search the whole world on a timer.
-- The build menu and the placement card ran at about 12 fps with AzuCraftyBoxes and many chests nearby (108 in the test base); now about 40. Without EpicLoot installed, two lookups for its parts were retried every frame.
 - With AzuEPI, the equipment slots around the character disappeared while a chest was open.
 - Meads and food on the HUD action bars and quick slots showed 0 instead of their stack.
 - The enchanting table's Upgrade / Sacrifice button flickered between green and orange.
