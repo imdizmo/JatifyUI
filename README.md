@@ -8,10 +8,10 @@ a lot of small conveniences you stop noticing after an hour.
 - **Needs:** BepInEx. Nothing else.
 - **Better with:** [VNEI](https://thunderstore.io/c/valheim/p/MSchmoecker/VNEI/), which fills the Compendium with every
   creature, drop and station recipe in your game, modded ones included.
-- **Works with:** [EpicLoot](https://thunderstore.io/c/valheim/p/RandyKnapp/EpicLoot/) (rarity, enchanting, ring slots and
+- **Works with** (tested versions in brackets): [EpicLoot](https://thunderstore.io/c/valheim/p/RandyKnapp/EpicLoot/) [0.15.2] (rarity, enchanting, ring slots and
   more in Jatify UI's look), [AzuExtendedPlayerInventory](https://thunderstore.io/c/valheim/p/Azumatt/AzuExtendedPlayerInventory/)
-  (its slots, quick slots, vanity, loadouts and stats drawn by Jatify UI) and
-  [AzuCraftyBoxes](https://thunderstore.io/c/valheim/p/Azumatt/AzuCraftyBoxes/) (it pays for crafting from chests; Jatify UI counts
+  [2.6.4] (its slots, quick slots, vanity, loadouts and stats drawn by Jatify UI) and
+  [AzuCraftyBoxes](https://thunderstore.io/c/valheim/p/Azumatt/AzuCraftyBoxes/) [1.8.28] (it pays for crafting from chests; Jatify UI counts
   through it).
 - **Language:** English only for now.
 - **Version:** 0.2.0, made for Valheim 1.0.20.

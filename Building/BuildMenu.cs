@@ -110,6 +110,25 @@ namespace Jatify.UI
         private static readonly List<P> _all = new List<P>();
         private static int _cat = -1, _region = -1; private static string _type, _q = "", _shown; private static bool _avail;
         private static Piece _picked; private static float _nextCheck;
+
+        // favourites (asked for on Nexus): starred pieces, saved on the character, listed in their own tab at the top
+        private const int FavCat = -2; internal const string FavKey = "jatify.piecefavs";
+        private static readonly HashSet<string> _favs = new HashSet<string>(); private static TextMeshProUGUI _favCount; private static int _lastVc = int.MinValue;
+        private static string FavId(Piece p) => Utils.GetPrefabName(p.gameObject);
+        internal static bool IsFav(Piece p) => p != null && _favs.Contains(FavId(p));
+        private static void LoadFavs(Player me)
+        {
+            _favs.Clear();
+            if (me != null && me.m_customData.TryGetValue(FavKey, out var v)) foreach (var x in v.Split(',')) if (x.Length > 0) _favs.Add(x);
+        }
+        internal static void ToggleFav(Piece p)
+        {
+            var me = Player.m_localPlayer; if (me == null || p == null) return;
+            var k = FavId(p); if (!_favs.Remove(k)) _favs.Add(k);
+            if (_favs.Count == 0) me.m_customData.Remove(FavKey); else me.m_customData[FavKey] = string.Join(",", _favs);
+            if (_favCount != null) _favCount.text = _all.Count(x => IsFav(x.Piece)).ToString();
+            _shown = null; Refresh();
+        }
         private static bool _flat;   // Valheim's hammer order, no type headings (kept for the session)
         private static readonly Dictionary<Piece, (Image bg, Image line, CanvasGroup g, RectTransform lockTag)> _tiles = new Dictionary<Piece, (Image, Image, CanvasGroup, RectTransform)>();
         private static Transform _vanillaWindow, _vanillaInfo; private static float _vanillaWindowA = 1f, _vanillaInfoA = 1f;
@@ -127,7 +146,7 @@ namespace Jatify.UI
             if (covered) return;
             // Q / E (vanilla) change the hammer's tab: follow it
             var table = Table(me); int vc = (int)table.GetSelectedCategory();
-            if (_q.Length == 0 && vc != _cat && _catTabs.ContainsKey(vc)) { _cat = vc; _type = null; _region = -1; Refresh(); }
+            if (vc != _lastVc) { bool moved = _lastVc != int.MinValue; _lastVc = vc; if (moved && _q.Length == 0 && vc != _cat && _catTabs.ContainsKey(vc)) { _cat = vc; _type = null; _region = -1; Refresh(); } }   // follows Q / E when pressed, so the Favourites tab stays
             if (Time.unscaledTime >= _nextCheck) { _nextCheck = Time.unscaledTime + 0.5f; Paint(me); }   // what you can build changes as you walk and pick up
         }
 
@@ -174,6 +193,15 @@ namespace Jatify.UI
             _search = Pages.Search(sb, "Search pieces, stations", ColX, 128, ColW, q => { _q = (q ?? "").Trim().ToLowerInvariant(); Refresh(); });
             _cats = Kit.Node(w, "Categories").At(ColX, 174, ColW, H - 174 - Foot);
             var table = Table(me); float y = 0f;
+            LoadFavs(me);
+            {   // Favourites, first
+                var (row, fill) = Kit.Box(_cats, "Cat", Color.clear, Color.clear, 8); row.rectTransform.At(0, y, ColW, 36); row.raycastTarget = true;
+                var ic = Kit.Img(row.rectTransform, "I", Kit.Star(), Theme.C(t.stamina), false); ic.rectTransform.At(12, 10, 16, 16);
+                var tx = Kit.Text(row.rectTransform, "T", "Favourites", Fonts.Medium, 13.5f, Color.white); tx.alignment = TextAlignmentOptions.MidlineLeft; tx.rectTransform.At(42, 0, ColW - 90, 36);
+                _favCount = Kit.Text(row.rectTransform, "N", _all.Count(x => IsFav(x.Piece)).ToString(), Fonts.Mono, 11f, Theme.C(t.mute)); _favCount.alignment = TextAlignmentOptions.MidlineRight; _favCount.rectTransform.At(ColW - 50, 0, 40, 36);
+                row.gameObject.AddComponent<Button>().onClick.AddListener(() => { _cat = FavCat; _type = null; _region = -1; if (_search != null) _search.text = ""; Refresh(); });
+                _catTabs[FavCat] = (row, tx); y += 40f;
+            }
             for (int i = 0; i < table.m_categories.Count; i++)
             {
                 int cat = (int)table.m_categories[i]; var inCat = _all.FindAll(p => p.Cat == cat); if (inCat.Count == 0) continue;
@@ -199,7 +227,7 @@ namespace Jatify.UI
             _detail = Kit.Node(w, "Detail").At(ColX, H - Foot, W - 2 * ColX, Foot);
             // start where the hammer is
             _cat = (int)table.GetSelectedCategory(); if (!_catTabs.ContainsKey(_cat) && _catTabs.Count > 0) foreach (var k in _catTabs.Keys) { _cat = k; break; }
-            _picked = table.GetSelectedPiece();
+            _picked = table.GetSelectedPiece(); _lastVc = (int)table.GetSelectedCategory();
             _avail = false; _type = null; _region = -1; _q = ""; _shown = null;
             Refresh();
         }
@@ -208,7 +236,7 @@ namespace Jatify.UI
         {
             Fade(_vanillaWindow, _vanillaWindowA, ref _vanillaWindowA); Fade(_vanillaInfo, _vanillaInfoA, ref _vanillaInfoA);
             if (_root != null) Object.Destroy(_root.gameObject);
-            _root = null; _hover = null; _tiles.Clear(); _catTabs.Clear(); _all.Clear();
+            _root = null; _hover = null; _tiles.Clear(); _catTabs.Clear(); _all.Clear(); _favCount = null; _lastVc = int.MinValue;
         }
 
         internal static void Destroy() => Close();
@@ -237,7 +265,7 @@ namespace Jatify.UI
         // ---- filters and grid -------------------------------------------------------------------------
         private static List<P> InTab()
         {
-            if (_q.Length == 0) return _all.FindAll(p => p.Cat == _cat);   // Repair (category All) has its own button
+            if (_q.Length == 0) return _cat == FavCat ? _all.FindAll(p => IsFav(p.Piece)) : _all.FindAll(p => p.Cat == _cat);   // Repair (category All) has its own button
             return _all.FindAll(p => (p.Name + " " + (p.Piece.m_craftingStation != null ? Localization.instance.Localize(p.Piece.m_craftingStation.m_name) : "") + " " + Regions[p.Region].name).ToLowerInvariant().Contains(_q));
         }
 
@@ -289,7 +317,7 @@ namespace Jatify.UI
         // icon tiles under a small heading per type (Walls 24, Floors 12...): region dot, comfort, a lock while its station is missing
         private static void Grid(List<P> list, ThemeData t)
         {
-            var key = _cat + "|" + _q + "|" + _region + "|" + _avail + "|" + _flat + "|" + list.Count;
+            var key = _cat + "|" + _q + "|" + _region + "|" + _avail + "|" + _flat + "|" + list.Count + "|" + _favs.Count;
             if (key == _shown) return; _shown = key;
             foreach (Transform c in _grid) Object.Destroy(c.gameObject);
             _tiles.Clear();
@@ -316,14 +344,19 @@ namespace Jatify.UI
                     var lk = Kit.IconImg(line.rectTransform, "lock", Theme.C(t.ember), 12f); lockTag = lk.rectTransform; lockTag.At(Tile - 16, 4, 12, 12);
                 }
                 var piece = p.Piece;
+                // the star, bottom left: shown on favourites and while hovered; a click on it (not the tile) stars or unstars
+                bool fav = IsFav(piece);
+                var fs = Kit.Img(line.rectTransform, "Fav", Kit.Star(), fav ? Theme.C(t.stamina) : new Color(1f, 1f, 1f, 0.55f), false); fs.rectTransform.At(4, Tile - 18, 14, 14); fs.raycastTarget = true;
+                fs.gameObject.AddComponent<Button>().onClick.AddListener(() => ToggleFav(piece)); fs.gameObject.SetActive(fav);
+                var th = line.gameObject.AddComponent<TileHover>(); th.Piece = piece; th.Star = fav ? null : fs.gameObject;
+                line.gameObject.AddComponent<RightPick>().Piece = piece;   // right click: Valheim's quick select (pick and close)
                 line.gameObject.AddComponent<Button>().onClick.AddListener(() => Pick(piece));
-                line.gameObject.AddComponent<TileHover>().Piece = piece;   // hover shows it in the column and the foot
                 _tiles[p.Piece] = (bg, line, g, lockTag);
                 if (++col == cols) { col = 0; y += Tile + Gap; }
             }
             if (col > 0) y += Tile + Gap;
             _grid.sizeDelta = new Vector2(0f, y + 10f);
-            if (list.Count == 0) { var none = Kit.Text(_grid, "None", _avail ? "No piece matches that you can build right now." : "No piece matches.", Fonts.Medium, 14f, Theme.C(t.mute)); none.rectTransform.At(4, 10, 600, 24); }
+            if (list.Count == 0) { var none = Kit.Text(_grid, "None", _cat == FavCat && _q.Length == 0 && !_avail ? "No favourites yet: click the star on a piece (it shows when you point at it) to add it here." : _avail ? "No piece matches that you can build right now." : "No piece matches.", Fonts.Medium, 14f, Theme.C(t.mute)); none.rectTransform.At(4, 10, 700, 24); }
             Paint(Player.m_localPlayer);
         }
 
@@ -341,6 +374,7 @@ namespace Jatify.UI
             }
         }
 
+        internal static void PickPiece(Piece p) => Pick(p);
         private static void Pick(Piece p)
         {
             _picked = p; var me = Player.m_localPlayer;
@@ -361,7 +395,9 @@ namespace Jatify.UI
             var t = _t; var me = Player.m_localPlayer; var piece = p.Piece;
             var (tile, _) = Kit.Box(_picked_tile, "Tile", Theme.C(t.raised), Theme.C(t.line2), 9); tile.rectTransform.At(0, 0, 56, 56);
             var ic = Kit.Img(tile.rectTransform, "I", piece.m_icon, Color.white, false); ic.rectTransform.At(8, 8, 40, 40); ic.preserveAspect = true;
-            var nm = Kit.Text(_picked_tile, "N", p.Name, Fonts.Bold, 14f, Color.white); nm.rectTransform.At(68, 4, ColW - 68, 20); nm.overflowMode = TextOverflowModes.Ellipsis;
+            var nm = Kit.Text(_picked_tile, "N", p.Name, Fonts.Bold, 14f, Color.white); nm.rectTransform.At(68, 4, ColW - 68 - 26, 20); nm.overflowMode = TextOverflowModes.Ellipsis;
+            var star = Kit.Img(_picked_tile, "Fav", Kit.Star(), IsFav(piece) ? Theme.C(t.stamina) : new Color(1f, 1f, 1f, 0.3f), false); star.rectTransform.At(ColW - 20, 6, 16, 16); star.raycastTarget = true;
+            star.gameObject.AddComponent<Button>().onClick.AddListener(() => { ToggleFav(piece); ShowDetail(); });
             var dot = Kit.Img(_picked_tile, "Dot", Kit.Circle(), Regions[p.Region].color, false); dot.rectTransform.At(68, 32, 7, 7);
             var sub = Kit.Text(_picked_tile, "S", $"{Regions[p.Region].name} · {p.Type}" + (piece.m_comfort > 0 ? $" · comfort {piece.m_comfort}" : ""), Fonts.Medium, 11f, Theme.C(t.mute)); sub.rectTransform.At(80, 26, ColW - 80, 18); sub.overflowMode = TextOverflowModes.Ellipsis;
             // foot: costs as have/need chips (red when short), the station, then the keys
@@ -375,8 +411,15 @@ namespace Jatify.UI
             }
             if (piece.m_craftingStation != null) { bool st = StationOk(piece); x += FootChip(piece.m_craftingStation.m_icon, Localization.instance.Localize(piece.m_craftingStation.m_name), st, st ? Theme.C(t.accent) : Theme.C(t.ember), x) + 6f; }
             if (x == 0f) { var free = Kit.Text(_detail, "Free", "No cost", Fonts.Medium, 12.5f, Theme.C(t.mute)); free.rectTransform.At(0, 0, 120, Foot); }
-            var keys = Kit.Node(_detail, "Keys").At(W - 2 * ColX - 230, 0, 230, Foot); float kx = 0f;
-            foreach (var (k, what) in new[] { ("Click", "place"), ("Esc", "close") }) kx += HoverCard.Row(keys, k, what, kx, (Foot - 20f) / 2f, t) + 16f;
+            var keys = Kit.Node(_detail, "Keys").At(W - 2 * ColX - 340, 0, 340, Foot); float kx = 0f;
+            float ky = (Foot - 20f) / 2f;
+            kx += HoverCard.Row(keys, "Click", "place", kx, ky, t) + 16f;
+            {   // the star you click, as it looks on the tiles (a text star drew as nothing in the key font)
+                var st = Kit.Img(keys, "Star", Kit.Star(), Theme.C(t.stamina), false); st.rectTransform.At(kx + 2f, ky + 3f, 15, 15);
+                var wt = Kit.Text(keys, "What", "favourite", Fonts.Medium, 12.5f, Theme.C(t.dim)); wt.alignment = TextAlignmentOptions.MidlineLeft;
+                float ww = Kit.W(wt); wt.rectTransform.At(kx + 25f, ky, ww + 4f, 21); kx += 25f + ww + 16f;
+            }
+            kx += HoverCard.Row(keys, "Esc", "close", kx, ky, t) + 16f;
         }
 
         private static float FootChip(Sprite icon, string text, bool ok, Color color, float x)
@@ -391,10 +434,18 @@ namespace Jatify.UI
         }
     }
 
-    internal class TileHover : MonoBehaviour, UnityEngine.EventSystems.IPointerEnterHandler, UnityEngine.EventSystems.IPointerExitHandler
+    // right click on a piece: Valheim's quick select, pick it and close. On the press, as Valheim does: right mouse also toggles
+    // the build menu, so on release the menu was already gone. (Button only answers the left button.)
+    internal class RightPick : MonoBehaviour, UnityEngine.EventSystems.IPointerDownHandler
     {
         internal Piece Piece;
-        public void OnPointerEnter(UnityEngine.EventSystems.PointerEventData _) => BuildMenu.Hover(Piece, true);
-        public void OnPointerExit(UnityEngine.EventSystems.PointerEventData _) => BuildMenu.Hover(Piece, false);
+        public void OnPointerDown(UnityEngine.EventSystems.PointerEventData e) { if (e.button == UnityEngine.EventSystems.PointerEventData.InputButton.Right) BuildMenu.PickPiece(Piece); }
+    }
+
+    internal class TileHover : MonoBehaviour, UnityEngine.EventSystems.IPointerEnterHandler, UnityEngine.EventSystems.IPointerExitHandler
+    {
+        internal Piece Piece; internal GameObject Star;   // Star: shown only while hovered (a favourite's always shows)
+        public void OnPointerEnter(UnityEngine.EventSystems.PointerEventData _) { if (Star != null) Star.SetActive(true); BuildMenu.Hover(Piece, true); }
+        public void OnPointerExit(UnityEngine.EventSystems.PointerEventData _) { if (Star != null) Star.SetActive(false); BuildMenu.Hover(Piece, false); }
     }
 }
