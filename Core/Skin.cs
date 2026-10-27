@@ -76,7 +76,7 @@ namespace Jatify.UI
             if (sg != null) { if (sg.m_rootPanel != null) Once(sg.m_rootPanel.transform, t); if (sg.m_listElement != null && _done.Add(sg.m_listElement.GetInstanceID())) Skin.Apply(sg.m_listElement.transform, _l, t); }
             if (Chat.instance != null && Chat.instance.m_chatWindow != null) ChatWindow(Chat.instance.m_chatWindow, t);          // chat: glass, our fonts
             if (Console.instance != null && Console.instance.m_chatWindow != null) ConsoleWindow(Console.instance.m_chatWindow, t);
-            var settings = Object.FindFirstObjectByType<Settings>();
+            var settings = Settings.instance;   // a scene-wide search here cost ~5 ms a frame in a big base
             if (settings != null) Once(settings.transform, t);
         }
 

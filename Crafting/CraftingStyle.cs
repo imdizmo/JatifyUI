@@ -155,8 +155,8 @@ namespace Jatify.UI
         internal static void Tick()
         {
             if (_for == null || _t == null || !InventoryGui.IsVisible()) return;
-            _view?.Tick(_for);
-            Pages.Tick();
+            Plugin.Timed("crafting.list", () => _view?.Tick(_for));
+            Plugin.Timed("crafting.pages", Pages.Tick);
             var p = Player.m_localPlayer;
             if (_station != null && p != null)
             {
@@ -201,7 +201,7 @@ namespace Jatify.UI
                 _repair.icon.color = new Color(1f, 1f, 1f, can ? 1f : 0.45f);   // Valheim's own colours, faded when there is nothing to repair
                 _repair.text.color = can ? Color.white : Theme.C(_t.mute);
             }
-            _card?.Tick();
+            Plugin.Timed("crafting.card", () => _card?.Tick());
             foreach (var b in _tabs)
             {
                 if (b == null || !b.gameObject.activeInHierarchy) continue;

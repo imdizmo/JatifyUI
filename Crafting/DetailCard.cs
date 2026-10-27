@@ -201,11 +201,17 @@ namespace Jatify.UI
 
         private static readonly System.Text.StringBuilder Sb = new System.Text.StringBuilder();
 
+        private string _reqSig; private float _reqNext;
         private void Reqs()
         {
             var p = Player.m_localPlayer; var r = Selected();
             int q = 1, mult = 1;
             if (r != null && !_g.InCraftTab()) { var it = SelectedItem(); q = it != null ? it.m_quality + 1 : 1; } else mult = _qty;
+            // counting what chests hold is costly (with AzuCraftyBoxes it asks it for every container in range): on a change of recipe
+            // or amount at once, otherwise once a second, not every frame (measured: ~60 ms a frame in a big base)
+            var sig = (r != null ? r.name : "") + q + "x" + mult;
+            if (sig == _reqSig && Time.unscaledTime < _reqNext) return;
+            _reqSig = sig; _reqNext = Time.unscaledTime + 1f;
             Sb.Clear();
             if (p != null && r != null)
             {

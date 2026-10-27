@@ -192,9 +192,43 @@ namespace Jatify.UI
         private readonly System.Collections.Generic.HashSet<string> _reported = new System.Collections.Generic.HashSet<string>();
         private void Safe(string part, Action a)
         {
+#if JATIFY_DEV
+            long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
             try { a(); }
             catch (Exception e) { if (_reported.Add(part)) Log.Error($"{part} failed (reported once): {e}"); }
+#if JATIFY_DEV
+            Cost(part, System.Diagnostics.Stopwatch.GetTimestamp() - t0);
+#endif
         }
+
+        // a part inside a part, timed on its own in dev builds (release: just runs it)
+        internal static void Timed(string part, Action a)
+        {
+#if JATIFY_DEV
+            long t0 = System.Diagnostics.Stopwatch.GetTimestamp(); a(); Cost(part, System.Diagnostics.Stopwatch.GetTimestamp() - t0);
+#else
+            a();
+#endif
+        }
+
+#if JATIFY_DEV
+        // dev builds: what each part costs per frame, the 8 dearest logged every 5 s with the frame rate (lag hunts)
+        private static readonly System.Collections.Generic.Dictionary<string, long> _cost = new System.Collections.Generic.Dictionary<string, long>();
+        private static int _costFrame, _costFrames; private static float _costAt;
+        private static void Cost(string part, long ticks)
+        {
+            _cost.TryGetValue(part, out var c); _cost[part] = c + ticks;
+            if (Time.frameCount != _costFrame) { _costFrame = Time.frameCount; _costFrames++; }
+            if (Time.unscaledTime < _costAt) return;
+            if (_costAt > 0f && _costFrames > 0)
+            {
+                double ms = 1000.0 / System.Diagnostics.Stopwatch.Frequency / _costFrames; long all = 0; foreach (var v in _cost.Values) all += v;
+                Log.Info($"cost: {_costFrames / 5f:0} fps, Jatify UI {all * ms:0.00} ms/frame; " + string.Join(", ", _cost.OrderByDescending(kv => kv.Value).Take(8).Select(kv => $"{kv.Key} {kv.Value * ms:0.00}")) + $" (inventory {(InventoryGui.IsVisible() ? "open" : "closed")})");
+            }
+            _cost.Clear(); _costFrames = 0; _costAt = Time.unscaledTime + 5f;
+        }
+#endif
 
         private void Teardown()
         {

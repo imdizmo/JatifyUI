@@ -121,6 +121,7 @@ namespace Jatify.UI
         private static float _scanAt; private static Material _mat;
         private const float Reach = 30f;
 
+        private static readonly List<Piece> _near = new List<Piece>();
         internal static void TickWorld()
         {
             var p = Player.m_localPlayer; var cam = GameCamera.instance;
@@ -129,8 +130,10 @@ namespace Jatify.UI
             {   // once a second: which chests near you are assigned
                 _scanAt = Time.time + 1f;
                 var seen = new HashSet<Container>();
-                foreach (var c in Object.FindObjectsByType<Container>(FindObjectsSortMode.None))
+                _near.Clear(); Piece.GetAllPiecesInRadius(p.transform.position, Reach, _near);   // built pieces within reach (chests are), not a scene-wide search (~1.4 ms a frame in a big base)
+                foreach (var piece in _near)
                 {
+                    var c = piece != null ? piece.GetComponentInChildren<Container>() : null;
                     if (c == null || c.GetComponent<TombStone>() != null || (c.transform.position - p.transform.position).sqrMagnitude > Reach * Reach) continue;
                     var only = Of(c); if (only.Length == 0) continue;
                     seen.Add(c);

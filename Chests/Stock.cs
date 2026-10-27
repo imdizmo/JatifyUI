@@ -29,7 +29,7 @@ namespace Jatify.UI
         // AzuCraftyBoxes pays: the panel counts through its API, so its range, per-chest exclusions, item rules, pull mode (all /
         // mine / nothing) and its containers (drawers, backpacks) all apply. If the API is gone, the bag only (logged once).
         private static System.Reflection.MethodInfo _nearby, _count, _canPull, _prefabName, _prevent; private static bool _apiLooked, _apiBad;
-        private static int _nearbyFrame = -1; private static System.Collections.IList _nearbyList;
+        private static int _nearbyFrame = -1; private static System.Collections.IList _nearbyList; private static float _saidAt;
         private static readonly Dictionary<string, string> _prefabOf = new Dictionary<string, string>();
         private static int OtherCount(Player p, string name)
         {
@@ -53,16 +53,22 @@ namespace Jatify.UI
                     _nearbyFrame = Time.frameCount;
                     var range = AccessTools.Field(AccessTools.TypeByName("AzuCraftyBoxes.AzuCraftyBoxesPlugin"), "mRange")?.GetValue(null) as BepInEx.Configuration.ConfigEntryBase;
                     float r = range != null ? Convert.ToSingle(range.BoxedValue) : Cfg.StackRange.Value;
-                    _nearbyList = _nearby.Invoke(null, new object[] { p, r }) as System.Collections.IList;
+                    Plugin.Timed("azu.nearby", () => _nearbyList = _nearby.Invoke(null, new object[] { p, r }) as System.Collections.IList);
                 }
                 if (_nearbyList == null || _nearbyList.Count == 0) return 0;
                 string prefab = PrefabOf(name); int n = 0;
-                foreach (var c in _nearbyList)
+                Plugin.Timed("azu.count", () =>
                 {
-                    if (c == null) continue;
-                    if (_canPull != null && _prefabName != null && prefab != null && !(bool)_canPull.Invoke(null, new object[] { (string)_prefabName.Invoke(c, null), prefab })) continue;
-                    n += (int)_count.Invoke(null, new object[] { c, name });
-                }
+                    foreach (var c in _nearbyList)
+                    {
+                        if (c == null) continue;
+                        if (_canPull != null && _prefabName != null && prefab != null && !(bool)_canPull.Invoke(null, new object[] { (string)_prefabName.Invoke(c, null), prefab })) continue;
+                        n += (int)_count.Invoke(null, new object[] { c, name });
+                    }
+                });
+#if JATIFY_DEV
+                if (Time.unscaledTime >= _saidAt) { _saidAt = Time.unscaledTime + 5f; Log.Info($"cost: AzuCraftyBoxes sees {_nearbyList.Count} containers in range"); }
+#endif
                 return n;
             }
             catch (Exception e) { _apiBad = true; Log.Warn($"AzuCraftyBoxes: counting its chests failed ({e.GetType().Name}), the crafting panel counts the bag only (it still takes from chests)"); return 0; }

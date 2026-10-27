@@ -157,6 +157,9 @@ namespace Jatify.UI
             return false;
         }
 
+        private static readonly AccessTools.FieldRef<List<Piece>> AllPiecesRef = AccessTools.StaticFieldRefAccess<List<Piece>>(AccessTools.Field(typeof(Piece), "s_allPieces"));
+        private static List<Piece> AllPieces() => AllPiecesRef() ?? new List<Piece>();
+
         // ---- feeding -------------------------------------------------------------------------------------
         internal static void Tick()
         {
@@ -167,10 +170,16 @@ namespace Jatify.UI
             if (Time.time - _scanAt > 4f)
             {
                 _scanAt = Time.time; _smelters.Clear(); _fires.Clear(); _ovens.Clear(); _others.Clear();
-                _smelters.AddRange(Object.FindObjectsByType<Smelter>(FindObjectsSortMode.None));
-                _fires.AddRange(Object.FindObjectsByType<Fireplace>(FindObjectsSortMode.None));
-                _ovens.AddRange(Object.FindObjectsByType<CookingStation>(FindObjectsSortMode.None).Where(o => o.m_useFuel && o.m_fuelItem != null));
-                _others.AddRange(Object.FindObjectsByType<ShieldGenerator>(FindObjectsSortMode.None)); _others.AddRange(Object.FindObjectsByType<Turret>(FindObjectsSortMode.None)); _others.AddRange(Object.FindObjectsByType<Fermenter>(FindObjectsSortMode.None));
+                foreach (var piece in AllPieces())   // built pieces only (all stations are): Valheim's own list, not a scene-wide search (that cost ~2 ms a frame in a big base)
+                {
+                    if (piece == null) continue;
+                    if (piece.TryGetComponent<Smelter>(out var sm)) _smelters.Add(sm);
+                    if (piece.TryGetComponent<Fireplace>(out var fp)) _fires.Add(fp);
+                    if (piece.TryGetComponent<CookingStation>(out var cs) && cs.m_useFuel && cs.m_fuelItem != null) _ovens.Add(cs);
+                    if (piece.TryGetComponent<ShieldGenerator>(out var sg)) _others.Add(sg);
+                    if (piece.TryGetComponent<Turret>(out var tu)) _others.Add(tu);
+                    if (piece.TryGetComponent<Fermenter>(out var fe)) _others.Add(fe);
+                }
                 // the Automation page's list follows what the loaded stations say (switched elsewhere, or before the list existed)
                 var known = new HashSet<ZDOID>(Automation.List(p).Select(e => e.Id)); long mine = p.GetPlayerID();
                 foreach (var st in _smelters.Cast<Component>().Concat(_fires).Concat(_ovens).Concat(_others))
