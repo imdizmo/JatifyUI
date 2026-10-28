@@ -1,7 +1,8 @@
 // ServerSync v1.20 by blaxxun (github.com/blaxxun-boop/ServerSync, MIT-0, LICENSE.txt here), built into Jatify UI. Changes (marked "Jatify:"):
 // its top-level types made internal (as its ILRepack setup would); a player's game takes settings only from the server; a server
 // never takes Internal entries (lockexempt, serverversion) from players; fragments, cache keys and decompressed size are capped; a
-// value is read only as the type its setting expects (unknown settings: plain types only), never as a type the sender names.
+// value is read only as the type its setting expects (unknown settings: plain types only), never as a type the sender names; leaving
+// a server writes the player's own values back to the file (an admin's held the server's until the next save).
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -650,6 +651,7 @@ internal class ConfigSync
 		if (configFile is not null)
 		{
 			configFile.SaveOnConfigSet = originalSaveOnConfigSet;
+			configFile.Save(); // Jatify: an admin's file held the server's values (it isn't shielded): their own go back into it now
 		}
 
 		foreach (CustomSyncedValueBase config in allCustomValues.Where(config => config.LocalBaseValue != null))
