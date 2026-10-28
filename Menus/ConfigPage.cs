@@ -145,7 +145,8 @@ namespace Jatify.UI
             }
             if (server)
             {   // the server's value, not an editor (a change here would only be local, and wrong)
-                var v = Kit.Text(_content, "Server", e.BoxedValue?.ToString() ?? "", Fonts.Mono, 14f, Theme.C(_t.dim)); v.alignment = TextAlignmentOptions.MidlineRight; v.rectTransform.At(470, y + (h - 32f) / 2f, 220, 32);
+                var shown = e.BoxedValue is bool b ? (b ? "On" : "Off") : e.BoxedValue?.ToString() ?? "";
+                var v = Kit.Text(_content, "Server", shown, Fonts.Mono, 14f, Theme.C(_t.dim)); v.alignment = TextAlignmentOptions.MidlineRight; v.rectTransform.At(800 - 220, y + (h - 32f) / 2f, 220, 32);   // right-aligned with the switches
             }
             else Editor(e, y + (h - 32f) / 2f);
             return y + h + 4f;
