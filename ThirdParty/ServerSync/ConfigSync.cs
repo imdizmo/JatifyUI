@@ -1,4 +1,7 @@
-// ServerSync v1.20 by blaxxun (github.com/blaxxun-boop/ServerSync, MIT-0, LICENSE.txt here), built into Jatify UI: its top-level types made internal (as its ILRepack setup would), otherwise unchanged.
+// ServerSync v1.20 by blaxxun (github.com/blaxxun-boop/ServerSync, MIT-0, LICENSE.txt here), built into Jatify UI. Changes (marked "Jatify:"):
+// its top-level types made internal (as its ILRepack setup would); a player's game takes settings only from the server; a server
+// never takes Internal entries (lockexempt, serverversion) from players; fragments, cache keys and decompressed size are capped; a
+// value is read only as the type its setting expects (unknown settings: plain types only), never as a type the sender names.
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -339,7 +342,15 @@ internal class ConfigSync
 		}
 	}
 
-	private void RPC_FromOtherClientConfigSync(long sender, ZPackage package) => HandleConfigSyncRPC(sender, package, true);
+	private void RPC_FromOtherClientConfigSync(long sender, ZPackage package)
+	{
+		// Jatify: a player's game takes settings only from the server (another player could otherwise set ours)
+		if (!isServer && ZNet.instance?.GetServerPeer()?.m_uid != sender)
+		{
+			return;
+		}
+		HandleConfigSyncRPC(sender, package, true);
+	}
 
 	private bool HandleConfigSyncRPC(long sender, ZPackage package, bool clientUpdate)
 	{
@@ -383,7 +394,13 @@ internal class ConfigSync
 				int fragment = package.ReadInt();
 				int fragments = package.ReadInt();
 
-				dataFragments.Add(fragment, package.ReadByteArray());
+				// Jatify: bounded reassembly (a settings sync is a few kB; 8 slices of 250 kB is plenty), at most 16 in flight
+				if (fragments < 1 || fragments > 8 || fragment < 0 || fragment >= fragments || dataFragments.ContainsKey(fragment) || configValueCache.Count > 16)
+				{
+					configValueCache.Remove(cacheKey);
+					return false;
+				}
+				dataFragments[fragment] = package.ReadByteArray();
 
 				if (dataFragments.Count < fragments)
 				{
@@ -406,7 +423,18 @@ internal class ConfigSync
 				MemoryStream output = new();
 				using (DeflateStream deflateStream = new(input, CompressionMode.Decompress))
 				{
-					deflateStream.CopyTo(output);
+					// Jatify: at most 4 MB out, whatever the package claims
+					byte[] buffer = new byte[81920];
+					int read;
+					while ((read = deflateStream.Read(buffer, 0, buffer.Length)) > 0)
+					{
+						if (output.Length + read > 4 * 1024 * 1024)
+						{
+							Debug.LogWarning($"Config package for mod {DisplayName ?? Name} decompresses past 4 MB: ignored");
+							return false;
+						}
+						output.Write(buffer, 0, read);
+					}
 				}
 
 				package = new ZPackage(output.ToArray());
@@ -488,7 +516,16 @@ internal class ConfigSync
 			string configName = package.ReadString();
 			string typeName = package.ReadString();
 
-			Type? type = Type.GetType(typeName);
+			// Jatify: the type to read comes from the setting, never from the sender (it could name any type to build); a setting
+			// we don't know (a newer server) is read only when it names a plain type
+			Type? expected = groupName == "Internal"
+				? configName == "serverversion" ? typeof(string) : configName == "lockexempt" ? typeof(bool) : customValueMap.TryGetValue(configName, out CustomSyncedValueBase cv) ? cv.Type : null
+				: configMap.TryGetValue(groupName + "_" + configName, out OwnConfigEntryBase ce) ? configType(ce.BaseConfig) : null;
+			Type? type = expected != null ? (typeName == GetZPackageTypeString(expected) ? expected : null) : Type.GetType(typeName);
+			if (expected == null && type != null && !(type.IsPrimitive || type.IsEnum || type == typeof(string)))
+			{
+				type = null;
+			}
 			if (typeName == "" || type != null)
 			{
 				object? value;
@@ -500,6 +537,10 @@ internal class ConfigSync
 				{
 					Debug.LogWarning($"Got unexpected struct internal type {e.received} for field {e.field} struct {typeName} for {configName} in section {groupName} for mod {DisplayName ?? Name}, expecting {e.expected}");
 					continue;
+				}
+				if (groupName == "Internal" && isServer)
+				{
+					continue; // Jatify: a server takes no Internal entries from players (lockexempt would unlock it)
 				}
 				if (groupName == "Internal")
 				{
