@@ -14,7 +14,7 @@ a lot of small conveniences you stop noticing after an hour.
   [AzuCraftyBoxes](https://thunderstore.io/c/valheim/p/Azumatt/AzuCraftyBoxes/) [1.8.28] (it pays for crafting from chests; Jatify UI counts
   through it).
 - **Language:** English only for now.
-- **Version:** 0.2.0, made for Valheim 1.0.20.
+- **Version:** 0.2.1, made for Valheim 1.0.20.
 - **Controls:** mouse and keyboard; there's no gamepad support yet.
 
 Most parts can be switched off on their own, and taking the mod out keeps your character and items (see *Taking it
@@ -339,7 +339,12 @@ slots 4–6, `Merge`, `Sort` and the chest buttons are free to bind.
       What they make waits on the station until someone running Jatify comes by.
     - It answers each player's Automation tab with all their stations, not just the ones loaded around them.
 - **When you host**, your game is the server, so that already works.
-- **No server rules:** every setting is the player's own; a server can't switch features on or off for its players.
+- **Server settings:** a server running Jatify hands its gameplay settings to the players who join (Automation, chest
+  range, crafting and building from chests, coin weight, ore and dungeon detection). Each player's own come back when
+  they leave; looks and keys are always the player's own.
+    - **Server > LockConfiguration** (on): only the server's admins (Valheim's `adminlist.txt`) change them in game.
+      Off: anyone on the server can. The settings page shows the server's value on those rows.
+    - A server without Jatify changes nothing, and nobody is turned away for not having it.
 - **Item chests and locked chest slots** are saved on the chest itself, so every player running Jatify sees and keeps
   to them.
 
@@ -349,6 +354,8 @@ slots 4–6, `Merge`, `Sort` and the chest buttons are free to bind.
 
 - **VNEI:** read by the Compendium. VNEI's own button by the crafting tabs is hidden, since the Compendium replaces it.
     - VNEI's favourites and the Compendium's marks are the same list.
+- **Valheim Enchantment System:** its enchant button sits beside Repair in Jatify's look, and item tooltips and the
+  crafting details show the scrolls an item takes, with how many you have.
 - **Campfire:** built in as the character screen. If the standalone Campfire mod is installed, Jatify leaves the
   character screen, the party at the fire and the loading screen to it.
 - **Mods by the same author** (MapTeleport, AdminHammer, BuffMeDaddy) use Jatify's fonts and theme colours when it's
@@ -396,7 +403,11 @@ Without the mod:
 
 ## Changes
 
-**0.1.0:** first release.
+- **0.2.1:** Valheim Enchantment System support, server settings for everyone on a server, an A to Z skill order.
+- **0.2.0:** EpicLoot, AzuExtendedPlayerInventory and AzuCraftyBoxes support, a faster build menu, fixes.
+- **0.1.0:** first release.
+
+The full notes are in the changelog (Thunderstore's Changelog tab, or `CHANGELOG.md` in the download).
 
 ---
 
@@ -405,6 +416,7 @@ Without the mod:
 - **Fonts:** Space Grotesk and JetBrains Mono, both under the SIL Open Font License; Valheim's own Norse and Averia fonts
   for titles and lore.
 - **Icons:** [Phosphor Icons](https://phosphoricons.com) (MIT), redrawn where needed.
+- **Server settings:** [ServerSync](https://github.com/blaxxun-boop/ServerSync) by blaxxun (MIT-0), built in.
 - **Loading art:** Iron Gate's Valheim press kit.
 - **Knotwork:** drawn for Jatify.
 - **Code:** written together with Claude (Anthropic's AI), which shows up as a co-author in the commit history.

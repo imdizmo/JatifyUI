@@ -1,3 +1,33 @@
+## 0.2.1
+
+Tested with Valheim Enchantment System 1.9.18 (sighsorry) and on a Valheim dedicated server.
+
+### Mod support
+
+#### Valheim Enchantment System
+
+- Its enchant button sits beside Repair in the crafting window, in Jatify UI's look (in Repair's place without a station); the wooden tile it left behind Craft / Upgrade is gone.
+- Item tooltips and the crafting details show the scrolls that enchant an item, normal and blessed, with their icons and how many you have, instead of the "Can be enchanted with" line.
+- Hovering the scroll in its enchant window shows the scroll's tooltip.
+- Its info list scrolls at the same speed as Jatify UI's lists.
+
+Reported by Lucare on Discord ([#5](https://github.com/imdizmo/JatifyUI/issues/5)).
+
+### Servers
+
+- A server running Jatify UI (dedicated, or you hosting) now hands its gameplay settings to the players who join: Automation (stations on Auto, area pickup), chest range, crafting and building from chests, coin weight, and ore and dungeon detection. Each player's own settings come back when they leave. Looks and keys stay each player's own ([#4](https://github.com/imdizmo/JatifyUI/issues/4)).
+- The new Server > LockConfiguration (on by default) lets only the server's admins change those settings in game; off, anyone on the server can. On the settings page a synced setting shows the server's value instead of its control.
+- Nobody is turned away for not having Jatify UI, and a server without it changes nothing.
+
+### Improvements
+
+- Skills tab: an A to Z order on the sort button, by the names as shown in your language (suggested by omegabattle on Discord, [#12](https://github.com/imdizmo/JatifyUI/issues/12)).
+
+### Bug fixes
+
+- Character screen: favourite crossplay servers show their names instead of their join ID (reported on Nexus).
+- Quitting the game no longer logs an error from the character screen.
+
 ## 0.2.0
 
 Tested with EpicLoot 0.15.2, AzuExtendedPlayerInventory 2.6.4 and AzuCraftyBoxes 1.8.28.

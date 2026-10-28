@@ -1,6 +1,6 @@
 {
   "name": "JatifyUI",
-  "version_number": "0.2.0",
+  "version_number": "0.2.1",
   "website_url": "https://github.com/imdizmo/JatifyUI",
   "description": "A new interface for all of Valheim: dark glass, Norse lettering and Celtic knotwork on every window, plus a Compendium, smarter chests, stations on Auto, map pins and more. Most parts can be switched off.",
   "dependencies": [
