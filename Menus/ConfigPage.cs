@@ -133,7 +133,8 @@ namespace Jatify.UI
         private float Row(ConfigEntryBase e, float y)
         {
             var desc = e.Description?.Description ?? "";
-            var note = Inert(e); if (note != null) desc = $"<color=#{ColorUtility.ToHtmlStringRGB(Theme.C(_t.stamina))}>{note}</color>" + (desc.Length > 0 ? "\n" + desc : "");
+            bool server = Sync.ReadOnly(e);
+            var note = server ? "Set by the server while you're on it. Your own value comes back when you leave." : Inert(e); if (note != null) desc = $"<color=#{ColorUtility.ToHtmlStringRGB(Theme.C(_t.stamina))}>{note}</color>" + (desc.Length > 0 ? "\n" + desc : "");
             float h = 44f;
             var label = Kit.Text(_content, "Label", Nice(e.Definition.Key), Fonts.Medium, 16f, Color.white); label.rectTransform.At(0, y + 6, 470, 22);
             if (desc.Length > 0)
@@ -142,7 +143,12 @@ namespace Jatify.UI
                 float dh = Mathf.Ceil(d.GetPreferredValues(desc, 440f, 0f).y);
                 d.rectTransform.At(0, y + 28, 440, dh); h = 28f + dh + 12f;
             }
-            Editor(e, y + (h - 32f) / 2f);
+            if (server)
+            {   // the server's value, not an editor (a change here would only be local, and wrong)
+                var shown = e.BoxedValue is bool b ? (b ? "On" : "Off") : e.BoxedValue?.ToString() ?? "";
+                var v = Kit.Text(_content, "Server", shown, Fonts.Mono, 14f, Theme.C(_t.dim)); v.alignment = TextAlignmentOptions.MidlineRight; v.rectTransform.At(800 - 220, y + (h - 32f) / 2f, 220, 32);   // right-aligned with the switches
+            }
+            else Editor(e, y + (h - 32f) / 2f);
             return y + h + 4f;
         }
 

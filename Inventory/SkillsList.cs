@@ -7,7 +7,7 @@ using UnityEngine.UI;
 namespace Jatify.UI
 {
     // The Skills tab of the equipment column (design): every skill with icon, name, level and a bar for
-    // progress to the next level; a button cycles the order: game order, highest first, lowest first.
+    // progress to the next level; a button cycles the order: game order, highest first, lowest first, A to Z.
     // Names and progress as Valheim keeps them ($skill_<type>, GetLevelPercentage).
     internal sealed class SkillsList
     {
@@ -15,7 +15,7 @@ namespace Jatify.UI
         private readonly ThemeData _t;
         private readonly TextMeshProUGUI _sortT;
         private int _sort; private string _key;
-        private static readonly string[] SortNames = { "Game order", "Highest", "Lowest" };
+        private static readonly string[] SortNames = { "Game order", "Highest", "Lowest", "A to Z" };
 
         internal SkillsList(RectTransform parent, ThemeData t)
         {
@@ -23,7 +23,7 @@ namespace Jatify.UI
             _root = Kit.Node(parent, "Skills").At(0, 76, 240, 344);
             var (sb, sf) = Kit.Box(parent, "SkillSort", Theme.C(t.raised), Theme.C(t.glassLine), 8); sb.rectTransform.At(150, 44, 90, 26);
             _sortT = Kit.Text(sb.rectTransform, "T", SortNames[0], Fonts.Medium, 11.5f, Theme.C(t.dim)); _sortT.alignment = TextAlignmentOptions.Center; _sortT.rectTransform.Fill();
-            sb.raycastTarget = true; sb.gameObject.AddComponent<Button>().onClick.AddListener(() => { _sort = (_sort + 1) % 3; _sortT.text = SortNames[_sort]; _key = null; });
+            sb.raycastTarget = true; sb.gameObject.AddComponent<Button>().onClick.AddListener(() => { _sort = (_sort + 1) % SortNames.Length; _sortT.text = SortNames[_sort]; _key = null; });
             _sortBtn = sb.gameObject;
             var hit = _root.gameObject.AddComponent<Image>(); hit.color = new Color(0, 0, 0, 0);
             _root.gameObject.AddComponent<RectMask2D>();
@@ -40,7 +40,9 @@ namespace Jatify.UI
             if (_root.gameObject.activeSelf != on) { _root.gameObject.SetActive(on); _sortBtn.SetActive(on); }
             if (!on || p == null) return;
             var list = p.GetSkills().GetSkillList();
-            IEnumerable<Skills.Skill> order = _sort == 1 ? list.OrderByDescending(s => s.m_level) : _sort == 2 ? list.OrderBy(s => s.m_level) : (IEnumerable<Skills.Skill>)list;
+            IEnumerable<Skills.Skill> order = _sort == 1 ? list.OrderByDescending(s => s.m_level) : _sort == 2 ? list.OrderBy(s => s.m_level)
+                : _sort == 3 ? list.OrderBy(s => Localization.instance.Localize("$skill_" + s.m_info.m_skill.ToString().ToLower()), System.StringComparer.CurrentCultureIgnoreCase)   // by the names shown, in the game's language
+                : (IEnumerable<Skills.Skill>)list;
             var rows = order.ToList();
             var key = _sort + "|" + string.Join(",", rows.Select(s => s.m_info.m_skill + ":" + Mathf.FloorToInt(s.m_level) + ":" + Mathf.RoundToInt(s.GetLevelPercentage() * 100f)));
             if (key == _key) return;
