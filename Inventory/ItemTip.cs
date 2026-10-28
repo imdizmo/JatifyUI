@@ -123,12 +123,25 @@ namespace Jatify.UI
             _magicCard = Kit.Panel(c, "MagicCard", Color.clear, 8); _magicCard.raycastTarget = false;   // EpicLoot's enchantments, sockets and sets: a card in the rarity colour
             _magicT = Kit.Text(_magicCard.rectTransform, "Label", "ENCHANTMENTS", Fonts.Mono, 10.5f, Theme.C(t.mute)); _magicT.characterSpacing = 8f;
             _magic = Kit.Text(_magicCard.rectTransform, "Lines", "", Fonts.Medium, 12.5f, Theme.C(t.text)); _magic.richText = true; _magic.textWrappingMode = TextWrappingModes.Normal; _magic.lineSpacing = 4f;
+            // Valheim Enchantment System: the scrolls that enchant this item, as tiles (its "Can be enchanted with" line, drawn)
+            _scrollCard = Kit.Panel(c, "ScrollCard", Color.clear, 8); _scrollCard.raycastTarget = false;
+            var sl = Kit.Text(_scrollCard.rectTransform, "Label", "ENCHANT WITH", Fonts.Mono, 10.5f, Theme.C(t.mute)); sl.characterSpacing = 8f; sl.rectTransform.At(10, 9, Inner - 20, 14);
+            for (int i = 0; i < 2; i++)
+            {
+                var (chip, _) = Kit.Box(_scrollCard.rectTransform, "Scroll", Theme.C(t.raised), Theme.C(t.glassLine), 8); chip.rectTransform.At(10 + i * (ScrollW + 8f), 28, ScrollW, 42);
+                var ic = Kit.Img(chip.rectTransform, "I", null, Color.white, false); ic.rectTransform.At(8, 8, 26, 26); ic.preserveAspect = true;
+                var nm = Kit.Text(chip.rectTransform, "N", "", Fonts.Medium, 13f, Theme.C(t.text)); nm.rectTransform.At(42, 4, ScrollW - 48, 18); nm.overflowMode = TextOverflowModes.Ellipsis;
+                var hv = Kit.Text(chip.rectTransform, "H", "", Fonts.Mono, 11.5f, Theme.C(t.mute)); hv.rectTransform.At(42, 22, ScrollW - 48, 16);
+                _scrollTiles[i] = (chip.rectTransform, ic, nm, hv);
+            }
             _more = Kit.Text(c, "More", "", Fonts.Medium, 12.5f, Theme.C(t.dim)); _more.richText = true; _more.textWrappingMode = TextWrappingModes.Normal; _more.lineSpacing = 4f;
             _keys = Kit.Node(c, "Keys");
             var kl = Kit.Img(_keys, "Line", null, new Color(1f, 1f, 1f, 0.08f)); kl.rectTransform.anchorMin = new Vector2(0f, 1f); kl.rectTransform.anchorMax = Vector2.one; kl.rectTransform.pivot = new Vector2(0.5f, 1f); kl.rectTransform.sizeDelta = new Vector2(0f, 1f); kl.rectTransform.anchoredPosition = Vector2.zero;
             _root.gameObject.SetActive(false);
         }
         private static RectTransform _shadow;
+        private const float ScrollW = (Inner - 20f - 8f) / 2f;
+        private static Image _scrollCard; private static readonly (RectTransform box, Image icon, TextMeshProUGUI name, TextMeshProUGUI have)[] _scrollTiles = new (RectTransform, Image, TextMeshProUGUI, TextMeshProUGUI)[2];
         private static Image _cardLine, _tileLine, _glow;   // rarity (EpicLoot): border, icon tile edge, a wash down from the top
         private static readonly Color CardLine = new Color(1f, 1f, 1f, 0.14f), TileLine = new Color(1f, 1f, 1f, 0.1f);
 
@@ -206,6 +219,9 @@ namespace Jatify.UI
             var desc = Localization.instance.Localize(sh.m_description);
             Parse(vanilla, desc, _lines, _moreLines, _setFx);
             EpicLines(epic);
+            // its "Can be enchanted with" line goes when we draw its scrolls (a maxed-out item keeps its own line)
+            var scrolls = Ves.Scrolls(item); var phrase = scrolls.Count > 0 ? Ves.Phrase : null;
+            if (phrase == null || _moreLines.RemoveAll(x => Tags.Replace(x, "").Contains(phrase)) == 0) scrolls.Clear();
             // header
             _icon.sprite = item.GetIcon();
             bool qual = sh.m_maxQuality > 1; _badge.gameObject.SetActive(qual);
@@ -245,6 +261,19 @@ namespace Jatify.UI
                 _magic.text = string.Join("\n", _magicLines); float gh = _magic.GetPreferredValues(_magic.text, Inner - 20f, 0f).y;
                 _magicT.rectTransform.At(10, 9, Inner - 20, 14); _magic.rectTransform.At(10, 28, Inner - 20, gh);
                 _magicCard.rectTransform.At(Pad, y, Inner, gh + 38f); y += gh + 38f + 10f;
+            }
+            bool scr = scrolls.Count > 0; _scrollCard.gameObject.SetActive(scr);
+            if (scr)
+            {
+                var a = Theme.C(_t.accent); _scrollCard.color = new Color(a.r, a.g, a.b, 0.05f);
+                for (int i = 0; i < 2; i++)
+                {
+                    var tl = _scrollTiles[i]; bool on = i < scrolls.Count; tl.box.gameObject.SetActive(on); if (!on) continue;
+                    var d = scrolls[i].GetComponent<ItemDrop>().m_itemData; int have = Ves.Count(scrolls[i]);
+                    tl.icon.sprite = d.GetIcon(); tl.name.text = Localization.instance.Localize(d.m_shared.m_name);
+                    tl.have.text = $"have {have}"; tl.have.color = have > 0 ? Theme.C(_t.mute) : Theme.SoftEmber(_t);
+                }
+                _scrollCard.rectTransform.At(Pad, y, Inner, 80f); y += 80f + 10f;
             }
             // what Valheim (or another mod) says that we didn't break down
             bool more = _moreLines.Count > 0; _more.gameObject.SetActive(more); _moreT.gameObject.SetActive(more);

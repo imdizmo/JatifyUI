@@ -19,6 +19,7 @@ namespace Jatify.UI
         private static Image _craftFace; private static TextMeshProUGUI _craftText;
         private static GuiBar _progress; private static float _progressW;
         private static (Image line, Image fill, Image icon, TextMeshProUGUI text) _repair;
+        private static Image _enchant;   // Valheim Enchantment System's button, when installed
         private static TextMeshProUGUI _station; private static RectTransform _knotL, _knotR; private static Image _stationIcon; private static RectTransform _stationChip; private static TMP_Text _topic; private static string _titleShown; private static GameObject _upLocked;
         private static CraftingStation _stationShown; private static int _levelShown = -1; private static bool _stationInit;
         private static DetailCard _card;
@@ -137,18 +138,39 @@ namespace Jatify.UI
             if (g.m_repairButtonGlow != null) _l.Off(g.m_repairButtonGlow);
             if (g.m_repairButton != null)
             {
-                var rb = g.m_repairButton; var rbt = (RectTransform)rb.transform; var parent0 = rbt.parent;
-                _l.Do(() => rbt.SetParent(c, false), () => { if (rbt != null && parent0 != null) rbt.SetParent(parent0, false); });
-                _l.Rect(rbt, r => { r.anchorMin = r.anchorMax = r.pivot = new Vector2(1f, 1f); r.anchoredPosition = new Vector2(-4f, -46f); r.sizeDelta = new Vector2(100f, 30f); });
+                var rb = g.m_repairButton; var parent0 = rb.transform.parent;
                 Sprite vanillaIcon = null;   // Valheim's repair hammer, reused small (user)
                 foreach (var im in rb.GetComponentsInChildren<Image>(true)) if (im.sprite != null && im != g.m_repairButtonGlow) { vanillaIcon = im.sprite; if (im.sprite.name.Contains("repair") || im.sprite.name.Contains("hammer")) break; }
-                foreach (var gr in rb.GetComponentsInChildren<Graphic>(true)) _l.Off(gr);
-                var tr0 = rb.transition; _l.Do(() => rb.transition = Selectable.Transition.None, () => { if (rb != null) rb.transition = tr0; });
-                var (face, fill) = Kit.Box(rbt, "jatify-repair", Theme.C(t.raised), Theme.C(t.glassLine), 8); _l.Own(face); face.rectTransform.Fill(); face.raycastTarget = true;
-                var ri = Kit.Img(face.rectTransform, "I", vanillaIcon ?? Kit.Icon("hammer"), Color.white, false); ri.rectTransform.At(8, 4, 22, 22); ri.preserveAspect = true;
-                var rtx = Kit.Text(face.rectTransform, "T", "Repair", Fonts.Medium, 12.5f, Theme.C(t.dim)); rtx.alignment = TextAlignmentOptions.MidlineLeft; rtx.rectTransform.At(38, 0, 58, 30);   // a little air after the icon
-                _repair = (face, fill, ri, rtx); rb.targetGraphic = fill;
+                _repair = Pill(c, rb, vanillaIcon ?? Kit.Icon("hammer"), "Repair", new Vector2(-4f, -46f), 100f);
+                // Valheim Enchantment System copies the repair button and its wooden tile (74 px higher) when the inventory is
+                // built: its button as ours, beside Repair (Tick), its tile hidden
+                var en = parent0 != null ? parent0.Find("enchantment_menu")?.GetComponent<Button>() : null;
+                if (en != null)
+                {
+                    Sprite enIcon = null; var eim = en.transform.Find("Image")?.GetComponent<Image>(); if (eim != null) enIcon = eim.sprite;
+                    _enchant = Pill(c, en, enIcon, "Enchant", new Vector2(-110f, -46f), 108f).line;
+                    if (g.m_repairPanel != null) foreach (Transform sib in g.m_repairPanel.parent) if (sib.name == g.m_repairPanel.name + "(Clone)") foreach (var gr in sib.GetComponentsInChildren<Graphic>(true)) _l.Off(gr);
+                    Ves.ScrollTip(g.m_playerGrid.m_elementPrefab.GetComponent<UITooltip>()?.m_tooltipPrefab, _l);   // its scroll slot: our item tooltip
+                    // its info panel's list scrolls at our speed (it's at 15 a wheel step: a crawl)
+                    if (HarmonyLib.AccessTools.Field(HarmonyLib.AccessTools.TypeByName("kg.ValheimEnchantmentSystem.UI.Info_UI"), "_view")?.GetValue(null) is Component info && info != null)
+                        foreach (var sr in info.GetComponentsInChildren<ScrollRect>(true)) { var r = sr; float was = r.scrollSensitivity; _l.Do(() => r.scrollSensitivity = Kit.ScrollSpeed, () => { if (r != null) r.scrollSensitivity = was; }); }
+                }
             }
+        }
+
+        // a Valheim button (its logic, its active / interactable state) as a Jatify button at the end of the Craft / Upgrade row
+        private static (Image line, Image fill, Image icon, TextMeshProUGUI text) Pill(RectTransform c, Button b, Sprite icon, string label, Vector2 at, float w)
+        {
+            var bt = (RectTransform)b.transform; var parent0 = bt.parent;
+            _l.Do(() => bt.SetParent(c, false), () => { if (bt != null && parent0 != null) bt.SetParent(parent0, false); });
+            _l.Rect(bt, r => { r.anchorMin = r.anchorMax = r.pivot = new Vector2(1f, 1f); r.anchoredPosition = at; r.sizeDelta = new Vector2(w, 30f); });
+            foreach (var gr in b.GetComponentsInChildren<Graphic>(true)) _l.Off(gr);
+            var tr0 = b.transition; _l.Do(() => b.transition = Selectable.Transition.None, () => { if (b != null) b.transition = tr0; });
+            var (face, fill) = Kit.Box(bt, "jatify-" + label.ToLowerInvariant(), Theme.C(_t.raised), Theme.C(_t.glassLine), 8); _l.Own(face); face.rectTransform.Fill(); face.raycastTarget = true;
+            var ri = Kit.Img(face.rectTransform, "I", icon, Color.white, false); ri.rectTransform.At(8, 4, 22, 22); ri.preserveAspect = true;
+            var tx = Kit.Text(face.rectTransform, "T", label, Fonts.Medium, 12.5f, Theme.C(_t.dim)); tx.alignment = TextAlignmentOptions.MidlineLeft; tx.rectTransform.At(38, 0, w - 42f, 30);   // a little air after the icon
+            b.targetGraphic = fill;
+            return (face, fill, ri, tx);
         }
 
         // Restyle recipe rows that Valheim just (re)built. A row we styled has a child named "jatify".
@@ -201,6 +223,11 @@ namespace Jatify.UI
                 _repair.icon.color = new Color(1f, 1f, 1f, can ? 1f : 0.45f);   // Valheim's own colours, faded when there is nothing to repair
                 _repair.text.color = can ? Color.white : Theme.C(_t.mute);
             }
+            if (_enchant != null && _for.m_repairButton != null)
+            {
+                var er = (RectTransform)_enchant.transform.parent; float x = _for.m_repairButton.gameObject.activeSelf ? -110f : -4f;
+                if (er.anchoredPosition.x != x) er.anchoredPosition = new Vector2(x, -46f);
+            }
             Plugin.Timed("crafting.card", () => _card?.Tick());
             foreach (var b in _tabs)
             {
@@ -238,7 +265,7 @@ namespace Jatify.UI
 
         internal static void Restore()
         {
-            _tabs.Clear(); _view = null; _card = null; _craftFace = null; _craftText = null; _progress = null; _repair = default; _station = null; _stationIcon = null; _stationChip = null; _knotL = _knotR = null; _upLocked = null;
+            _tabs.Clear(); _view = null; _card = null; _craftFace = null; _craftText = null; _progress = null; _repair = default; _enchant = null; _station = null; _stationIcon = null; _stationChip = null; _knotL = _knotR = null; _upLocked = null;
             CraftFilter.Destroy(); Pages.Destroy();
             foreach (var (name, font, size, marker) in _rows)
             {

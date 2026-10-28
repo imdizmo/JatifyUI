@@ -160,11 +160,12 @@ namespace Jatify.UI
             _shown = key;
             foreach (Transform c in _root) UnityEngine.Object.Destroy(c.gameObject);
             if (string.IsNullOrEmpty(name)) return;
-            Build(name, _g.m_recipeIcon != null ? _g.m_recipeIcon.sprite : null, text);
+            var item = rec != null && rec.m_item != null ? rec.m_item.gameObject.name : !_g.InCraftTab() ? SelectedItem()?.m_dropPrefab?.name : null;
+            Build(name, _g.m_recipeIcon != null ? _g.m_recipeIcon.sprite : null, text, item);
             if (rec != null) FavBtn(rec);
         }
 
-        private void Build(string name, Sprite icon, string tooltip)
+        private void Build(string name, Sprite icon, string tooltip, string prefab)
         {
             var dmg = new HashSet<string>(); foreach (var k in DamageKeys) dmg.Add(Localization.instance.Localize(k));
             var def = new HashSet<string>(); foreach (var k in DefenceKeys) def.Add(Localization.instance.Localize(k));
@@ -178,6 +179,9 @@ namespace Jatify.UI
                 var label = line.Substring(0, i).Trim(); var value = line.Substring(i + 2).Trim();
                 (dmg.Contains(label) || def.Contains(label) ? damage : stats).Add((label, value));
             }
+            // Valheim Enchantment System: its "Can be enchanted with" line drawn as the scrolls (below), not as a note
+            var scrolls = Ves.Scrolls(prefab); var phrase = scrolls.Count > 0 ? Ves.Phrase : null;
+            if (phrase == null || notes.RemoveAll(x => x.Contains(phrase)) == 0) scrolls.Clear();
             // header: icon tile, name, type line
             var (tile, _) = Kit.Box(_root, "Icon", Theme.C(_t.raised), Theme.C(_t.glassLine), 10); tile.rectTransform.At(18, 16, 60, 60);
             if (icon != null) { var ic = Kit.Img(tile.rectTransform, "I", icon, Color.white, false); ic.rectTransform.At(9, 9, 42, 42); ic.preserveAspect = true; }
@@ -193,6 +197,20 @@ namespace Jatify.UI
                 var d = Kit.Text(_root, "Desc", desc, Fonts.Lore, 16f, Theme.C(_t.dim)); d.fontStyle = FontStyles.Italic;
                 d.textWrappingMode = TextWrappingModes.Normal; d.rectTransform.At(18, y, 350, 46);
                 y += Mathf.Min(68f, d.GetPreferredValues(desc, 350f, 0f).y) + 12f;
+            }
+            if (scrolls.Count > 0)
+            {   // the req chips' look: icon, name, how many you have
+                var l = Kit.Text(_root, "Label", "ENCHANT WITH", Fonts.Mono, 12.5f, Theme.C(_t.mute)); l.characterSpacing = 8f; l.rectTransform.At(18, y, 300, 16);
+                y += 22f;
+                for (int i = 0; i < scrolls.Count && i < 2; i++)
+                {
+                    var d = scrolls[i].GetComponent<ItemDrop>().m_itemData; int have = Ves.Count(scrolls[i]);
+                    var (chip, _) = Kit.Box(_root, "Scroll", Theme.C(_t.raised), Theme.C(_t.glassLine), 9); chip.rectTransform.At(18 + i * 183, y, 175, 45);
+                    var ic = Kit.Img(chip.rectTransform, "I", d.GetIcon(), Color.white, false); ic.rectTransform.At(8, 9.5f, 26, 26); ic.preserveAspect = true;
+                    var nm = Kit.Text(chip.rectTransform, "N", Localization.instance.Localize(d.m_shared.m_name), Fonts.Medium, 15f, Theme.C(_t.text)); nm.rectTransform.At(42, 4, 127, 20); nm.overflowMode = TextOverflowModes.Ellipsis;
+                    var hv = Kit.Text(chip.rectTransform, "H", $"have {have}", Fonts.Mono, 13f, have > 0 ? Theme.C(_t.mute) : Theme.SoftEmber(_t)); hv.rectTransform.At(42, 24, 127, 18);
+                }
+                y += 45f + 16f;
             }
             y = Table("DAMAGE & DEFENCE", damage, y);
             y = Table("STATS", stats, y + 6f);
