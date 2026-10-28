@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using TMPro;
 using UnityEngine;
@@ -170,6 +171,11 @@ namespace Jatify.UI
             var dmg = new HashSet<string>(); foreach (var k in DamageKeys) dmg.Add(Localization.instance.Localize(k));
             var def = new HashSet<string>(); foreach (var k in DefenceKeys) def.Add(Localization.instance.Localize(k));
             var lines = Tags.Replace(tooltip ?? "", "").Split('\n');
+            // Valheim Enchantment System: its "Can be enchanted with" line drawn as the scrolls (below); taken out first, so a
+            // short description doesn't leave it to be read as the description
+            var scrolls = Ves.Scrolls(prefab); var phrase = scrolls.Count > 0 ? Ves.Phrase : null;
+            int had = lines.Length; if (phrase != null) lines = lines.Where(x => !x.Contains(phrase)).ToArray();
+            if (lines.Length == had) scrolls.Clear();
             var damage = new List<(string, string)>(); var stats = new List<(string, string)>(); var notes = new List<string>(); string desc = null;
             foreach (var raw in lines)
             {
@@ -179,9 +185,6 @@ namespace Jatify.UI
                 var label = line.Substring(0, i).Trim(); var value = line.Substring(i + 2).Trim();
                 (dmg.Contains(label) || def.Contains(label) ? damage : stats).Add((label, value));
             }
-            // Valheim Enchantment System: its "Can be enchanted with" line drawn as the scrolls (below), not as a note
-            var scrolls = Ves.Scrolls(prefab); var phrase = scrolls.Count > 0 ? Ves.Phrase : null;
-            if (phrase == null || notes.RemoveAll(x => x.Contains(phrase)) == 0) scrolls.Clear();
             // header: icon tile, name, type line
             var (tile, _) = Kit.Box(_root, "Icon", Theme.C(_t.raised), Theme.C(_t.glassLine), 10); tile.rectTransform.At(18, 16, 60, 60);
             if (icon != null) { var ic = Kit.Img(tile.rectTransform, "I", icon, Color.white, false); ic.rectTransform.At(9, 9, 42, 42); ic.preserveAspect = true; }
