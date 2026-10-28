@@ -78,7 +78,10 @@ namespace Jatify.Campfire
         {
             if (_root != null) _root.gameObject.SetActive(false);
             if (_dialog != null) { _dialog.Show(false); _statsDialog.Show(false); AchView.Hide(); SavesView.Hide(); ModsView.Hide(); }
-            if (_sel != null && Fejd.Profiles.Contains(_sel)) Fejd.ProfileIndex = Fejd.Profiles.IndexOf(_sel);   // the title screen's party has it (user: not the last played)
+            // the title screen's party has it (user: not the last played); on quitting the game Valheim's save system is already gone
+            // (its profile list throws), and there is no title screen to tell
+            try { if (_sel != null && Fejd.Profiles.Contains(_sel)) Fejd.ProfileIndex = Fejd.Profiles.IndexOf(_sel); }
+            catch (System.NullReferenceException) { }
         }
 
         internal static void Unload()
