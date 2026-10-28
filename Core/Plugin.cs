@@ -34,6 +34,7 @@ namespace Jatify.UI
             if (Headless)
             {   // a dedicated server: no UI, only the world's station list and far Auto switches for players (ServerLink)
                 Cfg.Bind(Config); Smelters.Bind(Config);   // chest range and the Automation switch, for ServerAuto
+                AreaPickup.Bind(Config); CoinWeight.Bind(Config); OreScout.Bind(Config); Sync.Bind(Config);   // the settings it hands players who join
                 Log.Info($"Jatify UI {Version} on a dedicated server: station list for players' Automation tab, Auto stations run while nobody is near");
                 return;
             }
@@ -49,6 +50,7 @@ namespace Jatify.UI
             CraftQueue.Bind(Config);
             CoinWeight.Bind(Config);
             OreScout.Bind(Config);
+            Sync.Bind(Config);   // after every setting the server may hand over is bound
             EnemyBars.Bind(Config);
             AlertFlash.Bind(Config);
             TargetHealth.Bind(Config);
@@ -78,6 +80,7 @@ namespace Jatify.UI
             foreach (var type in AccessTools.GetTypesFromAssembly(typeof(Plugin).Assembly))
             {
                 if (type.GetCustomAttributes(typeof(HarmonyPatch), true).Length == 0 || (type.Namespace == typeof(Campfire.Module).Namespace) != campfire) continue;
+                if (type.Namespace == "ServerSync") continue;   // ServerSync patches itself, once (Sync)
                 try { _harmony.CreateClassProcessor(type).Patch(); }
                 catch (Exception e) { Log.Error($"patch {type.Name} failed, that feature is off: {e.GetBaseException().Message}"); }
             }
@@ -237,6 +240,7 @@ namespace Jatify.UI
             ExtraRows.Unbind();
             try { ExtraRows.Remove(); } catch (Exception e) { Log.Error("extra rows: " + e); } // before unpatching: pack, shrink, nothing dropped
             try { _harmony?.UnpatchSelf(); } catch (Exception e) { Log.Warn("unpatch: " + e.Message); }
+            Safe("sync-unload", Sync.Unload);
             Safe("campfire-unload", Campfire.Module.Unload);   // after unpatching (its postfixes stay out of the hand-back), before Kit and Fonts go
             if (_theme != null) { _theme.Changed -= Root.Restyle; _theme.Dispose(); }
             Deeds.Model.Earned -= OnEarned;
