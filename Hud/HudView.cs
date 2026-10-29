@@ -190,8 +190,8 @@ namespace Jatify.UI
             var foods = p.GetFoods();
             // debuffs first in the pool (red frames), then buffs and food
             int n = 0, bad = 0;
-            foreach (var se in _effects) { if (se.m_icon == null || !IsDebuff(se)) continue; Pool(n++).Set(se.m_icon, se.m_ttl > 0f ? se.GetRemaningTime() : -1f, false, true); bad++; }
-            foreach (var se in _effects) { if (se.m_icon == null || IsDebuff(se)) continue; Pool(n++).Set(se.m_icon, se.m_ttl > 0f ? se.GetRemaningTime() : -1f, false, false); }
+            foreach (var se in _effects) { if (se.m_icon == null || !IsDebuff(se)) continue; Pool(n++).Set(se.m_icon, se.m_ttl > 0f ? se.GetRemaningTime() : -1f, false, true, -1f, se.m_ttl > 0f ? null : se.GetIconText()); bad++; }
+            foreach (var se in _effects) { if (se.m_icon == null || IsDebuff(se)) continue; Pool(n++).Set(se.m_icon, se.m_ttl > 0f ? se.GetRemaningTime() : -1f, false, false, -1f, se.m_ttl > 0f ? null : se.GetIconText()); }
             foreach (var f in foods)
             {
                 var burn = f.m_item.m_shared.m_foodBurnTime;
@@ -589,7 +589,7 @@ namespace Jatify.UI
             private readonly RectTransform _left;
             private readonly TextMeshProUGUI _time;
             private readonly ThemeData _t;
-            private int _shown = int.MinValue, _leftPct = -2, _frame = -1; private bool _warn;
+            private int _shown = int.MinValue, _leftPct = -2, _frame = -1; private bool _warn; private string _text;
 
             internal Buff(Transform parent, ThemeData t)
             {
@@ -606,12 +606,18 @@ namespace Jatify.UI
             }
 
             // left: the share of a food still to go (0..1), -1 for an effect
-            internal void Set(Sprite icon, float secondsLeft, bool low, bool bad, float left = -1f)
+            // text: an effect with no timer of its own may still have something to say, as on Valheim's HUD (Seasonality: the
+            // season's time left, #25)
+            internal void Set(Sprite icon, float secondsLeft, bool low, bool bad, float left = -1f, string text = null)
             {
                 if (_icon.sprite != icon) _icon.sprite = icon;
                 int s = secondsLeft < 0f ? -1 : Mathf.CeilToInt(secondsLeft);
                 int shownKey = s < 0 ? -1 : s >= 60 ? 100000 + Mathf.CeilToInt(s / 60f) : s; // minutes above a minute, seconds below
-                if (shownKey != _shown)
+                if (s < 0 && !string.IsNullOrEmpty(text))
+                {
+                    if (_shown != -2 || _text != text) { _shown = -2; _text = text; _time.text = text; _pill.enabled = true; float w = Mathf.Ceil(Kit.W(_time)) + 12f; _pill.rectTransform.At(20f - w / 2f, 45f, w, 16f); }
+                }
+                else if (shownKey != _shown)
                 {
                     _shown = shownKey; _time.text = s < 0 ? "" : s >= 60 ? Mathf.CeilToInt(s / 60f) + "m" : s + "s";
                     _pill.enabled = s >= 0;
