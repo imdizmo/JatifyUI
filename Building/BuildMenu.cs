@@ -112,7 +112,8 @@ namespace Jatify.UI
         private static Piece _picked; private static float _nextCheck; private static int _paintFrom;
 
         // favourites (asked for on Nexus): starred pieces, saved on the character, listed in their own tab at the top
-        private const int FavCat = -2; internal const string FavKey = "jatify.piecefavs";
+        private static GameObject _tipPrefab;
+        private const int FavCat = -2, AllCat = -3; internal const string FavKey = "jatify.piecefavs";
         private static readonly HashSet<string> _favs = new HashSet<string>(); private static TextMeshProUGUI _favCount; private static int _lastVc = int.MinValue;
         private static string FavId(Piece p) => Utils.GetPrefabName(p.gameObject);
         internal static bool IsFav(Piece p) => p != null && _favs.Contains(FavId(p));
@@ -191,7 +192,12 @@ namespace Jatify.UI
             Pages.T = Pages.T ?? t;
             var sb = Kit.Node(w, "jatify-search").At(0, 0, W, H);
             _search = Pages.Search(sb, "Search pieces, stations", ColX, 128, ColW, q => { _q = (q ?? "").Trim().ToLowerInvariant(); Refresh(); });
-            _cats = Kit.Node(w, "Categories").At(ColX, 174, ColW, H - 174 - Foot);
+            // the categories scroll when there are more than fit (other mods add their own)
+            var catView = Kit.Node(w, "CategoryView").At(ColX, 174, ColW, H - 174 - Foot - 8);
+            catView.gameObject.AddComponent<RectMask2D>();
+            var catHit = catView.gameObject.AddComponent<Image>(); catHit.color = Color.clear; catHit.raycastTarget = true;
+            _cats = Kit.Node(catView, "Categories").At(0, 0, ColW, 0);
+            var csr = catView.gameObject.AddComponent<ScrollRect>(); csr.content = _cats; csr.horizontal = false; csr.scrollSensitivity = Kit.ScrollSpeed; csr.movementType = ScrollRect.MovementType.Clamped;
             var table = Table(me); float y = 0f;
             LoadFavs(me);
             {   // Favourites, first
@@ -201,6 +207,14 @@ namespace Jatify.UI
                 _favCount = Kit.Text(row.rectTransform, "N", _all.Count(x => IsFav(x.Piece)).ToString(), Fonts.Mono, 11f, Theme.C(t.mute)); _favCount.alignment = TextAlignmentOptions.MidlineRight; _favCount.rectTransform.At(ColW - 50, 0, 40, 36);
                 row.gameObject.AddComponent<Button>().onClick.AddListener(() => { _cat = FavCat; _type = null; _region = -1; if (_search != null) _search.text = ""; Refresh(); });
                 _catTabs[FavCat] = (row, tx); y += 40f;
+            }
+            {   // Everything: every piece the hammer has, in one grid (#34)
+                var (row, fill) = Kit.Box(_cats, "Cat", Color.clear, Color.clear, 8); row.rectTransform.At(0, y, ColW, 36); row.raycastTarget = true;
+                var ic = Kit.IconImg(row.rectTransform, "view-grid", Theme.C(t.dim), 16f); ic.rectTransform.At(12, 10, 16, 16);
+                var tx = Kit.Text(row.rectTransform, "T", "Everything", Fonts.Medium, 13.5f, Color.white); tx.alignment = TextAlignmentOptions.MidlineLeft; tx.rectTransform.At(42, 0, ColW - 90, 36);
+                var n = Kit.Text(row.rectTransform, "N", _all.Count.ToString(), Fonts.Mono, 11f, Theme.C(t.mute)); n.alignment = TextAlignmentOptions.MidlineRight; n.rectTransform.At(ColW - 50, 0, 40, 36);
+                row.gameObject.AddComponent<Button>().onClick.AddListener(() => { _cat = AllCat; _type = null; _region = -1; if (_search != null) _search.text = ""; Refresh(); });
+                _catTabs[AllCat] = (row, tx); y += 40f;
             }
             for (int i = 0; i < table.m_categories.Count; i++)
             {
@@ -213,6 +227,7 @@ namespace Jatify.UI
                 row.gameObject.AddComponent<Button>().onClick.AddListener(() => { _cat = cat; table.SetCategory((Piece.PieceCategory)cat); _type = null; _region = -1; if (_search != null) _search.text = ""; Refresh(); });
                 _catTabs[cat] = (row, tx); y += 40f;
             }
+            _cats.sizeDelta = new Vector2(ColW, y);
             // right: region strip, then the grid
             var rl = Kit.Text(w, "RegionL", "REGION", Fonts.Mono, 10f, Theme.C(t.mute)); rl.characterSpacing = 8f; rl.rectTransform.At(RX, 62, 70, 28); rl.alignment = TextAlignmentOptions.MidlineLeft;
             _regionChips = Kit.Node(w, "Regions").At(RX + 70, 62, RW - 70, 28);
@@ -270,7 +285,7 @@ namespace Jatify.UI
         // ---- filters and grid -------------------------------------------------------------------------
         private static List<P> InTab()
         {
-            if (_q.Length == 0) return _cat == FavCat ? _all.FindAll(p => IsFav(p.Piece)) : _all.FindAll(p => p.Cat == _cat);   // Repair (category All) has its own button
+            if (_q.Length == 0) return _cat == FavCat ? _all.FindAll(p => IsFav(p.Piece)) : _cat == AllCat ? new List<P>(_all) : _all.FindAll(p => p.Cat == _cat);   // Repair (category All) has its own button
             return _all.FindAll(p => (p.Name + " " + (p.Piece.m_craftingStation != null ? Localization.instance.Localize(p.Piece.m_craftingStation.m_name) : "") + " " + Regions[p.Region].name).ToLowerInvariant().Contains(_q));
         }
 
@@ -344,6 +359,7 @@ namespace Jatify.UI
             if (key == _shown) return; _shown = key;
             foreach (Transform c in _grid) Object.Destroy(c.gameObject);
             _tiles.Clear(); _paintFrom = 0;
+            _tipPrefab = InventoryGui.instance != null ? InventoryGui.instance.m_playerGrid.m_elementPrefab.GetComponent<UITooltip>()?.m_tooltipPrefab : null;
             int cols = Mathf.Max(1, (int)((RW + Gap) / (Tile + Gap)));
             float y = 0f; int col = 0; string type = null;
             foreach (var p in list)
@@ -374,6 +390,7 @@ namespace Jatify.UI
                 var th = line.gameObject.AddComponent<TileHover>(); th.Piece = piece; th.Star = fav ? null : fs.gameObject;
                 line.gameObject.AddComponent<RightPick>().Piece = piece;   // right click: Valheim's quick select (pick and close)
                 line.gameObject.AddComponent<Button>().onClick.AddListener(() => Pick(piece));
+                if (_tipPrefab != null) { var tip = line.gameObject.AddComponent<UITooltip>(); tip.m_tooltipPrefab = _tipPrefab; tip.Set(p.Name, ""); }   // its name by the cursor too (#34), not only in the card
                 _tiles[p.Piece] = (bg, line, g, lockTag);
                 if (++col == cols) { col = 0; y += Tile + Gap; }
             }
