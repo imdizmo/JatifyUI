@@ -308,22 +308,28 @@ namespace Jatify.UI
             ShowDetail();
         }
 
-        private static void Chips(RectTransform host, List<(string label, int n, bool on, Color? dot)> chips, System.Action<int> click)
+        // all on one line (#17: with every region they ran past the panel): the counts go first, then the strip shrinks to fit
+        private static void Chips(RectTransform host, List<(string label, int n, bool on, Color? dot)> chips, System.Action<int> click, bool counts = true)
         {
             var t = _t;
             foreach (Transform c in host) Object.Destroy(c.gameObject);
+            host.localScale = Vector3.one;
             float x = 0f;
             for (int i = 0; i < chips.Count; i++)
             {
                 var (label, n, on, dot) = chips[i]; int k = i;
                 var (b, f) = Kit.Box(host, "Chip", on ? Theme.C(t.accentSoft) : Color.clear, on ? Theme.C(t.accent) : Theme.C(t.line2), 15); b.raycastTarget = true;
                 float lead = dot.HasValue ? 26f : 12f;
-                var tx = Kit.Text(b.rectTransform, "T", $"{label} <size=85%><color=#{ColorUtility.ToHtmlStringRGB(Theme.C(t.mute))}>{n}</color></size>", Fonts.Medium, 12.5f, on ? Color.white : Theme.C(t.text)); tx.alignment = TextAlignmentOptions.MidlineLeft;
+                var tx = Kit.Text(b.rectTransform, "T", (counts ? $"{label} <size=85%><color=#{ColorUtility.ToHtmlStringRGB(Theme.C(t.mute))}>{n}</color></size>" : label), Fonts.Medium, 12.5f, on ? Color.white : Theme.C(t.text)); tx.alignment = TextAlignmentOptions.MidlineLeft;
                 float cw = lead + Kit.W(tx) + 12f; b.rectTransform.At(x, 0, cw, 28); tx.rectTransform.At(lead, 0, cw - lead, 28);
                 if (dot.HasValue) { var d = Kit.Img(b.rectTransform, "Dot", Kit.Circle(), dot.Value, false); d.rectTransform.At(11, 10, 8, 8); }
                 b.gameObject.AddComponent<Button>().onClick.AddListener(() => click(k));
                 x += cw + 6f;
             }
+            float room = host.rect.width; x -= 6f;
+            if (x <= room) return;
+            if (counts) { Chips(host, chips, click, false); return; }
+            float s = room / x; host.localScale = new Vector3(s, s, 1f);   // pivot top-left: it shrinks towards the REGION label
         }
 
         // icon tiles under a small heading per type (Walls 24, Floors 12...): region dot, comfort, a lock while its station is missing
