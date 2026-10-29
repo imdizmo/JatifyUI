@@ -32,7 +32,8 @@ namespace Jatify.UI
             _biome = Kit.Text(_root, "Biome", "", Fonts.Bold, 13f, Theme.C(t.text)); _biome.rectTransform.At(Pad, y, 110, 18); _biome.alignment = TextAlignmentOptions.MidlineLeft;
             _coords = Kit.Text(_root, "Coords", "", Fonts.Mono, 11f, Theme.C(t.dim)); _coords.rectTransform.At(W - Pad - 90, y, 90, 18); _coords.alignment = TextAlignmentOptions.MidlineRight;
             y += 22;
-            _day = Kit.Text(_root, "Day", "", Fonts.Mono, 11f, Theme.C(t.dim)); _day.rectTransform.At(Pad, y, 170, 18); _day.alignment = TextAlignmentOptions.MidlineLeft;
+            _day = Kit.Text(_root, "Day", "", Fonts.Mono, 11f, Theme.C(t.dim)); _day.rectTransform.At(Pad, y, W - 2 * Pad - 56, 18); _day.alignment = TextAlignmentOptions.MidlineLeft;
+            _day.enableAutoSizing = true; _day.fontSizeMin = 8f; _day.fontSizeMax = 11f;   // ends before the wind: the real clock ran under it (#22)
             // wind: an arrow pointing where the wind blows, relative to the camera, then five strength bars
             var arrow = Kit.Node(_root, "Wind").At(W - Pad - 52, y + 3, 12, 12);
             var icon = Kit.IconImg(arrow, "arrow-up", Theme.C(t.dim), 12f); icon.rectTransform.At(0, 0, 12, 12);   // a whole arrow (user: the stick and square read as broken)
@@ -72,7 +73,7 @@ namespace Jatify.UI
                 {
                     _dayN = day; _min = min; _real = real;
                     var now = System.DateTime.Now;
-                    string clock = real < 0 ? "" : Cfg.RealClock.Value == Cfg.Clock.H24 ? $"  ·  {now:HH:mm}" : $"  ·  {now:h:mm tt}";
+                    string clock = real < 0 ? "" : Cfg.RealClock.Value == Cfg.Clock.H24 ? $" · {now:HH:mm}" : $" · {now:h:mm tt}";
                     _day.text = $"Day {day} · {min / 60:00}:{min % 60:00}{clock}";
                 }
                 var cam = GameCamera.instance;
