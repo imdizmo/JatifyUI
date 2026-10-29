@@ -124,12 +124,25 @@ namespace Jatify.UI
 
         private void Close() { _inv = null; _item = null; if (_dialog) _dialog.gameObject.SetActive(false); }
 
-                internal void MoveTo(float x, float y) { if (_tile != null) _tile.At(x, y, 60, 60); }   // frame (design) pixels
+        internal void MoveTo(float x, float y) { if (_tile != null) { _tile.At(x, y, 60, 60); _tile.SetAsLastSibling(); } }   // frame (design) pixels; on top, so no row built after it covers it
 
         internal void Place(InventoryGrid grid)
         {
             if (!InventoryGui.IsVisible() && _dialog && _dialog.gameObject.activeSelf) Close();
+            TickRelease();
         }
+
+        // Valheim also moves items by holding the button and letting go over the target: letting go over the trash counts as
+        // dropping on it (#15: only a full click on the tile did). A press on the tile itself is its Button's click.
+        private bool _downOnTile;
+        private void TickRelease()
+        {
+            if (_tile == null || !InventoryGui.IsVisible() || (_dialog && _dialog.gameObject.activeSelf)) return;
+            if (ZInput.GetMouseButtonDown(0)) _downOnTile = Over();
+            if (!ZInput.GetMouseButtonUp(0) || _downOnTile || !Over()) return;
+            var g = InventoryGui.instance; if (g != null && DragItem(g) != null) OnClick();
+        }
+        private bool Over() => _tile.gameObject.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint(_tile, ZInput.pointerPosition, null);
 
         internal void Destroy() { if (_tile) Object.Destroy(_tile.gameObject); if (_dialog) Object.Destroy(_dialog.gameObject); }
     }
