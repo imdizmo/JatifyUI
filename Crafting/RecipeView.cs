@@ -34,6 +34,7 @@ namespace Jatify.UI
             if (set.Count == 0) p.m_customData.Remove(FavKey); else p.m_customData[FavKey] = string.Join(",", set);
         }
 
+        private RectTransform _sep, _bar; private float _top;
         private struct Entry { public Recipe Recipe; public ItemDrop.ItemData Item; public bool Can; public int Index; }
 
         internal RecipeView(RectTransform crafting, ThemeData t, Ledger l)
@@ -51,12 +52,12 @@ namespace Jatify.UI
             _root.At(4, 196, 236, 590);
             var hit = _root.gameObject.AddComponent<Image>(); hit.color = new Color(0, 0, 0, 0);
             _root.gameObject.AddComponent<RectMask2D>();
-            var sep = Kit.Img(crafting, "jatify-listline", null, Theme.C(t.glassLine)); l.Own(sep); sep.rectTransform.At(244, 191, 1, 599);
+            var sep = Kit.Img(crafting, "jatify-listline", null, Theme.C(t.glassLine)); l.Own(sep); sep.rectTransform.At(244, 191, 1, 599); _sep = sep.rectTransform;
             _content = Kit.Node(_root, "Content");
             _content.anchorMin = new Vector2(0f, 1f); _content.anchorMax = new Vector2(1f, 1f); _content.pivot = new Vector2(0.5f, 1f); _content.anchoredPosition = Vector2.zero;
             var sr = _root.gameObject.AddComponent<ScrollRect>(); sr.content = _content; sr.horizontal = false; sr.scrollSensitivity = Kit.ScrollSpeed; sr.movementType = ScrollRect.MovementType.Clamped;
             // a thin thumb on the right shows how far down you are (#35), only while the list is longer than its view; it can be dragged
-            var bar = Kit.Node(_root, "Bar").At(231, 2, 4, 586);
+            var bar = _bar = Kit.Node(_root, "Bar").At(231, 2, 4, 586);
             var thumb = Kit.Panel(bar, "Handle", Theme.C(t.line2), 2); thumb.rectTransform.Fill();
             var sb = bar.gameObject.AddComponent<Scrollbar>(); sb.direction = Scrollbar.Direction.BottomToTop; sb.handleRect = thumb.rectTransform; sb.targetGraphic = thumb;
             sr.verticalScrollbar = sb; sr.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
@@ -77,6 +78,8 @@ namespace Jatify.UI
         internal void Tick(InventoryGui g)
         {
             if (g == null || !InventoryGui.IsVisible()) return;
+            float top = CraftFilter.SubRow ? 32f : 0f;   // under Weapons / Armour the kinds' row takes the list's top
+            if (top != _top) { _top = top; _root.At(4, 196 + top, 236, 590 - top); _sep.At(244, 191 + top, 1, 599 - top); _bar.At(231, 2, 4, 586 - top); }
             var entries = Read(g);
             int sel = (int)Selected.Invoke(g, new object[] { false });
             var key = CraftFilter.Grid + "|" + CraftFilter.ByAvail + "|" + Favs + "|" + sel + "|" + string.Join(",", entries.Select(e => e.Recipe.name + (e.Can ? "1" : "0") + (e.Item?.m_quality ?? 0)));

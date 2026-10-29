@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 using TMPro;
@@ -17,6 +18,22 @@ namespace Jatify.UI
         internal static int Cat;            // index into Cats
         internal static bool ReadyOnly, Grid, ByAvail = true;
         internal static readonly string[] Cats = { "All", "Weapons", "Armour", "Tools", "Food", "Other" };
+        // the second row under Weapons and Armour (#38): a chip for each kind the station has recipes for
+        private static readonly (string cat, string label, System.Func<ItemDrop.ItemData.SharedData, bool> has)[] Subs =
+        {
+            ("Weapons", "Swords", s => s.m_skillType == Skills.SkillType.Swords && s.m_itemType != ItemDrop.ItemData.ItemType.Shield), ("Weapons", "Axes", s => s.m_skillType == Skills.SkillType.Axes),
+            ("Weapons", "Clubs", s => s.m_skillType == Skills.SkillType.Clubs), ("Weapons", "Knives", s => s.m_skillType == Skills.SkillType.Knives), ("Weapons", "Spears", s => s.m_skillType == Skills.SkillType.Spears),
+            ("Weapons", "Polearms", s => s.m_skillType == Skills.SkillType.Polearms), ("Weapons", "Fists", s => s.m_skillType == Skills.SkillType.Unarmed && s.m_itemType != ItemDrop.ItemData.ItemType.Shield),
+            ("Weapons", "Pickaxes", s => s.m_skillType == Skills.SkillType.Pickaxes), ("Weapons", "Bows", s => s.m_skillType == Skills.SkillType.Bows && s.m_itemType != ItemDrop.ItemData.ItemType.Ammo),
+            ("Weapons", "Crossbows", s => s.m_skillType == Skills.SkillType.Crossbows && s.m_itemType != ItemDrop.ItemData.ItemType.Ammo), ("Weapons", "Magic", s => (s.m_skillType == Skills.SkillType.ElementalMagic || s.m_skillType == Skills.SkillType.BloodMagic) && s.m_itemType != ItemDrop.ItemData.ItemType.Ammo),
+            ("Weapons", "Shields", s => s.m_itemType == ItemDrop.ItemData.ItemType.Shield), ("Weapons", "Ammo", s => s.m_itemType == ItemDrop.ItemData.ItemType.Ammo),
+            ("Armour", "Helmets", s => s.m_itemType == ItemDrop.ItemData.ItemType.Helmet), ("Armour", "Chest", s => s.m_itemType == ItemDrop.ItemData.ItemType.Chest), ("Armour", "Legs", s => s.m_itemType == ItemDrop.ItemData.ItemType.Legs),
+            ("Armour", "Capes", s => s.m_itemType == ItemDrop.ItemData.ItemType.Shoulder), ("Armour", "Utility", s => s.m_itemType == ItemDrop.ItemData.ItemType.Utility), ("Armour", "Trinkets", s => s.m_itemType == ItemDrop.ItemData.ItemType.Trinket),
+        };
+        internal static string Sub;                  // the picked kind, null: the whole category
+        internal static bool SubRow => _subShown.Count > 0;
+        private static readonly List<string> _subShown = new List<string>();
+        private static RectTransform _subHost;
         private static readonly MethodInfo Refresh = AccessTools.Method(typeof(InventoryGui), "UpdateCraftingPanel");
         private static readonly List<GameObject> _ui = new List<GameObject>();
         private static readonly List<(Image bg, TextMeshProUGUI tx, int i)> _chips = new List<(Image, TextMeshProUGUI, int)>();
@@ -52,12 +69,13 @@ namespace Jatify.UI
             for (int i = 0; i < Cats.Length; i++)
             {
                 int idx = i;
-                var (bg, txt) = Chip(c, Cats[i], ref x, t, () => { Cat = idx; Apply(); });
+                var (bg, txt) = Chip(c, Cats[i], ref x, t, () => { Cat = idx; Sub = null; Apply(); });
                 _chips.Add((bg, txt, i));
             }
             x += 8f;
             (_readyBg, _readyTx) = Chip(c, "Can craft", ref x, t, () => { ReadyOnly = !ReadyOnly; Apply(); });
             (_availBg, _availTx) = Chip(c, "By availability", ref x, t, () => { ByAvail = !ByAvail; Apply(); });
+            _subHost = Kit.Node(c, "jatify-subchips").At(4, 189, 636, 26); _ui.Add(_subHost.gameObject); _subShown.Clear();
             Paint();
         }
 
@@ -114,8 +132,16 @@ namespace Jatify.UI
             var it = r.m_item != null ? r.m_item.m_itemData : null; if (it == null) return true;
             if (Query.Length > 0 && Localization.instance.Localize(it.m_shared.m_name).IndexOf(Query, System.StringComparison.OrdinalIgnoreCase) < 0) return false;
             if (ReadyOnly && !p.HaveRequirements(r, false, 1)) return false;
-            var k = it.m_shared.m_itemType;
-            switch (Cats[Cat])
+            if (!InCat(it.m_shared, Cats[Cat])) return false;
+            if (Sub == null) return true;
+            foreach (var s in Subs) if (s.cat == Cats[Cat] && s.label == Sub) return s.has(it.m_shared);
+            return true;
+        }
+
+        private static bool InCat(ItemDrop.ItemData.SharedData sh, string cat)
+        {
+            var k = sh.m_itemType;
+            switch (cat)
             {
                 case "Weapons": return k == ItemDrop.ItemData.ItemType.OneHandedWeapon || k == ItemDrop.ItemData.ItemType.TwoHandedWeapon || k == ItemDrop.ItemData.ItemType.TwoHandedWeaponLeft || k == ItemDrop.ItemData.ItemType.Bow || k == ItemDrop.ItemData.ItemType.Ammo || k == ItemDrop.ItemData.ItemType.Shield;
                 case "Armour": return k == ItemDrop.ItemData.ItemType.Helmet || k == ItemDrop.ItemData.ItemType.Chest || k == ItemDrop.ItemData.ItemType.Legs || k == ItemDrop.ItemData.ItemType.Shoulder || k == ItemDrop.ItemData.ItemType.Utility || k == ItemDrop.ItemData.ItemType.Trinket;
@@ -123,6 +149,46 @@ namespace Jatify.UI
                 case "Food": return k == ItemDrop.ItemData.ItemType.Consumable;
                 case "Other": return k == ItemDrop.ItemData.ItemType.Material || k == ItemDrop.ItemData.ItemType.Misc || k == ItemDrop.ItemData.ItemType.AmmoNonEquipable || k == ItemDrop.ItemData.ItemType.Trophy;
                 default: return true;
+            }
+        }
+
+        // which kinds of the open category the station has recipes for (all it knows, before any filter); the row is rebuilt
+        // when they change
+        internal static void Seen(List<Recipe> recipes)
+        {
+            var now = new List<string>(); var cat = Cats[Cat];
+            foreach (var s in Subs)
+                if (s.cat == cat && recipes.Exists(r => r != null && r.m_item != null && InCat(r.m_item.m_itemData.m_shared, cat) && s.has(r.m_item.m_itemData.m_shared))) now.Add(s.label);
+            if (now.Count < 2) now.Clear();   // one kind only: the category chip says it all
+            if (Sub != null && !now.Contains(Sub)) Sub = null;
+            if (now.SequenceEqual(_subShown) || _subHost == null) { PaintSubs(); return; }
+            _subShown.Clear(); _subShown.AddRange(now);
+            foreach (Transform c in _subHost) Object.Destroy(c.gameObject);
+            _subHost.localScale = Vector3.one;
+            float x = 0f;
+            foreach (var label in now)
+            {
+                var l = label;
+                var tx = Kit.Text(_subHost, label, label, Fonts.Medium, 12f, Theme.C(_t.dim)); tx.alignment = TextAlignmentOptions.Center;
+                float w = Kit.W(tx) + 18f;
+                var bg = Kit.Panel(_subHost, "bg-" + label, Theme.C(_t.raised), 13); bg.rectTransform.At(x, 0, w, 26);
+                tx.rectTransform.At(x, 0, w, 26); tx.transform.SetAsLastSibling();
+                bg.raycastTarget = true; bg.gameObject.AddComponent<Button>().onClick.AddListener(() => { Sub = Sub == l ? null : l; Apply(); });
+                x += w + 5f;
+            }
+            x -= 5f; if (x > _subHost.rect.width) { float k = _subHost.rect.width / x; _subHost.localScale = new Vector3(k, k, 1f); }   // too many kinds: the row shrinks to fit
+            PaintSubs();
+        }
+
+        private static void PaintSubs()
+        {
+            if (_subHost == null || _t == null) return;
+            foreach (Transform c in _subHost)
+            {
+                var tx = c.GetComponent<TextMeshProUGUI>(); var bg = tx == null ? c.GetComponent<Image>() : null;
+                bool on = Sub != null && (tx != null ? c.name == Sub : c.name == "bg-" + Sub);
+                if (tx != null) tx.color = on ? new Color(0.07f, 0.07f, 0.08f) : Theme.C(_t.dim);
+                if (bg != null) bg.color = on ? Color.white : Theme.C(_t.raised);
             }
         }
 
@@ -151,7 +217,7 @@ namespace Jatify.UI
         internal static void Destroy()
         {
             foreach (var go in _ui) if (go) Object.Destroy(go);
-            _ui.Clear(); _chips.Clear(); _readyBg = _listBg = _gridBg = _availBg = null; _readyTx = _availTx = null;
+            _ui.Clear(); _chips.Clear(); _subShown.Clear(); _subHost = null; _readyBg = _listBg = _gridBg = _availBg = null; _readyTx = _availTx = null;
         }
     }
 
@@ -161,6 +227,7 @@ namespace Jatify.UI
         private static void Prefix(List<Recipe> recipes)
         {
             var p = Player.m_localPlayer; if (p == null) return;
+            CraftFilter.Seen(recipes);
             recipes.RemoveAll(r => !CraftFilter.Matches(r, p));
         }
 
