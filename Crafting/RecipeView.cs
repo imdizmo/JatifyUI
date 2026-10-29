@@ -110,9 +110,10 @@ namespace Jatify.UI
             var (bg, fill) = Kit.Box(_content, "Row", on ? Theme.C(_t.accentSoft) : new Color(0, 0, 0, 0), on ? Theme.C(_t.accent) : new Color(0, 0, 0, 0), 8);
             bg.rectTransform.At(4, y, 226, h);
             if (e.Item != null && Epic.On) { var tile = Kit.Node(bg.rectTransform, "RarityTile").At(6, (h - 32) / 2f, 32, 32); new RarityBg(tile, null, null, 7).Set(e.Item); }   // upgrading your own item: its rarity
-            var icon = Kit.Img(bg.rectTransform, "Icon", e.Recipe.m_item.m_itemData.GetIcon(), e.Can ? Color.white : new Color(0.6f, 0.6f, 0.6f, 0.9f), false);
+            // a row you can't craft yet reads as clearly as the others: its Missing line says so (#16; dimmed, the names were hard to make out)
+            var icon = Kit.Img(bg.rectTransform, "Icon", e.Recipe.m_item.m_itemData.GetIcon(), Color.white, false);
             icon.rectTransform.At(8, (h - 28) / 2f, 28, 28); icon.preserveAspect = true;
-            var name = Kit.Text(bg.rectTransform, "Name", Name(e), Fonts.Medium, 15.5f, e.Can ? Theme.C(_t.text) : Theme.C(_t.mute));
+            var name = Kit.Text(bg.rectTransform, "Name", Name(e), Fonts.Medium, 15.5f, Theme.C(_t.text));
             bool fav = IsFav(e.Recipe);
             name.rectTransform.At(46, miss.Length > 0 ? 6 : 0, fav ? 160 : 176, miss.Length > 0 ? 22 : h); name.alignment = TextAlignmentOptions.MidlineLeft; name.overflowMode = TextOverflowModes.Ellipsis;
             if (fav) { var fs = Kit.Img(bg.rectTransform, "Fav", Kit.Star(), Theme.C(_t.stamina), false); fs.rectTransform.At(208, miss.Length > 0 ? 11 : (h - 10) / 2f, 10, 10); }
