@@ -445,11 +445,11 @@ namespace Jatify.UI
     [HarmonyPatch]
     internal static class MenuStaysLive
     {
-        private static System.Reflection.MethodBase TargetMethod() => AccessTools.Method(AccessTools.TypeByName("UIGroupHandler"), "Update");   // the type lives in Valheim's GUI assembly
+        private static System.Reflection.MethodBase TargetMethod() => AccessTools.Method(Types.Find("UIGroupHandler"), "Update");   // the type lives in Valheim's GUI assembly
         // vanilla's UI groups lock (and grey out) every group under the top one, every frame: the pause menu
         // sits beside our Settings, so it stays usable (patched right after the group's own update, else a click
         // could land on a locked frame)
-        private static readonly AccessTools.FieldRef<object, CanvasGroup> Group = AccessTools.FieldRefAccess<CanvasGroup>(AccessTools.TypeByName("UIGroupHandler"), "m_canvasGroup");
+        private static readonly AccessTools.FieldRef<object, CanvasGroup> Group = AccessTools.FieldRefAccess<CanvasGroup>(Types.Find("UIGroupHandler"), "m_canvasGroup");
         private static void Postfix(MonoBehaviour __instance)
         {
             if ((Settings.instance == null && !PlayersPage.Open) || Menu.instance == null || __instance.transform != Menu.instance.m_root) return;   // beside Settings, and beside the Players page (Valheim's hidden list takes the focus)

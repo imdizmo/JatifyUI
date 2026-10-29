@@ -18,13 +18,13 @@ namespace Jatify.UI
             if (_bound) return _reqs != null;
             if (!BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey(Guid)) return false;   // may load after us: asked again next time
             _bound = true;
-            var synced = AccessTools.TypeByName("kg.ValheimEnchantmentSystem.Configs.SyncedData");
-            var reqT = AccessTools.TypeByName("kg.ValheimEnchantmentSystem.Configs.SyncedData+EnchantmentReqs");
-            var singleT = AccessTools.TypeByName("kg.ValheimEnchantmentSystem.Configs.SyncedData+SingleReq");
+            var synced = Types.Find("kg.ValheimEnchantmentSystem.Configs.SyncedData");
+            var reqT = Types.Find("kg.ValheimEnchantmentSystem.Configs.SyncedData+EnchantmentReqs");
+            var singleT = Types.Find("kg.ValheimEnchantmentSystem.Configs.SyncedData+SingleReq");
             _reqs = synced != null ? AccessTools.Method(synced, "GetReqs", new[] { typeof(string) }) : null;
             _normal = reqT != null ? AccessTools.Field(reqT, "enchant_prefab") : null; _blessed = reqT != null ? AccessTools.Field(reqT, "blessed_enchant_prefab") : null;
             _prefab = singleT != null ? AccessTools.Field(singleT, "prefab") : null;
-            _count = AccessTools.Method(AccessTools.TypeByName("kg.ValheimEnchantmentSystem.EnchantmentMaterialService"), "CountAvailable");   // its own count (bag, and chests through AzuCraftyBoxes)
+            _count = AccessTools.Method(Types.Find("kg.ValheimEnchantmentSystem.EnchantmentMaterialService"), "CountAvailable");   // its own count (bag, and chests through AzuCraftyBoxes)
             if (_reqs == null || _normal == null || _blessed == null || _prefab == null) { _reqs = null; Log.Warn("Valheim Enchantment System found but its scroll data isn't where we look: scroll tiles off"); }
             return _reqs != null;
         }
@@ -65,7 +65,7 @@ namespace Jatify.UI
         internal static void ScrollTip(GameObject tooltipPrefab, Ledger l)
         {
             if (tooltipPrefab == null || !Bind()) return;
-            var ui = AccessTools.TypeByName("kg.ValheimEnchantmentSystem.UI.VES_UI");
+            var ui = Types.Find("kg.ValheimEnchantmentSystem.UI.VES_UI");
             var view = AccessTools.Field(ui, "_view")?.GetValue(null) as Component; var ctl = AccessTools.Field(ui, "_controller")?.GetValue(null);
             var slot = view != null ? AccessTools.Field(view.GetType(), "ScrollRoot")?.GetValue(view) as Transform : null;
             if (slot == null || ctl == null || slot.GetComponent<UITooltip>() != null) return;

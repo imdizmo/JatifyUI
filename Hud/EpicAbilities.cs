@@ -37,11 +37,11 @@ namespace Jatify.UI
         {
             if (_bar == null)
             {
-                if (!_barLooked) { _barLooked = true; _barType = AccessTools.TypeByName("EpicLoot.Abilities.AbilityBar"); }   // once: TypeByName scans every type, and without EpicLoot it never finds one
+                if (!_barLooked) { _barLooked = true; _barType = Types.Find("EpicLoot.Abilities.AbilityBar"); }   // once (without EpicLoot it never finds one)
                 _bar = _barType != null && Hud.instance != null ? Hud.instance.GetComponentInChildren(_barType, true) : null;
                 if (_bar == null) { foreach (var c in _c) if (c.Root.gameObject.activeSelf) c.Root.gameObject.SetActive(false); return; }
                 _icons = Traverse.Create(_bar).Field("AbilityIcons").GetValue() as System.Collections.IList;
-                var it = AccessTools.TypeByName("EpicLoot.Abilities.AbilityIcon");
+                var it = Types.Find("EpicLoot.Abilities.AbilityIcon");
                 _fIcon = AccessTools.Field(it, "Icon"); _fCd = AccessTools.Field(it, "CooldownProgress"); _fKey = AccessTools.Field(it, "Binding"); _fSecs = AccessTools.Field(it, "CooldownText");
                 _hidden = _bar.GetComponent<CanvasGroup>() ?? _bar.gameObject.AddComponent<CanvasGroup>(); _hidden.alpha = 0f; _hidden.blocksRaycasts = false;
             }

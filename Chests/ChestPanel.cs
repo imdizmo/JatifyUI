@@ -42,7 +42,7 @@ namespace Jatify.UI
         private static System.Reflection.FieldInfo _socketItem; private static bool _socketLooked;
         private static ItemDrop.ItemData OpenFor()
         {
-            if (!_socketLooked) { _socketLooked = true; var t = Epic.On ? AccessTools.TypeByName("EpicLoot.ShardStones.SocketsUI") : null; _socketItem = t != null ? AccessTools.Field(t, "OpenEquipment") : null; }
+            if (!_socketLooked) { _socketLooked = true; var t = Epic.On ? Types.Find("EpicLoot.ShardStones.SocketsUI") : null; _socketItem = t != null ? AccessTools.Field(t, "OpenEquipment") : null; }
             return _socketItem?.GetValue(null) as ItemDrop.ItemData;
         }
 

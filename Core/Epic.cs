@@ -140,8 +140,8 @@ namespace Jatify.UI
     [HarmonyPatch]
     internal static class EpicSocketTarget
     {
-        private static bool Prepare() => Epic.On && AccessTools.TypeByName("EpicLoot.ShardStones.SocketOverlayInput") != null;
-        internal static MethodBase Target() => AccessTools.Method(AccessTools.TypeByName("EpicLoot.ShardStones.SocketOverlayInput"), "TryGetPressTarget");
+        private static bool Prepare() => Epic.On && Types.Find("EpicLoot.ShardStones.SocketOverlayInput") != null;
+        internal static MethodBase Target() => AccessTools.Method(Types.Find("EpicLoot.ShardStones.SocketOverlayInput"), "TryGetPressTarget");
         private static MethodBase TargetMethod() => Target();
         private static void Postfix(bool __result, ref ItemDrop.ItemData item, bool gamepad)
         {

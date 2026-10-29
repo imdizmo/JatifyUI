@@ -152,7 +152,7 @@ namespace Jatify.UI
                     if (g.m_repairPanel != null) foreach (Transform sib in g.m_repairPanel.parent) if (sib.name == g.m_repairPanel.name + "(Clone)") foreach (var gr in sib.GetComponentsInChildren<Graphic>(true)) _l.Off(gr);
                     Ves.ScrollTip(g.m_playerGrid.m_elementPrefab.GetComponent<UITooltip>()?.m_tooltipPrefab, _l);   // its scroll slot: our item tooltip
                     // its info panel's list scrolls at our speed (it's at 15 a wheel step: a crawl)
-                    if (HarmonyLib.AccessTools.Field(HarmonyLib.AccessTools.TypeByName("kg.ValheimEnchantmentSystem.UI.Info_UI"), "_view")?.GetValue(null) is Component info && info != null)
+                    if (HarmonyLib.AccessTools.Field(Types.Find("kg.ValheimEnchantmentSystem.UI.Info_UI"), "_view")?.GetValue(null) is Component info && info != null)
                         foreach (var sr in info.GetComponentsInChildren<ScrollRect>(true)) { var r = sr; float was = r.scrollSensitivity; _l.Do(() => r.scrollSensitivity = Kit.ScrollSpeed, () => { if (r != null) r.scrollSensitivity = was; }); }
                 }
             }

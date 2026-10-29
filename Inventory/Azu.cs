@@ -61,7 +61,7 @@ namespace Jatify.UI
             var r = default(Slot);
             try
             {
-                if (_atPos == null) { var api = AccessTools.TypeByName("AzuEPI.API"); _atPos = AccessTools.Method(api, "TryGetSlotIndexAtGridPos"); _desc = AccessTools.Method(api, "TryGetSlotDescriptor", new[] { typeof(int), AccessTools.TypeByName("AzuEPI.SlotDescriptor").MakeByRefType() }); }
+                if (_atPos == null) { var api = Types.Find("AzuEPI.API"); _atPos = AccessTools.Method(api, "TryGetSlotIndexAtGridPos"); _desc = AccessTools.Method(api, "TryGetSlotDescriptor", new[] { typeof(int), Types.Find("AzuEPI.SlotDescriptor").MakeByRefType() }); }
                 var a = new object[] { inv, new Vector2i(x, y), 0 };
                 if (_atPos != null && (bool)_atPos.Invoke(null, a))
                 {
@@ -99,7 +99,7 @@ namespace Jatify.UI
             var p = Player.m_localPlayer; if (p == null || inv == null || !Favouriting) return false;
             if (!_favBound)
             {
-                _favBound = true; var t = AccessTools.TypeByName("AzuEPI.Game.Favoriting.UserConfig");
+                _favBound = true; var t = Types.Find("AzuEPI.Game.Favoriting.UserConfig");
                 _favCfg = AccessTools.Method(t, "GetPlayerConfig"); _favSlot = AccessTools.Method(t, "IsSlotFavorited"); _favItem = AccessTools.Method(t, "IsItemNameOrSlotFavorited");
                 if (_favCfg == null || _favSlot == null || _favItem == null) Log.Warn("AzuEPI favourites: not found, only Jatify's locks keep items in place");
             }

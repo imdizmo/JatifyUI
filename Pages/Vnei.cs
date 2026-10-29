@@ -36,8 +36,8 @@ namespace Jatify.UI
             if (_bound) return _ok; _bound = true;
             try
             {
-                Type idx = AccessTools.TypeByName("VNEI.Logic.Indexing"), item = AccessTools.TypeByName("VNEI.Logic.Item"), part = AccessTools.TypeByName("VNEI.Logic.Part"),
-                     amount = AccessTools.TypeByName("VNEI.Logic.Amount"), recipe = AccessTools.TypeByName("VNEI.Logic.RecipeInfo"), fav = AccessTools.TypeByName("VNEI.Logic.FavouritesSave");
+                Type idx = Types.Find("VNEI.Logic.Indexing"), item = Types.Find("VNEI.Logic.Item"), part = Types.Find("VNEI.Logic.Part"),
+                     amount = Types.Find("VNEI.Logic.Amount"), recipe = Types.Find("VNEI.Logic.RecipeInfo"), fav = Types.Find("VNEI.Logic.FavouritesSave");
                 HasIndexed = AccessTools.Method(idx, "HasIndexed"); GetActive = AccessTools.Method(idx, "GetActiveItems");
                 GetIcon = AccessTools.Method(item, "GetIcon"); GetName = AccessTools.Method(item, "GetPrimaryName"); GetMod = AccessTools.Method(item, "GetModName"); UpdateFav = AccessTools.Method(item, "UpdateFavorite", new[] { typeof(bool) });
                 FInternal = AccessTools.Field(item, "internalName"); FToken = AccessTools.Field(item, "preLocalizeName"); FType = AccessTools.Field(item, "itemType"); FDropType = AccessTools.Field(item, "itemDropType");

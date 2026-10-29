@@ -47,7 +47,7 @@ namespace Jatify.UI
             PaintTabs();
             if (Time.unscaledTime < _next) return;
             _next = Time.unscaledTime + 0.4f;   // its lists rebuild when you pick a tab or an item; a pass is cheap
-            if (!_tableLooked) { _tableLooked = true; _tableUi = AccessTools.TypeByName("EpicLoot_UnityLib.EnchantingTableUI"); }   // once (without EpicLoot it is never found)
+            if (!_tableLooked) { _tableLooked = true; _tableUi = Types.Find("EpicLoot_UnityLib.EnchantingTableUI"); }   // once (without EpicLoot it is never found)
             var ui = _tableUi != null ? Traverse.Create(_tableUi).Property("instance").GetValue() as Component : null;
             var panel = ui != null ? ui.transform.Find("Panel") : null;
             if (panel == null || !panel.gameObject.activeInHierarchy) return;
@@ -219,7 +219,7 @@ namespace Jatify.UI
             }
             foreach (var bic in b.GetComponents<ButtonImageColor>())
                 if (bic.m_image != null && bic.m_image != img) { mark.IconBic = bic; mark.IconDisabled = bic.m_disabledColor; bic.m_disabledColor = tab ? Theme.C(t.accent) : Theme.C(t.mute); }   // the icon
-            if (!_stcLooked) { _stcLooked = true; _stcType = AccessTools.TypeByName("EpicLoot_UnityLib.SelectableTextColor"); }   // once: without EpicLoot (AzuEPI's screens) it is never found
+            if (!_stcLooked) { _stcLooked = true; _stcType = Types.Find("EpicLoot_UnityLib.SelectableTextColor"); }   // once: without EpicLoot (AzuEPI's screens) it is never found
             var stc = _stcType != null ? b.GetComponent(_stcType) : null;   // EpicLoot's: repaints the label every frame from its own default
             if (stc != null)
             {

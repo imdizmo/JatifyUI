@@ -38,12 +38,12 @@ namespace Jatify.UI
             if (!_apiLooked)
             {
                 _apiLooked = true;
-                var api = AccessTools.TypeByName("AzuCraftyBoxes.API");
+                var api = Types.Find("AzuCraftyBoxes.API");
                 _nearby = api?.GetMethod("GetNearbyContainers")?.MakeGenericMethod(typeof(Player));
                 _count = api?.GetMethod("CountItemInContainer");
                 _canPull = api?.GetMethod("CanItemBePulled", new[] { typeof(string), typeof(string) });
-                _prefabName = AccessTools.TypeByName("AzuCraftyBoxes.IContainers.IContainer")?.GetMethod("GetPrefabName");
-                _prevent = AccessTools.Method(AccessTools.TypeByName("AzuCraftyBoxes.Util.Functions.MiscFunctions"), "ShouldPrevent");
+                _prefabName = Types.Find("AzuCraftyBoxes.IContainers.IContainer")?.GetMethod("GetPrefabName");
+                _prevent = AccessTools.Method(Types.Find("AzuCraftyBoxes.Util.Functions.MiscFunctions"), "ShouldPrevent");
                 if (_nearby == null || _count == null) { _apiBad = true; Log.Warn("AzuCraftyBoxes: its API was not found, the crafting panel counts the bag only (it still takes from chests)"); }
             }
             if (_apiBad) return 0;
@@ -53,7 +53,7 @@ namespace Jatify.UI
                 if (_nearbyFrame != Time.frameCount)
                 {
                     _nearbyFrame = Time.frameCount;
-                    if (!_rangeLooked) { _rangeLooked = true; _range = AccessTools.Field(AccessTools.TypeByName("AzuCraftyBoxes.AzuCraftyBoxesPlugin"), "mRange")?.GetValue(null) as BepInEx.Configuration.ConfigEntryBase; }   // once: TypeByName scans every loaded type (~20 ms a frame in the build menu)
+                    if (!_rangeLooked) { _rangeLooked = true; _range = AccessTools.Field(Types.Find("AzuCraftyBoxes.AzuCraftyBoxesPlugin"), "mRange")?.GetValue(null) as BepInEx.Configuration.ConfigEntryBase; }   // once, not every frame (the build menu asks each frame)
                     var range = _range;
                     float r = range != null ? Convert.ToSingle(range.BoxedValue) : Cfg.StackRange.Value;
                     Plugin.Timed("azu.nearby", () => _nearbyList = _nearby.Invoke(null, new object[] { p, r }) as System.Collections.IList);

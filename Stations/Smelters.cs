@@ -136,7 +136,7 @@ namespace Jatify.UI
             KeyCode code = KeyCode.None;
             try
             {
-                var e = AccessTools.Field(AccessTools.TypeByName("AzuCraftyBoxes.AzuCraftyBoxesPlugin"), "fillAllModKey")?.GetValue(null) as ConfigEntryBase;
+                var e = AccessTools.Field(Types.Find("AzuCraftyBoxes.AzuCraftyBoxesPlugin"), "fillAllModKey")?.GetValue(null) as ConfigEntryBase;
                 if (e?.BoxedValue is KeyboardShortcut ks) code = ks.MainKey; else if (e?.BoxedValue is KeyCode kc) code = kc;
             }
             catch { }
