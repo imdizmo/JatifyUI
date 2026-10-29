@@ -45,7 +45,12 @@ namespace Jatify.UI
             }
             // a submenu cascading right of the pause menu, in its style (user): no panel, the menu stays visible and clickable
             var head = Kit.Text(_root, "Head", (mods ? "Mods" : "Jatify UI").ToUpperInvariant(), Fonts.Mono, 12f, Theme.C(t.mute)); head.characterSpacing = 8f; head.rectTransform.At(420, 300, 260, 18);
-            _nav = Kit.Node(_root, "Nav").At(420, 330, 260, 640);
+            // the navigation scrolls: with many mods it ran off the screen (#21). Its view starts left of it, so the selection mark isn't clipped.
+            var navView = Kit.Node(_root, "NavView").At(400, 330, 280, 690);
+            navView.gameObject.AddComponent<RectMask2D>();
+            var navHit = navView.gameObject.AddComponent<Image>(); navHit.color = new Color(0, 0, 0, 0); navHit.raycastTarget = true;
+            _nav = Kit.Node(navView, "Nav").At(20, 0, 260, 640);
+            var nsr = navView.gameObject.AddComponent<ScrollRect>(); nsr.content = _nav; nsr.horizontal = false; nsr.scrollSensitivity = Kit.ScrollSpeed; nsr.movementType = ScrollRect.MovementType.Clamped;
             // search over every section (on Mods: every mod), then the rows: a scroll view right of the navigation
             Pages.T = Pages.T ?? t;
             _search = Pages.Search(_root, mods ? "Search mod settings" : "Search settings", 720, 262, 360, q => { _q = q.Trim().ToLowerInvariant(); BuildRows(); });
@@ -111,6 +116,7 @@ namespace Jatify.UI
             var back = Kit.Text(_nav, "Back", "Back", Fonts.Bold, 20f, Theme.C(_t.dim)); back.rectTransform.At(0, y + 18, 80, 30); back.alignment = TextAlignmentOptions.MidlineLeft;
             back.raycastTarget = true; back.gameObject.AddComponent<Button>().onClick.AddListener(Close);
             var esc = Kit.Text(_nav, "Esc", "Esc", Fonts.Mono, 12f, Theme.C(_t.mute)); esc.rectTransform.At(Kit.W(back) + 12f, y + 18, 60, 30); esc.alignment = TextAlignmentOptions.MidlineLeft;
+            _nav.sizeDelta = new Vector2(260f, y + 60f);
             BuildRows();
         }
 
