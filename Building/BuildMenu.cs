@@ -259,7 +259,12 @@ namespace Jatify.UI
                 var type = TypeOf(piece, name);
                 _all.Add(new P { Piece = piece, Name = name, Type = type, Region = RegionOf(piece), Cat = (int)(piece.m_category == Piece.PieceCategory.DeepNorth ? Fold(piece, type) : piece.m_category) });
             }
-            _all.Sort((a, b) => Table(me).m_pieces.FindIndex(g => g == a.Piece.gameObject).CompareTo(Table(me).m_pieces.FindIndex(g => g == b.Piece.gameObject)));   // the hammer's own order
+            // the hammer's own order, each piece's place looked up once (#18: searching the list on every comparison stalled the
+            // game for a second with every piece unlocked, no-cost building)
+            var order = new Dictionary<GameObject, int>(); var all = Table(me).m_pieces;
+            for (int i = 0; i < all.Count; i++) if (all[i] != null && !order.ContainsKey(all[i])) order[all[i]] = i;
+            int At(P x) => order.TryGetValue(x.Piece.gameObject, out var i) ? i : -1;
+            _all.Sort((a, b) => At(a).CompareTo(At(b)));
         }
 
         // ---- filters and grid -------------------------------------------------------------------------
