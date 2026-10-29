@@ -543,10 +543,10 @@ namespace Jatify.Campfire
             var p = _sel;
             ConfirmByName("Delete character", $"{p.GetName()} will be deleted.", p.GetName(), () =>
             {
-                Fejd.DeleteCharacter(p);
+                if (!Fejd.DeleteCharacter(p)) { Show(); return; }   // GuardDelete's toast says why
                 _sel = null;
                 Show();
-                Toast($"{p.GetName()} deleted (backup in campfire-backups)");
+                Toast($"{p.GetName()} deleted. A copy is kept in campfire-backups");
             });
         }
 
@@ -556,10 +556,10 @@ namespace Jatify.Campfire
             var w = _world;
             ConfirmByName("Delete world", $"{w.m_name} will be deleted.", w.m_name, () =>
             {
-                Fejd.DeleteWorld(w);
+                if (!Fejd.DeleteWorld(w)) { Show(); return; }
                 _world = null;
                 Show();
-                Toast($"{w.m_name} deleted (backup in campfire-backups)");
+                Toast($"{w.m_name} deleted. A copy is kept in campfire-backups");
             });
         }
 

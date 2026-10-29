@@ -126,12 +126,16 @@ namespace Jatify.Campfire
 
         internal static void NewCharacter() { CharScreen.Hide(); F.OnCharacterNew(); NewCharView.Show(); }
 
-        internal static void DeleteCharacter(PlayerProfile p)
+        // true when the save is gone (a failed backup refuses the delete)
+        internal static bool DeleteCharacter(PlayerProfile p)
         {
             T.Field("m_tempRemoveCharacterName").SetValue(p.GetFilename());
             T.Field("m_tempRemoveCharacterSource").SetValue(p.m_fileSource);
             T.Field("m_tempRemoveCharacterIndex").SetValue(Profiles.IndexOf(p));
-            F.OnButtonRemoveCharacterYes();   // backed up first by BackupBeforeDelete
+            F.OnButtonRemoveCharacterYes();   // backed up first by GuardDelete
+            if (!PlayerProfile.HaveProfile(p.GetFilename())) return true;
+            T.Field("m_profiles").SetValue(SaveSystem.GetAllPlayerProfiles());   // Valheim dropped it from its list anyway
+            return false;
         }
 
         internal static void NewWorld(string name, string seed)
@@ -141,10 +145,11 @@ namespace Jatify.Campfire
             F.OnNewWorldDone(false);         // ends in ShowStartGame, which comes back to our screen
         }
 
-        internal static void DeleteWorld(World w)
+        internal static bool DeleteWorld(World w)
         {
             World = w;
-            F.OnButtonRemoveWorldYes();       // backed up first by BackupBeforeDelete
+            F.OnButtonRemoveWorldYes();       // backed up first by GuardDelete
+            return !(SaveSystem.TryGetSaveByName(w.m_worldName, SaveDataType.World, out var save) && !save.IsDeleted);
         }
 
         // Valheim's modifier window lives on its world panel: open that, come back on Done/Cancel.
@@ -339,6 +344,7 @@ namespace Jatify.Campfire
                 foreach (var p in paths)
                 {
                     var found = Resolve(p);
+                    if (found == null && file.m_source == FileHelpers.FileSource.Cloud && FromCloud(p, dest)) { n++; continue; }
                     if (found == null) { Log.Warn($"backup: can't find {p} ({file.m_source})"); continue; }
                     Directory.CreateDirectory(dest);
                     var target = Path.Combine(dest, Path.GetFileName(found.TrimEnd('/', '\\')));
@@ -349,6 +355,20 @@ namespace Jatify.Campfire
                 return n > 0 && n == paths.Length;
             }
             catch (Exception e) { Log.Warn($"backup before {why} of '{file.Name}' failed: {e}"); return false; }
+        }
+
+        // A cloud save with no copy on disk (Steam installed away from its usual folder, say): read it through Valheim's own
+        // cloud storage, as moving a save out of the cloud does. A folder (a chunked world) is copied file by file.
+        private static bool FromCloud(string path, string dest)
+        {
+            try
+            {
+                var name = Path.GetFileName(path.TrimEnd('/', '\\'));
+                if (path.EndsWith("/")) FileHelpers.FileCopyOutFromCloud(new List<string> { path }, new List<string> { Path.Combine(dest, name) + "/" }, false);
+                else { Directory.CreateDirectory(dest); FileHelpers.FileCopyOutFromCloud(path, Path.Combine(dest, name), false); }
+                return File.Exists(Path.Combine(dest, name)) || Directory.Exists(Path.Combine(dest, name));
+            }
+            catch (Exception e) { Log.Warn($"backup: can't read {path} from the cloud: {e.Message}"); return false; }
         }
 
         private static string Safe(string s) => string.Join("_", (s ?? "save").Split(Path.GetInvalidFileNameChars()));
