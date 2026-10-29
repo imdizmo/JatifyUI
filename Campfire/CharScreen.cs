@@ -189,11 +189,12 @@ namespace Jatify.Campfire
             // Servers: the warning, Remember passwords, the list's actions
             _serversOpts = Place(Node(left, "sopts"), Pad, LH - Pad - ServerOpts, LI, ServerOpts);
             Rule(_serversOpts, 0f, 0f, LI);
-            Para(_serversOpts, "Your favourite servers. Joining an online server puts your character at risk.", "medium", 12.5f, C("mute"), 0f, 10f, LI, 36f);
+            Para(_serversOpts, "Your favourite servers. Find servers searches community ones. Joining an online server puts your character at risk.", "medium", 12.5f, C("mute"), 0f, 10f, LI, 36f);
             _remember = SwitchRow(_serversOpts, "Remember passwords", 0f, 56f, Module.RememberPasswords.Value, on => Module.RememberPasswords.Value = on, 220f);
             _remember.SetEnabled(Passwords.Available);
             Acts(_serversOpts, 88f, LI, true,
-                ("+ Add server", AddServerDialog, true),
+                ("Find servers", Fejd.ServerBrowser, true),   // Valheim's own browser: community servers, search, crossplay (#20)
+                ("+ Add", AddServerDialog, true),
                 ("Refresh", () => { _servers = Fejd.FavoriteServers(); Repaint(); Toast($"{_servers.Count} favourite servers"); }, true),
                 ("Remove", RemoveServerDialog, true));
 
