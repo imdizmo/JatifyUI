@@ -403,8 +403,14 @@ namespace Jatify.UI
         private static void NameField(RectTransform large, ThemeData t)
         {
             var f = _nameField = large.Find("NameField") as RectTransform; if (f == null) return;   // by name: its type lives in an assembly we don't reference
-            _l.Img(f.GetComponent<Image>(), Kit.Rounded(8), new Color(0f, 0f, 0f, 0.35f));
-            foreach (var x in f.GetComponentsInChildren<TMP_Text>(true)) _l.Txt(x, Fonts.Medium, 14f, x.name == "Placeholder" ? Theme.C(t.mute) : Color.white);
+            // a raised box that reads as a field on the card, and a placeholder that says what it's for (#33: dark on the dark card,
+            // it went unseen)
+            _l.Img(f.GetComponent<Image>(), Kit.Rounded(8), Theme.C(t.raised));
+            foreach (var x in f.GetComponentsInChildren<TMP_Text>(true))
+            {
+                _l.Txt(x, Fonts.Medium, 14f, x.name == "Placeholder" ? Theme.C(t.mute) : Color.white);
+                if (x.name == "Placeholder") { var tx = x; var was = tx.text; _l.Do(() => tx.text = "Name (optional)", () => { if (tx != null) tx.text = was; }); }
+            }
             _l.Rect(f, r => r.sizeDelta = new Vector2(236f, 34f));
             // design "addpin": a card around vanilla's field with the pin's type and Cancel / Add pin
             var (card, _) = Kit.Box(large, "jatify-addpin", Theme.C(t.glass), Theme.C(t.glassLine), 10); _l.Own(card); card.raycastTarget = true;
