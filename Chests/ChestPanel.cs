@@ -187,10 +187,12 @@ namespace Jatify.UI
             return s;
         }
 
-        // containers that can be named (another mod's TextReceiver on them): Valheim's own text box
+        // containers that can be named (another mod's TextReceiver on them): Valheim's own text box. Not a tamed animal's: a
+        // saddlebag (OdinHorse, #26) is a container on the horse, and its name is the horse's.
+        private static TextReceiver Namer(Container c) { var r = c != null ? c.GetComponentInParent<TextReceiver>() : null; return r is Tameable ? null : r; }
         private static void Rename()
         {
-            var c = Open; var r = c != null ? c.GetComponentInParent<TextReceiver>() : null;
+            var r = Namer(Open);
             if (r != null && TextInput.instance != null) TextInput.instance.RequestText(r, "$hud_rename", 32);
         }
 
@@ -283,7 +285,7 @@ namespace Jatify.UI
                 _shown = c; _used = -1; _locksRaw = null; _found = null;
                 if (_search != null && _search.text.Length > 0) _search.text = "";
                 var piece = c.GetComponentInParent<Piece>(); _icon.sprite = piece != null ? piece.m_icon : null; _icon.enabled = _icon.sprite != null;
-                _canRename = c.GetComponentInParent<TextReceiver>() != null; _rename.gameObject.SetActive(_canRename);
+                _canRename = Namer(c) != null; _rename.gameObject.SetActive(_canRename);
                 _close.anchoredPosition = new Vector2(_canRename ? _closeX : _closeX - _renameW, _close.anchoredPosition.y);   // Close takes Rename's place when there is none
             }
             ReadLocks(c); ChestAssign.TickTile(c, _t);
@@ -294,7 +296,7 @@ namespace Jatify.UI
             if (items.Count != _used || stacks != _stacks || kg != _wKg || cap != _wCap || craft != _craft)
             {
                 _used = items.Count; _stacks = stacks; _total = inv.GetWidth() * inv.GetHeight(); _wKg = kg; _wCap = cap; _craft = craft; _found = null;
-                var r = c.GetComponentInParent<TextReceiver>(); var own = r != null ? r.GetText() : null;
+                var r = Namer(c); var own = r != null ? r.GetText() : null;
                 _name.text = !string.IsNullOrEmpty(own) ? Kit.Plain(own) : Localization.instance.Localize(c.m_name);
                 int merge = Mergeable(items);
                 _sub.text = $"{_used} of {_total} slots" + (merge > 0 ? $" · {merge} stack{(merge == 1 ? "" : "s")} merge" : "");
