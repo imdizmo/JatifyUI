@@ -132,6 +132,7 @@ namespace Jatify.Campfire
             T.Field("m_tempRemoveCharacterName").SetValue(p.GetFilename());
             T.Field("m_tempRemoveCharacterSource").SetValue(p.m_fileSource);
             T.Field("m_tempRemoveCharacterIndex").SetValue(Profiles.IndexOf(p));
+            GuardDelete.Refused = false;
             F.OnButtonRemoveCharacterYes();   // backed up first by GuardDelete
             if (!PlayerProfile.HaveProfile(p.GetFilename())) return true;
             T.Field("m_profiles").SetValue(SaveSystem.GetAllPlayerProfiles());   // Valheim dropped it from its list anyway
@@ -147,7 +148,7 @@ namespace Jatify.Campfire
 
         internal static bool DeleteWorld(World w)
         {
-            World = w;
+            World = w; GuardDelete.Refused = false;
             F.OnButtonRemoveWorldYes();       // backed up first by GuardDelete
             return !(SaveSystem.TryGetSaveByName(w.m_worldName, SaveDataType.World, out var save) && !save.IsDeleted);
         }
@@ -344,7 +345,7 @@ namespace Jatify.Campfire
                 foreach (var p in paths)
                 {
                     var found = Resolve(p);
-                    if (found == null && file.m_source == FileHelpers.FileSource.Cloud && FromCloud(p, dest)) { n++; continue; }
+                    if (found == null && file.m_source == FileHelpers.FileSource.Cloud && FromCloud(p, file.IsChunked, dest)) { n++; continue; }
                     if (found == null) { Log.Warn($"backup: can't find {p} ({file.m_source})"); continue; }
                     Directory.CreateDirectory(dest);
                     var target = Path.Combine(dest, Path.GetFileName(found.TrimEnd('/', '\\')));
@@ -359,12 +360,16 @@ namespace Jatify.Campfire
 
         // A cloud save with no copy on disk (Steam installed away from its usual folder, say): read it through Valheim's own
         // cloud storage, as moving a save out of the cloud does. A folder (a chunked world) is copied file by file.
-        private static bool FromCloud(string path, string dest)
+        private static bool FromCloud(string path, bool folder, string dest)
         {
             try
             {
                 var name = Path.GetFileName(path.TrimEnd('/', '\\'));
-                if (path.EndsWith("/")) FileHelpers.FileCopyOutFromCloud(new List<string> { path }, new List<string> { Path.Combine(dest, name) + "/" }, false);
+                if (folder)
+                {   // Valheim's folder path has no trailing slash (and backslashes on Windows): the folder copy needs one
+                    path = path.Replace('\\', '/').TrimEnd('/') + "/";
+                    FileHelpers.FileCopyOutFromCloud(new List<string> { path }, new List<string> { Path.Combine(dest, name) + "/" }, false);
+                }
                 else { Directory.CreateDirectory(dest); FileHelpers.FileCopyOutFromCloud(path, Path.Combine(dest, name), false); }
                 return File.Exists(Path.Combine(dest, name)) || Directory.Exists(Path.Combine(dest, name));
             }
@@ -408,9 +413,11 @@ namespace Jatify.Campfire
     [HarmonyPatch(typeof(SaveSystem), nameof(SaveSystem.Delete))]
     internal static class GuardDelete
     {
+        internal static bool Refused;   // the last delete was refused here (its toast says why)
         private static bool Prefix(SaveFile file, ref bool __result)
         {
             if (SaveBackup.Copy("delete", file)) return true;
+            Refused = true;
             CharScreen.Toast($"Could not back up {file?.Name}: NOT deleted");
             __result = false;
             return false;

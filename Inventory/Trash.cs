@@ -49,6 +49,7 @@ namespace Jatify.UI
             var ic = Kit.Img(_tile, "Icon", Kit.Icon("trash_icon"), new Color(1f, 1f, 1f, 0.7f), false); ic.rectTransform.At(17, 17, 26, 26); ic.preserveAspect = true;
             line.raycastTarget = true;
             var b = line.gameObject.AddComponent<Button>(); b.targetGraphic = line; b.onClick.AddListener(OnClick);
+            _hover = line.gameObject.AddComponent<Hover>();
             var cb = b.colors; cb.normalColor = Color.white; cb.highlightedColor = Theme.C(t.ember) * 3f; b.colors = cb;   // the outline turns ember on hover
             var tip = line.gameObject.AddComponent<UITooltip>(); var vt = InventoryGui.instance?.m_playerGrid.m_elementPrefab.GetComponent<UITooltip>();
             if (vt != null) { tip.m_tooltipPrefab = vt.m_tooltipPrefab; tip.Set("Trash", "Drag an item here to destroy it."); }
@@ -142,7 +143,16 @@ namespace Jatify.UI
             if (!ZInput.GetMouseButtonUp(0) || _downOnTile || !Over()) return;
             var g = InventoryGui.instance; if (g != null && DragItem(g) != null) OnClick();
         }
-        private bool Over() => _tile.gameObject.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint(_tile, ZInput.pointerPosition, null);
+        // the pointer is on the tile itself, not on something drawn over it (the event system's enter / exit, as for any button)
+        private bool Over() => _tile.gameObject.activeInHierarchy && _hover != null && _hover.On;
+        private Hover _hover;
+        private sealed class Hover : MonoBehaviour, UnityEngine.EventSystems.IPointerEnterHandler, UnityEngine.EventSystems.IPointerExitHandler
+        {
+            internal bool On;
+            public void OnPointerEnter(UnityEngine.EventSystems.PointerEventData e) => On = true;
+            public void OnPointerExit(UnityEngine.EventSystems.PointerEventData e) => On = false;
+            private void OnDisable() => On = false;
+        }
 
         internal void Destroy() { if (_tile) Object.Destroy(_tile.gameObject); if (_dialog) Object.Destroy(_dialog.gameObject); }
     }
