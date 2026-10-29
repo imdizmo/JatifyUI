@@ -61,6 +61,8 @@ namespace Jatify.UI
             Medium = Make(dir, "SpaceGrotesk-Medium.ttf");
             Bold = Make(dir, "SpaceGrotesk-Bold.ttf");
             Mono = Make(dir, "JetBrainsMono-Medium.ttf");
+            // Space Grotesk has no geometric shapes (▸ ▾ ● ✓): JetBrains Mono, which has them, draws them instead of a warning
+            if (Mono != null) foreach (var fa in new[] { Medium, Bold }) if (fa != null) fa.fallbackFontAssetTable = new List<TMP_FontAsset> { Mono };
         }
 
         private static TMP_FontAsset Make(string dir, string name)

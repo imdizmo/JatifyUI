@@ -528,7 +528,7 @@ namespace Jatify.UI
                 if (fp != _nameField.anchoredPosition) _nameField.anchoredPosition = fp;
                 _addCard.anchoredPosition = fp + new Vector2(0f, 17f + 12f);
             }
-            if (_undo != null) { _undo.text = Removed.Count > 0 ? $"\u21b6 Undo ({Removed.Count})" : "\u21b6 Undo"; _undo.color = Removed.Count > 0 ? Color.white : Theme.C(t.mute); }
+            if (_undo != null) { _undo.text = Removed.Count > 0 ? $"\u21a9 Undo ({Removed.Count})" : "\u21a9 Undo"; _undo.color = Removed.Count > 0 ? Color.white : Theme.C(t.mute); }
             if (_cone != null && m.m_largeMarker != null) { _cone.anchoredPosition = m.m_largeMarker.anchoredPosition; _cone.localRotation = m.m_largeMarker.localRotation; _cone.gameObject.SetActive(m.m_largeMarker.gameObject.activeSelf); }
             // sizes (design: pins 40-150 %, names 0-150 %, 0 hides them)
             float ps = 48f * Cfg.MapPinSize.Value / 100f;
