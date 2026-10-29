@@ -55,6 +55,11 @@ namespace Jatify.UI
             _content = Kit.Node(_root, "Content");
             _content.anchorMin = new Vector2(0f, 1f); _content.anchorMax = new Vector2(1f, 1f); _content.pivot = new Vector2(0.5f, 1f); _content.anchoredPosition = Vector2.zero;
             var sr = _root.gameObject.AddComponent<ScrollRect>(); sr.content = _content; sr.horizontal = false; sr.scrollSensitivity = Kit.ScrollSpeed; sr.movementType = ScrollRect.MovementType.Clamped;
+            // a thin thumb on the right shows how far down you are (#35), only while the list is longer than its view; it can be dragged
+            var bar = Kit.Node(_root, "Bar").At(231, 2, 4, 586);
+            var thumb = Kit.Panel(bar, "Handle", Theme.C(t.line2), 2); thumb.rectTransform.Fill();
+            var sb = bar.gameObject.AddComponent<Scrollbar>(); sb.direction = Scrollbar.Direction.BottomToTop; sb.handleRect = thumb.rectTransform; sb.targetGraphic = thumb;
+            sr.verticalScrollbar = sb; sr.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
         }
 
         private static List<Entry> Read(InventoryGui g)
