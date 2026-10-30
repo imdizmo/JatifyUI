@@ -218,7 +218,7 @@ namespace Jatify.UI
             _render = new CharacterRender(_doll, 64, 0, 112, 230);
             // the character's name under the figure (user), in the Norse lettering
             _name = Kit.Text(_doll, "Name", "", Fonts.Norse, 18f, Theme.C(t.text)); _name.alignment = TextAlignmentOptions.Center;
-            _name.rectTransform.At(40, 236, 160, 24); _name.overflowMode = TextOverflowModes.Ellipsis;
+            _name.rectTransform.At(40, Es.Drives ? 214 : 236, 160, 24);   // ExtraSlots: up a little, its third ammo cell sits under it _name.overflowMode = TextOverflowModes.Ellipsis;
             // armour and block live in the stats card now (user)
         }
 
@@ -240,7 +240,8 @@ namespace Jatify.UI
             if (!_doll.gameObject.activeInHierarchy) return null;
             int k = row * 16 + col;
             if (!_es.TryGetValue(k, out var r) || r == null)
-                _es[k] = r = row == 0 ? Kit.Node(_doll, "Es" + k).At(col == 0 ? 0 : col == 1 ? 70 : col == 2 ? 126 : 180, col == 0 || col == 3 ? 281 : 288, col == 0 || col == 3 ? 60 : 46, col == 0 || col == 3 ? 60 : 46)
+                _es[k] = r = row < 0 ? Kit.Node(_doll, "EsAmmo3").At(98, 288 - 50, 46, 46)   // ammo 3: centred over ammo 1 and 2 (user)
+                    : row == 0 ? Kit.Node(_doll, "Es" + k).At(col == 0 ? 0 : col == 1 ? 70 : col == 2 ? 126 : 180, col == 0 || col == 3 ? 281 : 288, col == 0 || col == 3 ? 60 : 46, col == 0 || col == 3 ? 60 : 46)
                     : Kit.Node(_doll, "Es" + k).At(col * EsPitch, 281 + 67 + (row - 1) * EsPitch, EsSize, EsSize);
             return r;
         }

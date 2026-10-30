@@ -394,7 +394,7 @@ namespace Jatify.UI
             var panel = g.m_player != null ? g.m_player.Find("ExtraSlotsEquipmentPanel") : null;
             if (panel != null) { var cg = panel.GetComponent<CanvasGroup>(); if (cg == null) { cg = panel.gameObject.AddComponent<CanvasGroup>(); _azuHidden.Add(cg); } if (cg.alpha != 0f) { cg.alpha = 0f; cg.blocksRaycasts = false; cg.interactable = false; } }
             // our bottom row's shape: its extra utilities 3 and 4 where our rings sit (the ends), ammo 1 and 2 between them where our
-            // ammo and keys sit; then a row for ammo 3, other mods' slots (rings, necklace, lantern...) and a Misc slot that holds
+            // ammo and keys sit, ammo 3 centred above those two; then a row for other mods' slots (rings, necklace, lantern...) and a Misc slot that holds
             // something (keys go in our pouch, user: empty Misc slots stay out of sight)
             _esPlace.Clear(); int row = 1, col = 0; var inv = Player.m_localPlayer?.GetInventory();
             void Put(string id) { if (col == Equipment.EsPerRow) { row++; col = 0; } _esPlace[id] = (row, col++); }
@@ -405,7 +405,7 @@ namespace Jatify.UI
                 if (s.Id == "ExtraUtility3") _esPlace[s.Id] = (0, 0); else if (s.Id == "ExtraUtility4") _esPlace[s.Id] = (0, 3);
                 else if (s.Id == "Ammo1") _esPlace[s.Id] = (0, 1); else if (s.Id == "Ammo2") _esPlace[s.Id] = (0, 2);
             }
-            foreach (var s in all) if (s.Active && s.Id == "Ammo3") Put(s.Id);
+            foreach (var s in all) if (s.Active && s.Id == "Ammo3") _esPlace[s.Id] = (-1, 0);   // centred above ammo 1 and 2
             foreach (var s in all) if (s.Active && Es.IsRing(s.Id) && Es.DollCell(s.Id) == null) Put(s.Id);
             foreach (var s in all)
                 if (s.Active && !_esPlace.ContainsKey(s.Id) && Es.DollCell(s.Id) == null && Es.Quick(s.Id) < 0 && Es.Food(s.Id) < 0 && Es.Ammo(s.Id) < 0
@@ -573,7 +573,7 @@ namespace Jatify.UI
         private static void LayBelts()
         {
             Legible();
-            int key = SpecialRows.Start * 4 + (Folded ? 1 : 0) + (Narrow ? 2 : 0);
+            int key = SpecialRows.Start * 4 + (Folded ? 1 : 0) + (Narrow ? 2 : 0) + Mathf.RoundToInt(EsBelow) * 1000;   // ExtraSlots adding a row under the doll moves the strip
             if (_beltLine == null || _beltsLaid == key) return;
             _beltsLaid = key;
             for (int i = 0; i < _beltLabels.Count; i++) { var l = _beltLabels[i]; bool on = (SpecialRows.On || Es.Drives && i != 2) && !Folded; if (l != null && l.gameObject.activeSelf != on) l.gameObject.SetActive(on); }   // ExtraSlots: its quick and food slots under Tools and Food (no meads)   // AzuEPI: its cells carry their own names
