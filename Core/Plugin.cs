@@ -166,6 +166,7 @@ namespace Jatify.UI
             Safe("screen-check", ScreenCheck.Tick);
             Safe("qss-hide", Qss.Tick);
             Safe("dead-mods-tick", () => { DeadMods.Tick(); DeadMods.TickLate(); });
+            Safe("deprecated-mods", DeprecatedMods.Tick);
 #if JATIFY_DEV
             if (Dev.Build) Safe("test-panel", TestPanel.Tick);   // F8 test kit and shot.request: dev builds only
             if (Dev.Build) Safe("devshot", DevShot.Tick);
@@ -248,7 +249,8 @@ namespace Jatify.UI
             try { ExtraRows.Remove(); } catch (Exception e) { Log.Error("extra rows: " + e); } // before unpatching: pack, shrink, nothing dropped
             try { _harmony?.UnpatchSelf(); } catch (Exception e) { Log.Warn("unpatch: " + e.Message); }
             Safe("qss-unload", Qss.Unload);
-            Safe("dead-mods-stop", DeadMods.Stop);   // its trash can back: it never spawns it twice
+            Safe("dead-mods-stop", DeadMods.Stop);
+            Safe("deprecated-unload", DeprecatedMods.Destroy);   // its trash can back: it never spawns it twice
             Safe("sync-unload", Sync.Unload);
             Safe("campfire-unload", Campfire.Module.Unload);   // after unpatching (its postfixes stay out of the hand-back), before Kit and Fonts go
             if (_theme != null) { _theme.Changed -= Root.Restyle; _theme.Dispose(); }
