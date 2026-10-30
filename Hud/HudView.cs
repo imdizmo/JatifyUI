@@ -69,7 +69,7 @@ namespace Jatify.UI
             tb.rectTransform.At(-14 - 318, 96 + 14, 318, 58);
             for (int i = 0; i < _tools.Length; i++) { _tools[i] = new Slot(tb.transform, "", 6 + i * 52, 6, 46f, t).Cap(1); _tools[i].Bar = true; _tools[i].Shown(i < 6); }
             // FoodTimersAsBuffs off (#31): eaten food's timers in a centred row above the health bar (user), over the held item's name
-            _foodRow = Kit.Node(dock, "FoodTimers").At(0, -66, 534, 61);
+            _foodRow = Kit.Node(dock, "FoodTimers").At(0, -37, 534, 61);   // icons just over the bar (user: less gap); the held item's name moves above them
             // food and meads: stacked labelled columns on the right edge from y 290
             var side = _side = Kit.Node(_root, "Sidebars");
             side.anchorMin = side.anchorMax = side.pivot = new Vector2(1f, 1f); side.anchoredPosition = new Vector2(-28f, -290f); side.sizeDelta = new Vector2(58f, 700f);
@@ -201,6 +201,8 @@ namespace Jatify.UI
                 var burn = f.m_item.m_shared.m_foodBurnTime;
                 (asBuffs ? Pool(n++) : FoodPool(nf++)).Set(f.m_item.GetIcon(), f.m_time, burn > 0f && f.m_time / burn < 0.3f, false, burn > 0f ? f.m_time / burn : -1f);
             }
+            float up = !asBuffs && nf > 0 ? 59f : 0f;   // the held item's name (y 0 in the dock) over the food row while it shows
+            foreach (var (rt, y) in new[] { (_held.rectTransform, 0f), (_heldStar.rectTransform, 4f), (_heldQ.rectTransform, 0f) }) rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, up - y);
             for (int i = 0; i < _foodPool.Count; i++) { bool on = i < nf; if (_foodPool[i].Root.gameObject.activeSelf != on) _foodPool[i].Root.gameObject.SetActive(on); if (on) _foodPool[i].Root.At((534f - (nf * 46f - 6f)) / 2f + i * 46f, 0, 40, 61); }
             for (int i = 0; i < _buffPool.Count; i++) { bool on = i < n; if (_buffPool[i].Root.gameObject.activeSelf != on) _buffPool[i].Root.gameObject.SetActive(on); }
             // WoW style (user): buffs from the top, right to left, 46 px apart, a new row 64 px lower once 420 px is used;
