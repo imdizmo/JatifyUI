@@ -114,8 +114,8 @@ namespace Jatify.UI
             _beltsLaid = -1;
             // the folds as tabs like the trash (user): the bars' under the trash on the right edge, the gear's off the left edge level
             // with the action bar
-            _fold = EdgeTab("jatify-bars-tab", false, "hammer", "Tools, food and meads", "Shows or hides the Tools, Food and Meads rows. They keep working from the HUD.", () => { if (Cfg.BarsCollapsed != null) Cfg.BarsCollapsed.Value = !Cfg.BarsCollapsed.Value; }, t, g, down: true);
-            _gearTab = EdgeTab("jatify-gear-tab", true, "helm", "Character", "Shows or hides the character, gear, skills and stats column.", () => { if (Cfg.GearCollapsed != null) Cfg.GearCollapsed.Value = !Cfg.GearCollapsed.Value; }, t, g);
+            _fold = EdgeTab("jatify-bars-tab", false, "Icon_Radial_WeaponsTools", "Tools, food and meads", "Shows or hides the Tools, Food and Meads rows. They keep working from the HUD.", () => { if (Cfg.BarsCollapsed != null) Cfg.BarsCollapsed.Value = !Cfg.BarsCollapsed.Value; }, t, g, down: true);
+            _gearTab = EdgeTab("jatify-gear-tab", true, "host_helmet_icon", "Character", "Shows or hides the character, gear, skills and stats column.", () => { if (Cfg.GearCollapsed != null) Cfg.GearCollapsed.Value = !Cfg.GearCollapsed.Value; }, t, g);
             // the trash sits under the grid (design position); the item detail box beside it was removed (user)
             StyleInfo(g.m_info, t);
             _trash = new Trash(_frame, t);
@@ -325,7 +325,8 @@ namespace Jatify.UI
             var clip = Kit.Node(tab, "Clip").Fill(); clip.gameObject.AddComponent<RectMask2D>();   // under the canvas: tooltips opened on it aren't clipped
             var (b, f) = Kit.Box(clip, "Tab", Theme.C(t.glass), Theme.C(t.line2), 10); b.raycastTarget = true;
             if (down) b.rectTransform.At(0, -12, 60, 64); else b.rectTransform.At(left ? 0 : -12, 0, 64, 60);   // down: hangs from the panel's bottom edge
-            var ic = Kit.IconImg(b.rectTransform, icon, new Color(1f, 1f, 1f, 0.7f), 24f); ic.name = "Icon";
+            // Valheim's own sprites in their colours (user's pick: the horned helmet, the crossed axe and sword)
+            var ic = Kit.Img(b.rectTransform, "Icon", Kit.Icon(icon), new Color(1f, 1f, 1f, 0.75f), false); ic.preserveAspect = true;
             if (down) ic.rectTransform.At(18, 26, 24, 24); else ic.rectTransform.At(left ? 14 : 26, 18, 24, 24);
             var btn = b.gameObject.AddComponent<Button>(); btn.targetGraphic = f; var cb = btn.colors; cb.highlightedColor = new Color(1.3f, 1.3f, 1.35f); btn.colors = cb;
             btn.onClick.AddListener(() => click());
@@ -333,9 +334,10 @@ namespace Jatify.UI
             return tab;
         }
         private static void Tint(RectTransform tab, bool folded)
-        {   // folded: the icon lit in the accent, so you can see something is put away
+        {   // folded: lit, so you can see something is put away
             var ic = tab != null ? tab.GetComponentsInChildren<Image>(true).FirstOrDefault(i => i.name == "Icon") : null; if (ic == null) return;
-            ic.color = folded ? Theme.C(Plugin.Instance.ThemeData.accent) : new Color(1f, 1f, 1f, 0.7f);
+            ic.color = folded ? Color.white : new Color(1f, 1f, 1f, 0.75f);   // the sprites keep their colours: folded is full strength
+            var line = tab.GetComponentsInChildren<Image>(true).FirstOrDefault(i => i.name == "Tab"); if (line != null) line.color = folded ? Theme.C(Plugin.Instance.ThemeData.accent) : Theme.C(Plugin.Instance.ThemeData.line2);   // and the tab's outline in the accent
         }
 
         // the panel ends under its lowest part; the trash sits in the 8th column under the last inventory row
