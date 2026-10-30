@@ -24,10 +24,14 @@ namespace Jatify.UI
             var ic = Kit.IconImg(b.rectTransform, "discord-logo", Color.white, 24f); ic.rectTransform.At(10, 10, 24, 24);
             var btn = b.gameObject.AddComponent<Button>(); btn.targetGraphic = f; var cb = btn.colors; cb.highlightedColor = new Color(1.3f, 1.3f, 1.35f); btn.colors = cb;
             btn.onClick.AddListener(() => Application.OpenURL(Links.Discord));
+            // its name beside it (user), clickable too
+            var name = Kit.Text(row, "Name", "Jatify UI", Fonts.Norse, 20f, Color.white); name.alignment = TextAlignmentOptions.MidlineLeft; name.raycastTarget = true;
+            name.fontSharedMaterial = Fonts.Shadowed(Fonts.Norse) ?? name.fontSharedMaterial; name.rectTransform.At(54, 2, 120, 44);
+            name.gameObject.AddComponent<Button>().onClick.AddListener(() => Application.OpenURL(Links.Discord));
             // What's new: white, tilted, pulsing; a click opens the notes
             var wn = Kit.Text(row, "WhatsNew", "What's new!", Fonts.Norse, 26f, Color.white); wn.alignment = TextAlignmentOptions.MidlineLeft; wn.raycastTarget = true;
             wn.fontSharedMaterial = Fonts.Shadowed(Fonts.Norse) ?? wn.fontSharedMaterial;
-            var wr = wn.rectTransform; wr.anchorMin = wr.anchorMax = new Vector2(0f, 0f); wr.pivot = new Vector2(0.5f, 0.5f); wr.sizeDelta = new Vector2(170f, 40f); wr.anchoredPosition = new Vector2(60f + 85f, 24f);
+            var wr = wn.rectTransform; wr.anchorMin = wr.anchorMax = new Vector2(0f, 0f); wr.pivot = new Vector2(0.5f, 0.5f); wr.sizeDelta = new Vector2(170f, 40f); wr.anchoredPosition = new Vector2(150f, 66f);   // above the name, to its right, as a splash
             wr.localEulerAngles = new Vector3(0f, 0f, 8f);
             wn.gameObject.AddComponent<Pulse>();
             wn.gameObject.AddComponent<Button>().onClick.AddListener(() => { if (!WhatsNew.Open) WhatsNew.Show(false); });
