@@ -414,8 +414,30 @@ namespace Jatify.UI
         }
         internal static void AzuRestore() { if (_azuScreenShown) { _azuScreenShown = false; foreach (var (cg, ours, a, b) in _underScreen) { if (cg == null) continue; if (ours) UnityEngine.Object.Destroy(cg); else { cg.alpha = a; cg.blocksRaycasts = b; } } _underScreen.Clear(); } foreach (var cg in _azuHidden) if (cg != null) UnityEngine.Object.Destroy(cg); _azuHidden.Clear(); }
 
+        // the grey labels and values over a see-through panel (a light, thin glass theme over snow: user, unreadable): a dark edge on
+        // every grey text in the frame, and the darkest greys lifted to the dim tone. Ours are rebuilt with the frame; Valheim's go
+        // back through the ledger.
+        private static int _legibleCount = -1; private static float _legibleNext;
+        private static void Legible()
+        {
+            if (_frame == null || Time.unscaledTime < _legibleNext) return;
+            _legibleNext = Time.unscaledTime + 0.5f;   // texts made later (tabs, tooltips' rows) are caught within half a second
+            var texts = _frame.parent.GetComponentsInChildren<TMP_Text>(true); if (texts.Length == _legibleCount) return; _legibleCount = texts.Length;
+            var dim = Theme.C(Plugin.Instance.ThemeData.dim);
+            foreach (var x in texts)
+            {
+                if (x == null || x.font == null) continue;
+                var c = x.color; float lum = 0.299f * c.r + 0.587f * c.g + 0.114f * c.b;
+                if (lum > 0.8f || c.a < 0.2f) continue;   // white and coloured text reads already
+                var edged = Fonts.Edged(x.font); if (edged == null || x.fontSharedMaterial == edged) continue;
+                var tx = x; var m0 = tx.fontSharedMaterial; var c0 = tx.color;
+                _l.Do(() => { tx.fontSharedMaterial = edged; if (lum < 0.6f) tx.color = new Color(dim.r, dim.g, dim.b, c0.a); }, () => { if (tx != null) { tx.fontSharedMaterial = m0; tx.color = c0; } });
+            }
+        }
+
         private static void LayBelts()
         {
+            Legible();
             int key = SpecialRows.Start * 2 + (Folded ? 1 : 0);
             if (_beltLine == null || _beltsLaid == key) return;
             _beltsLaid = key;
@@ -686,7 +708,7 @@ namespace Jatify.UI
             ChestPanel.Restore();
             _eq?.Destroy(); _eq = null; _tabs.Clear(); _tabOn = null; _badge = null; _badgeShown = -1;
             _trash?.Destroy(); _trash = null; _stats?.Destroy(); _stats = null;
-            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _foldText = null; _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
+            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _foldText = null; _legibleCount = -1; _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
         }
     }
 
