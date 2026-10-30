@@ -335,8 +335,9 @@ namespace Jatify.UI
         }
         private static RectTransform _fold, _keyTab, _gearTab, _modsTab; private static int _colLit = -1;
 
-        // worn bags (Backpacks, AdventureBackpacks, RustyBags): a tab each above the key pouch's, the bag's own icon; a click opens it
-        // as its own key does, a click on an open one closes it (user: their keys work, this shows them cleanly)
+        // worn bags (Backpacks, AdventureBackpacks, RustyBags): a tab each above the key pouch's, the bag's own icon, lit while open; a
+        // click opens it as its own key does, or switches to it (user: their keys work, this shows them cleanly). It never closes one:
+        // Backpacks opens its pack with the inventory, and a first click that closed it showed crafting instead (user)
         private static readonly List<RectTransform> _bagTabs = new List<RectTransform>(); private static readonly List<ItemDrop.ItemData> _bagFor = new List<ItemDrop.ItemData>(), _worn = new List<ItemDrop.ItemData>();
         private static float _bagsAt; private static readonly List<int> _bagLit = new List<int>();
         private static void TickBagTabs()
@@ -350,7 +351,7 @@ namespace Jatify.UI
                 if (i >= _bagTabs.Count)
                 {
                     int n = i; var t = Plugin.Instance.ThemeData;
-                    _bagTabs.Add(EdgeTab("jatify-bag-tab", false, "box", "Bag", "", () => { if (n < _bagFor.Count && _bagFor[n] != null) { if (Bags.IsOpen(_bagFor[n])) Bags.CloseAll(InventoryGui.instance); else Bags.Open(_bagFor[n]); } }, t, InventoryGui.instance));
+                    _bagTabs.Add(EdgeTab("jatify-bag-tab", false, "box", "Bag", "", () => { if (n < _bagFor.Count && _bagFor[n] != null) { if (!Bags.IsOpen(_bagFor[n])) Bags.Open(_bagFor[n]); } }, t, InventoryGui.instance));
                     _bagFor.Add(null); _bagLit.Add(-1);
                 }
                 var tab = _bagTabs[i]; bool on = i < _worn.Count;
@@ -363,7 +364,7 @@ namespace Jatify.UI
                 {
                     _bagFor[i] = it; _bagLit[i] = -1;
                     var ic = tab.GetComponentsInChildren<Image>(true).FirstOrDefault(x => x.name == "Icon"); if (ic != null) ic.sprite = it.GetIcon();
-                    var tip = tab.GetComponentInChildren<UITooltip>(true); if (tip != null) tip.Set(Localization.instance.Localize(it.m_shared.m_name), "Opens it (or closes it when open).");
+                    var tip = tab.GetComponentInChildren<UITooltip>(true); if (tip != null) tip.Set(Localization.instance.Localize(it.m_shared.m_name), "Opens it.");
                 }
                 int lit = Bags.IsOpen(it) ? 1 : 0; if (lit != _bagLit[i]) { _bagLit[i] = lit; Tint(tab, lit == 1); }
             }

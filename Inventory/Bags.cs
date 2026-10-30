@@ -81,7 +81,7 @@ namespace Jatify.UI
         // opening it the way its own key does
         internal static bool Open(ItemDrop.ItemData it)
         {
-            try { return OpenWith(KindOf(it), it); }
+            try { var ok = OpenWith(KindOf(it), it); if (!ok) Log.Info($"bags: {KindOf(it)} didn't open {it.m_shared.m_name}"); return ok; }
             catch (Exception e) { Warn("open", e); return false; }
         }
         private static bool OpenWith(Kind k, ItemDrop.ItemData it)
@@ -90,8 +90,9 @@ namespace Jatify.UI
             CloseAll(g);   // one bag at a time, and no chest open (RustyBags draws only then)
             switch (k)
             {
-                case Kind.Backpacks:   // Backpacks.CustomContainer+OpenFakeItemsContainer.Open(InventoryGui, ItemData): any pack you pass
-                    return AccessTools.Method(_bp.GetType("Backpacks.CustomContainer+OpenFakeItemsContainer"), "Open")?.Invoke(null, new object[] { g, it }) is bool ok && ok;
+                case Kind.Backpacks:   // Backpacks.CustomContainer+OpenFakeItemsContainer.Open(InventoryGui, ItemData): any pack you pass. It is
+                                       // also its UpdateContainer prefix, so false means shown ("skip the original")
+                    return AccessTools.Method(_bp.GetType("Backpacks.CustomContainer+OpenFakeItemsContainer"), "Open")?.Invoke(null, new object[] { g, it }) is bool r && !r;
                 case Kind.Adventure:   // ABAPI.OpenBackpack(Player, InventoryGui): the worn pack, through its stand-in chest
                     AccessTools.Method(_ab.GetType("AdventureBackpacks.API.ABAPI"), "OpenBackpack", new[] { typeof(Player), typeof(InventoryGui) })?.Invoke(null, new object[] { p, g }); return true;
                 case Kind.Rusty:       // Bag.Load() then Bag.Open(): it draws the bag while no chest is open
