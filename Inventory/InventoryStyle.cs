@@ -280,10 +280,13 @@ namespace Jatify.UI
         // three columns under the equipment once more rows would make them overlap it.
         private static int InvRows => SpecialRows.Start - 1;                                             // rows under the action bar
         private const float BagLift = 30f;   // the bag closer under the action bar (user: the gap was too wide)
-        private static float BeltTop => Mathf.Max(240f - BagLift + InvRows * Pitch - 7f, Strip ? CharBottom : 0f) + 30f;
+        private static float BeltTop => Mathf.Max(240f - BagLift + InvRows * Pitch - 7f, Strip ? CharBottom : 0f) + (UnderBag ? 14f : 30f);
         // the strip (user: the bottom was mostly empty): all twelve under both columns, 64 apart, a 15 px gap between the groups; only
         // with the gear column shown (narrow, it is too wide: the two rows under the grid instead)
-        private static bool Strip => !Narrow;
+        // the strip across both columns, unless Tools / Food / Meads fit under the bag beside a tall left column (ExtraSlots' rows
+        // under the doll, a short bag): then two rows under the bag and no divider (user: save the bottom space)
+        private static bool Strip => !Narrow && !UnderBag;
+        private static bool UnderBag => !Narrow && GridBottom + 30f + 2f * (BeltLabel + Pitch) - 7f <= CharBottom + 8f;
         private const float StripPitch = 64f, StripGap = 15f;
         private static float StripX(int band, int x) => (band == 1 ? 0f : band == 0 ? 6f * StripPitch + StripGap : 9f * StripPitch + 2f * StripGap) + x * StripPitch;
         private static float CharBottom => 67f + 420f + 32f + Equipment.ExtraRowsBelow(_azuExtras.Count) + EsBelow;   // the Character page's end (the Stats tab's card fits above it)                              // screen y of the first belt row
@@ -441,7 +444,26 @@ namespace Jatify.UI
                 if (rt.sizeDelta != over.rect.size) rt.sizeDelta = over.rect.size;
                 var wp = over.TransformPoint(over.rect.center); if ((rt.position - wp).sqrMagnitude > 0.01f) rt.position = wp;
             }
-            AzuBind(c);
+            EsBind(c, sl);
+        }
+
+        // ExtraSlots resets its labels (size, wrapping) on its own updates, not always with auto-sizing back on: checked every frame,
+        // put back to our small top line whenever it moved (user: the names stood one letter per line)
+        // our own small top line with the slot's name (its key on quick, food and ammo slots), from ExtraSlots' slot: its own
+        // label it rewrites on its updates (sometimes off, sometimes one letter a line), so it stays off (user)
+        private static void EsBind(Transform cell, Es.Slot sl)
+        {
+            var b = cell.Find("binding")?.GetComponent<TMP_Text>(); if (b != null && b.gameObject.activeSelf) b.gameObject.SetActive(false);
+            var nm = cell.Find("jatify-esname")?.GetComponent<TMP_Text>();
+            if (nm == null)
+            {
+                nm = Kit.Text(cell, "jatify-esname", "", Fonts.Mono, 8.5f, new Color(1f, 1f, 1f, 0.5f)); nm.raycastTarget = false;
+                Label(nm, Fonts.Mono, 8.5f, new Color(1f, 1f, 1f, 0.5f), TextAlignmentOptions.Top, new Vector2(0.5f, 1f), new Vector2(0f, -4f), new Vector2(Slot - 8f, 12f));
+                nm.textWrappingMode = TextWrappingModes.NoWrap; nm.overflowMode = TextOverflowModes.Ellipsis;
+            }
+            bool keyed = Es.Quick(sl.Id) >= 0 || Es.Food(sl.Id) >= 0 || Es.Ammo(sl.Id) >= 0;
+            var want = keyed ? sl.Key : sl.Name; if (nm.text != want) nm.text = want;
+            nm.transform.SetAsLastSibling();
         }
 
         // its slot name / key label (it sets it big, wrapped and auto-sized over the whole cell): our small top line
@@ -573,7 +595,7 @@ namespace Jatify.UI
         private static void LayBelts()
         {
             Legible();
-            int key = SpecialRows.Start * 4 + (Folded ? 1 : 0) + (Narrow ? 2 : 0) + Mathf.RoundToInt(EsBelow) * 1000;   // ExtraSlots adding a row under the doll moves the strip
+            int key = SpecialRows.Start * 4 + (Folded ? 1 : 0) + (Narrow ? 2 : 0) + Mathf.RoundToInt(EsBelow) * 1000 + (UnderBag ? 1 << 24 : 0);   // ExtraSlots adding a row under the doll moves the strip
             if (_beltLine == null || _beltsLaid == key) return;
             _beltsLaid = key;
             for (int i = 0; i < _beltLabels.Count; i++) { var l = _beltLabels[i]; bool on = (SpecialRows.On || Es.Drives && i != 2) && !Folded; if (l != null && l.gameObject.activeSelf != on) l.gameObject.SetActive(on); }   // ExtraSlots: its quick and food slots under Tools and Food (no meads)   // AzuEPI: its cells carry their own names
@@ -588,6 +610,7 @@ namespace Jatify.UI
             if (BeltRows)
             {
                 if (Strip) _beltLine.At(19, BeltTop - 32f - 15f, 795, 1); else _beltLine.At(285, BeltTop - 32f - 15f, 529, 1);
+                if (_beltLine.gameObject.activeSelf == UnderBag) _beltLine.gameObject.SetActive(!UnderBag);   // under the bag it needs no divider
                 ReplaceBelt();
 
                 for (int i = 0; i < _beltLabels.Count; i++) if (_beltLabels[i] != null)

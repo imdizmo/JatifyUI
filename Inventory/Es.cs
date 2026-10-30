@@ -15,7 +15,7 @@ namespace Jatify.UI
         internal const string Guid = "shudnal.ExtraSlots";
         private static bool? _on;
         private static MethodInfo _heightPlayer; private static FieldInfo _slotsField; private static PropertyInfo _slotsProp;
-        private static PropertyInfo _id, _active, _grid; private static MethodInfo _shortcut;
+        private static PropertyInfo _id, _active, _grid, _name; private static MethodInfo _shortcut;
 
         internal static bool Drives
         {
@@ -34,7 +34,7 @@ namespace Jatify.UI
             var api = asm.GetType("ExtraSlots.API"); var slots = asm.GetType("ExtraSlots.Slots"); var slot = asm.GetType("ExtraSlots.Slots+Slot");
             _heightPlayer = api != null ? AccessTools.Method(api, "GetInventoryHeightPlayer") : null;
             _slotsField = slots != null ? AccessTools.Field(slots, "slots") : null; if (_slotsField == null && slots != null) _slotsProp = AccessTools.Property(slots, "slots");
-            if (slot != null) { _id = AccessTools.Property(slot, "ID"); _active = AccessTools.Property(slot, "IsActive"); _grid = AccessTools.Property(slot, "GridPosition"); _shortcut = AccessTools.Method(slot, "GetShortcutText"); }
+            if (slot != null) { _id = AccessTools.Property(slot, "ID"); _active = AccessTools.Property(slot, "IsActive"); _grid = AccessTools.Property(slot, "GridPosition"); _name = AccessTools.Property(slot, "Name"); _shortcut = AccessTools.Method(slot, "GetShortcutText"); }
             Log.Info($"ExtraSlots found: its slot rows own the inventory grid, Jatify's rows stand aside; API {(api != null && _heightPlayer != null ? "bound" : "missing")}, slots {(_id != null && _grid != null ? "bound" : "missing")}");
         }
 
@@ -51,7 +51,7 @@ namespace Jatify.UI
             }
         }
 
-        internal struct Slot { internal string Id, Key; internal Vector2i Cell; internal bool Active; }
+        internal struct Slot { internal string Id, Key, Name; internal Vector2i Cell; internal bool Active; }
         private static readonly List<Slot> _list = new List<Slot>(); private static float _listAt = -1f;
         private static readonly Dictionary<int, int> _byCell = new Dictionary<int, int>();
 
@@ -70,7 +70,7 @@ namespace Jatify.UI
                     {
                         if (s == null) continue;
                         var id = _id.GetValue(s) as string; if (string.IsNullOrEmpty(id) || id == "Empty") continue;
-                        var sl = new Slot { Id = id, Cell = (Vector2i)_grid.GetValue(s), Active = _active == null || (bool)_active.GetValue(s), Key = _shortcut != null ? _shortcut.Invoke(s, null) as string ?? "" : "" };
+                        var sl = new Slot { Id = id, Cell = (Vector2i)_grid.GetValue(s), Active = _active == null || (bool)_active.GetValue(s), Key = _shortcut != null ? _shortcut.Invoke(s, null) as string ?? "" : "", Name = _name != null ? _name.GetValue(s) as string ?? id : id };
                         _byCell[sl.Cell.y * 128 + sl.Cell.x] = _list.Count; _list.Add(sl);
                     }
                 }
