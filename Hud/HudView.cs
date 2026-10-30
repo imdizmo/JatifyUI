@@ -20,7 +20,7 @@ namespace Jatify.UI
         private readonly Bar _hp, _st, _ei;
         private readonly Bar[] _gauges = new Bar[3];
         private readonly Slot[] _slots = new Slot[8];
-        private readonly Slot[] _tools = new Slot[8], _food = new Slot[6], _meads = new Slot[6];   // tools: 6, or AzuEPI's quick slots (up to 8)
+        private readonly Slot[] _tools = new Slot[8], _food = new Slot[SpecialRows.ShortWidth], _meads = new Slot[SpecialRows.ShortWidth];   // tools: 6, or AzuEPI's quick slots (up to 8)
         private readonly RectTransform _power;
         private readonly Image _powerIcon, _powerCd;
         private readonly EpicAbilities _abilities;
@@ -70,13 +70,13 @@ namespace Jatify.UI
             for (int i = 0; i < _tools.Length; i++) { _tools[i] = new Slot(tb.transform, "", 6 + i * 52, 6, 46f, t).Cap(1); _tools[i].Bar = true; _tools[i].Shown(i < 6); }
             // FoodTimersAsBuffs off (#31): eaten food's timers in a centred row above the health bar (user), over the held item's name
             _foodRow = Kit.Node(dock, "FoodTimers").At(0, -37, 534, 61);   // icons just over the bar (user: less gap); the held item's name moves above them
-            // food and meads: stacked labelled columns on the right edge from y 290
-            var side = _side = Kit.Node(_root, "Sidebars");
-            side.anchorMin = side.anchorMax = side.pivot = new Vector2(1f, 1f); side.anchoredPosition = new Vector2(-28f, -290f); side.sizeDelta = new Vector2(58f, 700f);
-            _barPanels[2] = Column(side, "FOOD", 0f, _food, null, t);
-            _barPanels[3] = Column(side, "MEADS", 342f, _meads, null, t);   // key labels: KeyLabels, from the settings
+            // food and meads (user): one bar like the tools bar, 3 food then 3 meads, 14 px right of the hotbar, bottoms aligned;
+            // key labels: KeyLabels
+            var side = _side = Kit.Node(dock, "Sidebars").At(534 + 14, 96 + 14, RightBars - 14, 58);
+            _barPanels[2] = Kit.Box(side, "FoodMeadsBar", C(t.glass), C(t.glassLine), 12); _barPanels[2].line.rectTransform.At(0, 0, RightBars - 14, 58);
+            for (int i = 0; i < 6; i++) { var s = new Slot(_barPanels[2].line.transform, "", 6 + i * 52, 6, 46f, t).Cap(1); s.Bar = true; if (i < 3) _food[i] = s; else _meads[i - 3] = s; }
             // guardian power: 52 px circle, 18 px right of the hotbar, 8 px up from its bottom
-            _power = Kit.Node(dock, "Power").At(534 + 18, 168 - 8 - 52, 52, 52);
+            _power = Kit.Node(dock, "Power").At(487 + 12, 28, 52, 52);   // right of the health and stamina bars, over the food and meads bar (user)
             Kit.Img(_power, "Line", Kit.Circle(), C(t.glassLine), false).rectTransform.Fill();
             Kit.Img(_power, "Fill", Kit.Circle(), C(t.glass), false).rectTransform.Fill(1f);
             _powerIcon = Kit.Img(_power, "Icon", null, Color.white, false); _powerIcon.rectTransform.Fill(10f); _powerIcon.preserveAspect = true;
@@ -101,14 +101,14 @@ namespace Jatify.UI
             _minimap = new MinimapFrame(_root, t);
             Ach = new Deeds.AchHud(_root, t);
             _hintsL = Hints(_root, false, t, ("Tab", "Inventory"), ("M", "Map"), (Short(HotKeys.Tracker?.Value ?? new BepInEx.Configuration.KeyboardShortcut(KeyCode.U)), "Tracker"));
-            _hintsR = Hints(_root, true, t, ("LMB", "Attack"), ("RMB", "Block"), ("MMB", "Secondary"), ("Space", "Dodge"));
+            _hintsR = Hints(_root, true, t, ("LMB", "Attack"), ("RMB", "Block"), ("MMB", "Secondary"), ("RMB+Space", "Dodge"));   // a dodge roll is jump while blocking (user: "Space" alone is a jump)
             _hintsPlace = Hints(_root, true, t, ("LMB", "Place"), ("MMB", "Remove"), ("RMB", "Menu"), ("Wheel", "Rotate"), ("Q / E", "Snap"));
             _invKeys = KeyBar(_root, t, ("LMB", "Move"), ("RMB", "Use / equip"), ("Shift+LMB", "Split stack"), ("Alt+LMB", Azu.Favouriting ? "Favourite" : "Lock slot"), ("Del", "Delete"), ("Shift", "Craft ×5"), ("Ctrl F", "Search"), ("Esc", "Close"));
             _chestKeys = KeyBar(_root, t, ("LMB", "Move stack"), ("Shift+LMB", "Split stack"), ("Alt+LMB", "Lock slot"), ("Ctrl Q", "Put similar"), ("Ctrl E", "Take everything"), ("Esc", "Close"));   // design: chest open
         }
 
         // ActionBarPanels (user): the glass panel behind each bar on or off, the slots unchanged; read every tick so a change shows at once
-        private readonly (Image line, Image fill)[] _barPanels = new (Image, Image)[4];   // 1-8, tools, food, meads
+        private readonly (Image line, Image fill)[] _barPanels = new (Image, Image)[3];   // 1-8, tools, food and meads
         private bool _panelsShown = true;
         private void TickBarPanels()
         {
@@ -137,9 +137,9 @@ namespace Jatify.UI
             int sr = SpecialRows.Start; bool have = SpecialRows.On && inv.GetHeight() >= sr + SpecialRows.Count;   // AzuEPI: no Food / Tools / Meads rows
             for (int i = 0; i < 6; i++)
             {
-                _food[i].Set(have ? inv.GetItemAt(i, sr) : null);
+                if (i < _food.Length) _food[i].Set(have ? inv.GetItemAt(i, sr) : null);
                 if (SpecialRows.On) { var it = have ? inv.GetItemAt(i, sr + 1) : null; _tools[i].Set(it, Ammo(inv, it)); }
-                _meads[i].Set(have ? inv.GetItemAt(i, sr + 2) : null);
+                if (i < _meads.Length) _meads[i].Set(have ? inv.GetItemAt(i, sr + 2) : null);
             }
 
             if (Azu.Drives) AzuQuick(p, inv);
@@ -348,13 +348,7 @@ namespace Jatify.UI
             return rt;
         }
 
-        private static (Image, Image) Column(RectTransform side, string label, float y, Slot[] slots, string[] keys, ThemeData t)
-        {
-            var l = Kit.Text(side, label, label, Fonts.Mono, 10f, C(t.dim)); l.characterSpacing = 8f; l.alignment = TextAlignmentOptions.Center; l.rectTransform.At(-20, y, 98, 14);
-            var (g, gf) = Kit.Box(side, label + "Group", C(t.glass), C(t.glassLine), 12); g.rectTransform.At(0, y + 18, 58, 318);
-            for (int i = 0; i < slots.Length; i++) slots[i] = new Slot(g.transform, keys != null && i < keys.Length ? keys[i] : "", 6, 6 + i * 52, 46f, t).Cap(2);
-            return (g, gf);
-        }
+        internal const float RightBars = 14f + 318f;   // what the food and meads bar takes right of the hotbar
 
         // the slot keys as set (SpecialRows.Keys: food, tools, meads), once a second so a rebind shows without a reload
         private float _nextKeys;

@@ -20,7 +20,7 @@ namespace Jatify.UI
             for (int i = 0; i < 3; i++)
             {   // 44 px circles, 12 px apart, right of the 52 px guardian power, bottoms aligned with it
                 var c = _c[i] = new Circle();
-                c.Root = Kit.Node(dock, "Ability" + i).At(534 + 18 + 52 + 14 + i * 56, 168 - 8 - 44, 44, 44);
+                c.Root = Kit.Node(dock, "Ability" + i).At(487 + 12 + 52 + 12 + i * 56, 32, 44, 44);
                 Kit.Img(c.Root, "Line", Kit.Circle(), Theme.C(t.glassLine), false).rectTransform.Fill();
                 Kit.Img(c.Root, "Fill", Kit.Circle(), Theme.C(t.glass), false).rectTransform.Fill(1f);
                 c.Icon = Kit.Img(c.Root, "Icon", null, Color.white, false); c.Icon.rectTransform.Fill(9f); c.Icon.preserveAspect = true;
