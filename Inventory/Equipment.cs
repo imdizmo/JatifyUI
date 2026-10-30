@@ -186,6 +186,7 @@ namespace Jatify.UI
 
         internal Equipment(RectTransform panel, ThemeData t, GameObject tooltipPrefab)
         {
+            _tipPrefab = tooltipPrefab;
             _current = this;
             _t = t;
             // area left of the grid: 300 wide, from the panel's top edge down
@@ -303,7 +304,32 @@ namespace Jatify.UI
 
         internal void Idle() => _render.Tick(Player.m_localPlayer, false);   // keeps the figure idling out of sight
 
-        internal void Destroy() { _render?.Destroy(); if (_root != null) Object.Destroy(_root.gameObject); }
+        internal void Destroy() { _render?.Destroy(); if (_root != null) Object.Destroy(_root.gameObject); foreach (var m in _meadSlots) if (m?.Rect != null) Object.Destroy(m.Rect.gameObject); }
+
+        // ExtraSlots has no meads row: our three (the store's mead row) in the player grid beside its food slots (user: keep our meads).
+        // In the grid's own space, set up like its first cell; rebuilt when the cell size changes (under the bag they are smaller)
+        private readonly EqSlot[] _meadSlots = new EqSlot[ModSlots.Meads]; private float _meadSize; private GameObject _tipPrefab;
+        private readonly TextMeshProUGUI[] _meadKeys = new TextMeshProUGUI[ModSlots.Meads];
+        internal void TickMeads(Player p, RectTransform c00, Vector2 origin, float size, bool show)
+        {
+            if (show && _meadSize != size) { foreach (var m in _meadSlots) if (m?.Rect != null) Object.Destroy(m.Rect.gameObject); System.Array.Clear(_meadSlots, 0, _meadSlots.Length); _meadSize = size; }
+            for (int i = 0; i < _meadSlots.Length; i++)
+            {
+                var s = _meadSlots[i];
+                if (s == null || s.Rect == null)
+                {
+                    if (!show || c00 == null) continue;
+                    s = _meadSlots[i] = new EqSlot(c00.parent, "Mead", null, 0, 0, _t, _tipPrefab, size, i, ModSlots.MeadRow);
+                    var r = s.Rect; r.anchorMin = c00.anchorMin; r.anchorMax = c00.anchorMax; r.pivot = c00.pivot;
+                    var k = _meadKeys[i] = Kit.Text(r, "jatify-esname", "", Fonts.Mono, 8.5f, new Color(1f, 1f, 1f, 0.5f)); k.raycastTarget = false;   // the key on top, as on its food cells
+                    k.alignment = TextAlignmentOptions.Top; k.textWrappingMode = TextWrappingModes.NoWrap; k.rectTransform.At(4, 4, size - 8, 12);
+                }
+                var rt = s.Rect; if (rt.gameObject.activeSelf != show) rt.gameObject.SetActive(show); if (!show) continue;
+                var d = InventoryStyle.CellDesign(i, SpecialRows.Start + 2); var pos = origin + new Vector2(d.x, -d.y); if (rt.anchoredPosition != pos) rt.anchoredPosition = pos;
+                s.Tick(p);
+                var key = SpecialRows.Keys != null ? HudView.Short(SpecialRows.Keys[2, i].Value).Replace(" ", " + ") : ""; if (_meadKeys[i].text != key) _meadKeys[i].text = key;
+            }
+        }
 
         private static readonly AccessTools.FieldRef<InventoryGui, ItemDrop.ItemData> DragItem = AccessTools.FieldRefAccess<InventoryGui, ItemDrop.ItemData>("m_dragItem");
         internal static ItemDrop.ItemData Lifted;   // worn gear picked up from its slot: unequipped once it lands in the bag (EquipDropPatch)
@@ -316,6 +342,7 @@ namespace Jatify.UI
             switch (slot)
             {
                 case "Key": return ModSlots.IsKey(it) ? "That pouch cell is taken" : "Only keys go in the key pouch";
+                case "Mead": return SpecialRows.Accepts(2, it) ? "That mead slot is taken" : "Only meads go here";
                 case "Main hand": case "Off hand": return $"{name} can't be held there";
                 case "Wishbone": return "Only a Wishbone goes here";
                 case "Wisplight": return "Only a Wisplight goes here";
@@ -405,7 +432,7 @@ namespace Jatify.UI
                 _hint = ghost != null ? Kit.Img(rt, "Hint", ghost, new Color(0.55f, 0.55f, 0.6f, 0.3f), false) : Kit.IconImg(rt, ic, new Color(1f, 1f, 1f, 0.22f), size > 50f ? 28f : 22f);
                 _hint.preserveAspect = true; if (ghost != null) _hint.rectTransform.sizeDelta = new Vector2(size > 50f ? 34f : 26f, size > 50f ? 34f : 26f);
                 _hint.rectTransform.anchorMin = _hint.rectTransform.anchorMax = _hint.rectTransform.pivot = new Vector2(0.5f, 0.5f); _hint.rectTransform.anchoredPosition = Vector2.zero;
-                _name = name; if (name == "Key") _hint.enabled = false;
+                _name = name; if (name == "Key" || name == "Mead") _hint.enabled = false;
                 _icon = Kit.Img(rt, "Icon", null, Color.white, false); _icon.rectTransform.Fill(size > 50f ? 12f : 8f); _icon.preserveAspect = true; _icon.enabled = false;
                 _rarity = new RarityBg(rt, _icon, line, size > 50f ? 9 : 8);
                 var (dl, _) = Kit.Box(rt, "Durability", new Color(1f, 1f, 1f, 0.1f), new Color(1f, 1f, 1f, 0.1f), 2);
@@ -432,7 +459,7 @@ namespace Jatify.UI
                 if (it != _item)
                 {
                     _item = it;
-                    _icon.sprite = it?.GetIcon(); _icon.enabled = it != null; _hint.enabled = it == null && _name != "Key"; _durPct = -1;
+                    _icon.sprite = it?.GetIcon(); _icon.enabled = it != null; _hint.enabled = it == null && _name != "Key" && _name != "Mead"; _durPct = -1;
                     _rarity.Set(it);
                     if (_tip != null) _tip.Set(it == null ? _name : it.m_shared.m_name, it == null ? "Empty" : it.GetTooltip());
                 }

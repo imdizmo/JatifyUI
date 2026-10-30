@@ -273,8 +273,8 @@ namespace Jatify.UI
             int band = y - SpecialRows.Start;
             if (!SpecialRows.On && !Es.Drives) return new Vector2(x * Pitch, BeltTop - 123f + band * Pitch);   // AzuEPI's equipment / quick cells: rows under the grid, lined up with it
             if (BeltRows && Strip) return new Vector2(19f - 285f + StripX(band, x), BeltTop - 123f + BeltLabel);   // one strip across the panel: Tools, Food, Meads (user)
-            if (BeltRows) return band == 1 ? new Vector2(x * Pitch, BeltTop - 123f + BeltLabel)             // narrow: Tools first, a row under the grid, its label over its first slot (user)
-                : new Vector2((band == 2 ? MeadsX : 0f) + x * Pitch, BeltTop - 123f + 2f * BeltLabel + Pitch);   // then Food and Meads side by side
+            if (BeltRows) return band == 1 ? new Vector2(x * RowPitch, BeltTop - 123f + RowLabel)             // narrow: Tools first, a row under the grid, its label over its first slot (user)
+                : new Vector2((band == 2 ? MeadsX : 0f) + x * RowPitch, BeltTop - 123f + 2f * RowLabel + RowPitch);   // then Food and Meads side by side
             if (BeltBlocks) return new Vector2(band * BlockStep + (x % 2) * Pitch, BlockTop - 123f + (x / 2) * Pitch);   // 2 x 3 blocks under the grid
             return new Vector2(179f - 445f + band * 90f, 548f - 123f + x * Pitch);                   // a column under the equipment
         }
@@ -289,14 +289,19 @@ namespace Jatify.UI
         // the strip across both columns, unless Tools / Food / Meads fit under the bag beside a tall left column (ExtraSlots' rows
         // under the doll, a short bag): then two rows under the bag and no divider (user: save the bottom space)
         private static bool Strip => !Narrow && !UnderBag;
-        private static bool UnderBag => !Narrow && GridBottom + 30f + 2f * (BeltLabel + Pitch) - 7f <= CharBottom + 8f;
+        // under the bag the cells are smaller (user), so the two rows end above where the strip would; else the strip
+        private static bool UnderBag => !Narrow && GridBottom + 14f + 2f * (UbLabel + UbPitch) - (UbPitch - UbSlot) < CharBottom + 30f + BeltLabel + Pitch - 7f;
+        private const float UbSlot = 48f, UbPitch = 54f, UbLabel = 24f;
+        private static float RowPitch => UnderBag ? UbPitch : Pitch;
+        private static float RowLabel => UnderBag ? UbLabel : BeltLabel;
+        internal static float BeltSlot => UnderBag ? UbSlot : Slot;   // not via BeltRows: that asks BeltH, which asks this
         private const float StripPitch = 64f, StripGap = 15f;
         private static float StripX(int band, int x) => (band == 1 ? 0f : band == 0 ? 6f * StripPitch + StripGap : 9f * StripPitch + 2f * StripGap) + x * StripPitch;
         private static float CharBottom => 67f + 420f + 32f + Equipment.ExtraRowsBelow(_azuExtras.Count) + EsBelow;   // the Character page's end (the Stats tab's card fits above it)                              // screen y of the first belt row
         internal static bool BeltRows => BeltTop + BeltH - 7f <= 852f - 10f;         // short inventories: Tools, then Food and Meads
         private const float BeltLabel = 30f;                                          // each row's label sits over it, above the key caps
-        private static float BeltH => Strip ? BeltLabel + Pitch : 2f * (BeltLabel + Pitch);
-        private const float MeadsX = SpecialRows.ShortWidth * Pitch;                  // Meads' cells right after Food's 3: one bar (user)
+        private static float BeltH => Strip ? BeltLabel + Pitch : 2f * (RowLabel + RowPitch) - (RowPitch - BeltSlot) + 7f;   // callers take the 7 px gap off again
+        private static float MeadsX => SpecialRows.ShortWidth * RowPitch;                  // Meads' cells right after Food's 3: one bar (user)
         // more rows (user): Food / Tools / Meads as 2 x 3 blocks side by side under the grid, labels above; the
         // panel grows. Columns under the equipment only when even that would leave the screen.
         private const float BlockStep = 157f;                                                           // 2 slots (127) + 30 between blocks
@@ -445,7 +450,7 @@ namespace Jatify.UI
                 var d = CellDesign(q >= 0 ? q : f, SpecialRows.Start + (q >= 0 ? 1 : 0)); var pos = origin + new Vector2(d.x, -d.y);
                 if (rt.localScale != Vector3.one) rt.localScale = Vector3.one;
                 if (rt.anchoredPosition != pos) rt.anchoredPosition = pos;
-                if (rt.sizeDelta != new Vector2(Slot, Slot)) rt.sizeDelta = new Vector2(Slot, Slot);
+                if (rt.sizeDelta != new Vector2(BeltSlot, BeltSlot)) rt.sizeDelta = new Vector2(BeltSlot, BeltSlot);
             }
             else
             {   // over our doll cell or placeholder, in screen space (they live in another panel)
@@ -600,7 +605,7 @@ namespace Jatify.UI
             RectTransform c00 = null; var cells = new List<InventoryElement>();
             foreach (Transform c in _for.m_playerGrid.m_gridRoot) { var e = c.GetComponent<InventoryElement>(); if (e == null) continue; if (e.Position.x == 0 && e.Position.y == 0) c00 = (RectTransform)c; else if (e.Position.y >= SpecialRows.Start && e.Position.y < SpecialRows.EqRow) cells.Add(e); }
             if (c00 == null) return;
-            foreach (var e in cells) { var d = CellDesign(e.Position.x, e.Position.y); ((RectTransform)e.transform).anchoredPosition = c00.anchoredPosition + new Vector2(d.x, -d.y); }
+            foreach (var e in cells) { var d = CellDesign(e.Position.x, e.Position.y); var rt = (RectTransform)e.transform; rt.anchoredPosition = c00.anchoredPosition + new Vector2(d.x, -d.y); rt.sizeDelta = new Vector2(BeltSlot, BeltSlot); }
         }
 
         private static void LayBelts()
@@ -616,7 +621,7 @@ namespace Jatify.UI
             int key = SpecialRows.Start * 4 + (Folded ? 1 : 0) + (Narrow ? 2 : 0) + Mathf.RoundToInt(EsBelow) * 1000 + (UnderBag ? 1 << 24 : 0);   // ExtraSlots adding a row under the doll moves the strip
             if (_beltLine == null || _beltsLaid == key) return;
             _beltsLaid = key;
-            for (int i = 0; i < _beltLabels.Count; i++) { var l = _beltLabels[i]; bool on = (SpecialRows.On || Es.Drives && i != 2) && !Folded; if (l != null && l.gameObject.activeSelf != on) l.gameObject.SetActive(on); }   // ExtraSlots: its quick and food slots under Tools and Food (no meads)   // AzuEPI: its cells carry their own names
+            for (int i = 0; i < _beltLabels.Count; i++) { var l = _beltLabels[i]; bool on = (SpecialRows.On || Es.Drives) && !Folded; if (l != null && l.gameObject.activeSelf != on) l.gameObject.SetActive(on); }   // ExtraSlots: its quick and food slots under Tools and Food, our meads beside them   // AzuEPI: its cells carry their own names
             if (_for != null && SpecialRows.On)
                 foreach (Transform c in _for.m_playerGrid.m_gridRoot) { var e = c.GetComponent<InventoryElement>(); if (e != null && e.Position.y >= SpecialRows.Start && e.Position.y < SpecialRows.EqRow) e.gameObject.SetActive(!Folded && e.Position.x < SpecialRows.RowWidth(e.Position.y - SpecialRows.Start)); }
             if (_fold != null) { _fold.gameObject.SetActive(SpecialRows.On || Es.Drives); Tint(_fold, Folded); }
@@ -634,7 +639,7 @@ namespace Jatify.UI
                 for (int i = 0; i < _beltLabels.Count; i++) if (_beltLabels[i] != null)
                 {   // labels: Food 0, Tools 1, Meads 2, over each group's first slot
                     if (Strip) _beltLabels[i].At(19 + StripX(i, 0), BeltTop - 32f + 2f, 120, 14);
-                    else _beltLabels[i].At(285 + (i == 2 ? MeadsX : 0f), BeltTop - 32f + (i == 1 ? 0f : BeltLabel + Pitch) + 2f, 120, 14);
+                    else _beltLabels[i].At(285 + (i == 2 ? MeadsX : 0f), BeltTop - 32f + (i == 1 ? 0f : RowLabel + RowPitch) + 2f + (UnderBag ? 4f : 0f), 120, 14);
                 }
             }
             else if (BeltBlocks)
@@ -740,7 +745,8 @@ namespace Jatify.UI
                 rt.anchoredPosition += new Vector2(d.x - e.Position.x * Pitch, -(d.y - e.Position.y * Pitch));
                 if (SpecialRows.On && (e.Position.y == SpecialRows.EqRow || (e.Position.y >= SpecialRows.Start && e.Position.y < SpecialRows.EqRow && (Folded || e.Position.x >= SpecialRows.RowWidth(e.Position.y - SpecialRows.Start))))) e.gameObject.SetActive(false); // reserved rows are 6 wide; the worn-armour row is hidden (AzuEPI's cells: never hidden here)
             }
-            rt.sizeDelta = new Vector2(Slot, Slot);
+            bool belt = player && SpecialRows.On && e.Position.y >= SpecialRows.Start && e.Position.y < SpecialRows.EqRow;
+            rt.sizeDelta = belt ? new Vector2(BeltSlot, BeltSlot) : new Vector2(Slot, Slot);
             var bg = e.GetComponent<Image>();
             bg.sprite = Kit.Rounded(10); bg.type = Image.Type.Sliced; bg.color = Theme.C(t.glassLine);   // the outline
             var fill = Kit.Panel(rt, "jatify-fill", Theme.C(t.raised), 9); fill.rectTransform.Fill(1f); fill.transform.SetSiblingIndex(0);
@@ -788,8 +794,9 @@ namespace Jatify.UI
             _trash?.Place(_for.m_playerGrid);
             _trash?.TickDelete();
             var inv = p.GetInventory(); int used = 0, locked = 0, slots = 0;
-            Vector2 origin = default; bool azu = !SpecialRows.On;
-            if (azu && Es.Drives) { EsPanels(_for); foreach (Transform c in _for.m_playerGrid.m_gridRoot) { var e0 = c.GetComponent<InventoryElement>(); if (e0 != null && e0.Position.x == 0 && e0.Position.y == 0) { origin = ((RectTransform)c).anchoredPosition; break; } } }
+            Vector2 origin = default; bool azu = !SpecialRows.On; RectTransform c00 = null;
+            if (azu && Es.Drives) { EsPanels(_for); foreach (Transform c in _for.m_playerGrid.m_gridRoot) { var e0 = c.GetComponent<InventoryElement>(); if (e0 != null && e0.Position.x == 0 && e0.Position.y == 0) { c00 = (RectTransform)c; origin = c00.anchoredPosition; break; } } }
+            if (Es.Drives) _eq?.TickMeads(p, c00, origin, BeltSlot, !Folded);   // our meads beside its food slots
             else if (azu) { AzuPanels(_for); foreach (Transform c in _for.m_playerGrid.m_gridRoot) { var e0 = c.GetComponent<InventoryElement>(); if (e0 != null && e0.Position.x == 0 && e0.Position.y == 0) { origin = ((RectTransform)c).anchoredPosition; break; } } }
             foreach (Transform c in _for.m_playerGrid.m_gridRoot)
             {

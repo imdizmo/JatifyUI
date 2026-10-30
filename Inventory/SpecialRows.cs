@@ -78,14 +78,22 @@ namespace Jatify.UI
         internal static void TickKeys()
         {
             var p = Player.m_localPlayer;
-            if (!On || Keys == null || p == null || InventoryGui.IsVisible() || Menu.IsVisible() || Chat.instance != null && Chat.instance.HasFocus() || Console.IsVisible() || TextInput.IsVisible() || Minimap.IsOpen()) return;
+            if (!(On || Es.Drives) || Keys == null || p == null || InventoryGui.IsVisible() || Menu.IsVisible() || Chat.instance != null && Chat.instance.HasFocus() || Console.IsVisible() || TextInput.IsVisible() || Minimap.IsOpen()) return;
             for (int r = 0; r < Count; r++)
                 for (int i = 0; i < RowWidth(r); i++)
                 {
+                    if (!On && r != 2) continue;   // ExtraSlots: its own keys for its quick and food slots; ours for the meads
                     var k = Keys[r, i].Value; if (!Pressed(k)) continue;
-                    var it = p.GetInventory().GetItemAt(i, Start + r);
-                    if (it != null) p.UseItem(p.GetInventory(), it, true);
+                    var it = Item(p, r, i, out var from);
+                    if (it != null) p.UseItem(from, it, true);
                 }
+        }
+
+        // what slot i of row r holds: our grid rows, or under ExtraSlots our store's mead row
+        private static ItemDrop.ItemData Item(Player p, int r, int i, out Inventory from)
+        {
+            from = On ? p.GetInventory() : ModSlots.For(p);
+            return from == null ? null : On ? from.GetItemAt(i, Start + r) : r == 2 && i < ModSlots.Meads ? from.GetItemAt(i, ModSlots.MeadRow) : null;
         }
 
         // the main key goes down with its modifiers held, whatever else is (BepInEx's IsDown fails while any other key is
@@ -122,7 +130,7 @@ namespace Jatify.UI
 
         internal static bool Blocks(string name)
         {
-            if (!On || Keys == null || name == null) return false;   // AzuEPI's quick-slot keys are its own
+            if (!(On || Es.Drives) || Keys == null || name == null) return false;   // AzuEPI's quick-slot keys are its own; under ExtraSlots only our meads' are ours
             if (_frame != UnityEngine.InputSystem.LowLevel.InputState.updateCount) { _frame = UnityEngine.InputSystem.LowLevel.InputState.updateCount; Claim(); }   // per input update, not per frame: Valheim updates input mid-frame
             return _blocked.Count > 0 && _blocked.Contains(name);
         }
@@ -134,8 +142,9 @@ namespace Jatify.UI
             for (int r = 0; r < Count; r++)
                 for (int i = 0; i < RowWidth(r); i++)
                 {
+                    if (!On && r != 2) continue;
                     var k = Keys[r, i].Value; if (k.MainKey == KeyCode.None || _latched.Contains(k.MainKey) || !ZInput.GetKey(k.MainKey, false) || !Mods(k)) continue;
-                    if ((k.Modifiers.Any() || p.GetInventory().GetItemAt(i, Start + r) != null) && _latched.Add(k.MainKey) && Dev.Build) Log.Info($"slot keys: {k} claims {k.MainKey}");
+                    if ((k.Modifiers.Any() || Item(p, r, i, out _) != null) && _latched.Add(k.MainKey) && Dev.Build) Log.Info($"slot keys: {k} claims {k.MainKey}");
                 }
             foreach (var k in _latched) foreach (var n in ButtonsOn(k)) _blocked.Add(n);
         }

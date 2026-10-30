@@ -20,7 +20,7 @@ namespace Jatify.UI
         private readonly Bar _hp, _st, _ei;
         private readonly Bar[] _gauges = new Bar[3];
         private readonly Slot[] _slots = new Slot[8];
-        private readonly Slot[] _tools = new Slot[8], _food = new Slot[SpecialRows.ShortWidth], _meads = new Slot[SpecialRows.ShortWidth];   // tools: 6, or AzuEPI's quick slots (up to 8)
+        private readonly Slot[] _tools = new Slot[8], _food = new Slot[SpecialRows.ShortWidth], _meads = new Slot[SpecialRows.ShortWidth], _ammo = new Slot[3];   // ammo: ExtraSlots' three, after the meads   // tools: 6, or AzuEPI's quick slots (up to 8)
         private readonly RectTransform _power;
         private readonly Image _powerIcon, _powerCd;
         private readonly EpicAbilities _abilities;
@@ -74,7 +74,7 @@ namespace Jatify.UI
             // key labels: KeyLabels
             var side = _side = Kit.Node(dock, "Sidebars").At(534 + 14, 96 + 14, RightBars - 14, 58);
             _barPanels[2] = Kit.Box(side, "FoodMeadsBar", C(t.glass), C(t.glassLine), 12); _barPanels[2].line.rectTransform.At(0, 0, RightBars - 14, 58);
-            for (int i = 0; i < 6; i++) { var s = new Slot(_barPanels[2].line.transform, "", 6 + i * 52, 6, 46f, t).Cap(1); s.Bar = true; if (i < 3) _food[i] = s; else _meads[i - 3] = s; }
+            for (int i = 0; i < 9; i++) { var s = new Slot(_barPanels[2].line.transform, "", 6 + i * 52, 6, 46f, t).Cap(1); s.Bar = true; if (i < 3) _food[i] = s; else if (i < 6) _meads[i - 3] = s; else { _ammo[i - 6] = s; s.Shown(false); } }
             // guardian power: 52 px circle, 18 px right of the hotbar, 8 px up from its bottom
             _power = Kit.Node(dock, "Power").At(487 + 12, 24, 64, 64);   // 64: bigger (user)   // right of the health and stamina bars, over the food and meads bar (user)
             _powerLine = Kit.Img(_power, "Line", Kit.Circle(), C(t.glassLine), false); _powerLine.rectTransform.Fill();
@@ -367,14 +367,16 @@ namespace Jatify.UI
         // AzuEPI: its quick slots (Alt + Z ...) in the tools bar, its keys on the caps; the bar as wide as it has slots.
         // Its own HUD bar is hidden by InventoryStyle.AzuQuickBar. Looked up every 2 s (its slots can change with its config).
         private readonly List<Vector2i> _quick = new List<Vector2i>(); private readonly List<string> _quickKeys = new List<string>(); private float _quickAt; private int _quickShown = -1;
-        // ExtraSlots: its quick slots on the tools bar, its food and ammo slots on the food and meads bar, with its own keys; its three
-        // hotbars unseen (put back on unload)
-        private readonly List<CanvasGroup> _esBars = new List<CanvasGroup>(); private float _esBarsAt;
+        // ExtraSlots: its quick slots on the tools bar, its food slots then our meads (ModSlots' mead row) then its ammo slots on the
+        // right bar, with its own keys and ours for the meads; its three hotbars unseen (put back on unload)
+        private readonly List<CanvasGroup> _esBars = new List<CanvasGroup>(); private float _esBarsAt; private int _ammoShown;
         private void EsBars(Inventory inv)
         {
             if (Time.unscaledTime >= _esBarsAt && Hud.instance != null)
             {
                 _esBarsAt = Time.unscaledTime + 2f;
+                if (SpecialRows.Keys != null) for (int i = 0; i < _meads.Length; i++) _meads[i].Key(Short(SpecialRows.Keys[2, i].Value));   // our meads' keys (a rebind shows within 2 s)
+                ClearHints(_hintsR); ClearHints(_hintsPlace);
                 foreach (var n in new[] { "ExtraSlotsQuickSlotsHotBar", "ExtraSlotsAmmoHotBar", "ExtraSlotsFoodHotBar" })
                 {
                     var b = Hud.instance.m_rootObject.transform.Find(n); if (b == null) continue;
@@ -384,14 +386,22 @@ namespace Jatify.UI
             }
             int nq = 0;
             for (int i = 0; i < _tools.Length; i++) _tools[i].Set(null);
-            for (int i = 0; i < _food.Length; i++) { _food[i].Set(null); _meads[i].Set(null); }
+            for (int i = 0; i < _food.Length; i++) _food[i].Set(null);
+            var store = ModSlots.For(Player.m_localPlayer); int na = 0;
+            for (int i = 0; i < _meads.Length; i++) _meads[i].Set(store?.GetItemAt(i, ModSlots.MeadRow));
+            for (int i = 0; i < _ammo.Length; i++) _ammo[i].Set(null);
             foreach (var sl in Es.Slots)
             {
                 if (!sl.Active) continue; var it = inv.GetItemAt(sl.Cell.x, sl.Cell.y); var key = sl.Key.Replace(" + ", " ").Replace("+", " ");
                 int q = Es.Quick(sl.Id), f = Es.Food(sl.Id), a = Es.Ammo(sl.Id);
                 if (q >= 0 && q < 6) { _tools[q].Set(it, Ammo(inv, it)); _tools[q].Key(key); nq = Mathf.Max(nq, q + 1); }
                 else if (f >= 0 && f < _food.Length) { _food[f].Set(it); _food[f].Key(key); }
-                else if (a >= 0 && a < _meads.Length) { _meads[a].Set(it); _meads[a].Key(key); }
+                else if (a >= 0 && a < _ammo.Length) { _ammo[a].Set(it); _ammo[a].Key(key); na = Mathf.Max(na, a + 1); }
+            }
+            if (na != _ammoShown)
+            {   // the right bar as long as it has slots
+                _ammoShown = na; _barPanels[2].line.rectTransform.At(0, 0, RightBars - 14 + na * 52, 58);
+                for (int i = 0; i < _ammo.Length; i++) _ammo[i].Shown(i < na);
             }
             if (nq != _quickShown)
             {
@@ -400,6 +410,16 @@ namespace Jatify.UI
                 _barPanels[1].line.gameObject.SetActive(nq > 0);
                 for (int i = 0; i < _tools.Length; i++) _tools[i].Shown(i < nq);
             }
+        }
+        // the right bar grown with its ammo can reach the corner's key hints: then they sit above the bar
+        private static readonly Vector3[] _c = new Vector3[4];
+        private void ClearHints(RectTransform h)
+        {
+            if (h == null) return;
+            _barPanels[2].line.rectTransform.GetWorldCorners(_c); float barRight = _c[2].x, barTop = _c[1].y;
+            h.GetWorldCorners(_c); float left = _c[0].x, bottom = _c[0].y, k = Mathf.Max(0.0001f, h.lossyScale.y);
+            float y = left < barRight + 8f * k ? h.anchoredPosition.y + (barTop + 10f * k - bottom) / k : 36f;
+            if (Mathf.Abs(h.anchoredPosition.y - y) > 0.5f) h.anchoredPosition = new Vector2(h.anchoredPosition.x, y);
         }
         internal void EsRestore() { foreach (var cg in _esBars) if (cg != null) Object.Destroy(cg); _esBars.Clear(); }
 

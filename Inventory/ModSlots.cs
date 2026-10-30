@@ -11,6 +11,8 @@ namespace Jatify.UI
     //  * Row 0: x0 Wishbone, x1 Wisplight. Their equip status effects are applied by hand and re-added
     //    after vanilla rebuilds the equipment effects (it drops ones it does not know).
     //  * Rows 1-3: a 4 x 3 key pouch. Keys found in the bag move in; doors accept pouch keys.
+    //  * Row 4: three mead slots while ExtraSlots owns the grid (it has no meads row; ours are rows of that grid otherwise).
+    //    Without ExtraSlots they go back to the bag on load.
     //  * Death: just before the tombstone, everything moves into the bag, so the grave gets it like any
     //    other item (and world modifiers that keep or delete items apply to it as to the rest).
     //  * Without the mod the items stay in m_customData, unseen but kept; they come back with the mod.
@@ -19,7 +21,7 @@ namespace Jatify.UI
     internal static class ModSlots
     {
         internal const string Key = "jatify.store";
-        internal const int W = 4, H = 4, KeyRow = 1;
+        internal const int W = 4, H = 5, KeyRow = 1, MeadRow = 4, Meads = 3;
         internal static readonly string[] Utility = { "$item_wishbone", "$item_demister" };
         internal const int RingX = 2;   // row 0: cells 2 and 3 are the two ring slots
 
@@ -80,6 +82,7 @@ namespace Jatify.UI
                 try { _inv.Load(new ZPackage(data)); }
                 catch (Exception e) { Log.Warn("mod slots: the saved slots could not be read, left as they are: " + e.Message); _inv = null; _for = null; return null; }
             }
+            if (!Es.Drives) for (int x = 0; x < W; x++) { var m = _inv.GetItemAt(x, MeadRow); if (m != null && p.GetInventory().AddItem(m)) _inv.RemoveItem(m); }   // meads kept while ExtraSlots ran: back to the bag (full: they wait here)
             _inv.m_onChanged = (Action)Delegate.Combine(_inv.m_onChanged, (Action)(() => Sync(_for)));   // vanilla drags items out too
             Sync(p);
             return _inv;
@@ -91,7 +94,8 @@ namespace Jatify.UI
         {
             if (it == null) return false;
             if (y == 0) return !SlotHost.Other && (x < Utility.Length ? it.m_shared.m_name == Utility[x] : x < RingX + 2 && RingsOn && IsRing(it));   // AzuEPI: its own Wishbone / Demister / ring slots
-            return y >= KeyRow && IsKey(it);
+            if (y == MeadRow) return x < Meads && Es.Drives && SpecialRows.Accepts(2, it);
+            return y >= KeyRow && y < MeadRow && IsKey(it);
         }
 
         internal static bool IsKey(ItemDrop.ItemData it)
@@ -178,7 +182,7 @@ namespace Jatify.UI
             return new Vector2i(-1, -1);
         }
 
-        internal static int KeyCount(Player p) { var inv = For(p); int n = 0; if (inv != null) foreach (var it in inv.GetAllItems()) if (it.m_gridPos.y >= KeyRow) n++; return n; }
+        internal static int KeyCount(Player p) { var inv = For(p); int n = 0; if (inv != null) foreach (var it in inv.GetAllItems()) if (it.m_gridPos.y >= KeyRow && it.m_gridPos.y < MeadRow) n++; return n; }
 
         // a key picked up from the world lands in the bag; move it into a free pouch cell. Only on pickup,
         // so a key you drag out of the pouch stays where you put it.
@@ -195,7 +199,7 @@ namespace Jatify.UI
 
         private static Vector2i FreeKeyCell(Inventory inv)
         {
-            for (int y = KeyRow; y < H; y++) for (int x = 0; x < W; x++) if (inv.GetItemAt(x, y) == null) return new Vector2i(x, y);
+            for (int y = KeyRow; y < MeadRow; y++) for (int x = 0; x < W; x++) if (inv.GetItemAt(x, y) == null) return new Vector2i(x, y);
             return new Vector2i(-1, -1);
         }
 
