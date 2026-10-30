@@ -334,6 +334,40 @@ namespace Jatify.UI
             _beltsLaid = -1;
         }
         private static RectTransform _fold, _keyTab, _gearTab, _modsTab; private static int _colLit = -1;
+
+        // worn bags (Backpacks, AdventureBackpacks, RustyBags): a tab each above the key pouch's, the bag's own icon; a click opens it
+        // as its own key does, a click on an open one closes it (user: their keys work, this shows them cleanly)
+        private static readonly List<RectTransform> _bagTabs = new List<RectTransform>(); private static readonly List<ItemDrop.ItemData> _bagFor = new List<ItemDrop.ItemData>(), _worn = new List<ItemDrop.ItemData>();
+        private static float _bagsAt; private static readonly List<int> _bagLit = new List<int>();
+        private static void TickBagTabs()
+        {
+            if (_frame == null || !Bags.Any || Time.unscaledTime < _bagsAt) return;
+            _bagsAt = Time.unscaledTime + 0.25f;
+            Bags.Worn(Player.m_localPlayer, _worn);
+            float lastRow = 240f - BagLift - 32f + (InvRows - 1) * Pitch;
+            for (int i = 0; i < Mathf.Max(_worn.Count, _bagTabs.Count); i++)
+            {
+                if (i >= _bagTabs.Count)
+                {
+                    int n = i; var t = Plugin.Instance.ThemeData;
+                    _bagTabs.Add(EdgeTab("jatify-bag-tab", false, "box", "Bag", "", () => { if (n < _bagFor.Count && _bagFor[n] != null) { if (Bags.IsOpen(_bagFor[n])) Bags.CloseAll(InventoryGui.instance); else Bags.Open(_bagFor[n]); } }, t, InventoryGui.instance));
+                    _bagFor.Add(null); _bagLit.Add(-1);
+                }
+                var tab = _bagTabs[i]; bool on = i < _worn.Count;
+                if (tab.gameObject.activeSelf != on) tab.gameObject.SetActive(on);
+                if (!on) { _bagFor[i] = null; continue; }
+                var cv = tab.GetComponent<Canvas>(); if (cv != null && !cv.overrideSorting) { cv.overrideSorting = true; cv.sortingOrder = (_frame.GetComponentInParent<Canvas>()?.rootCanvas.sortingOrder ?? 600) + 1; }   // dropped while hidden
+                tab.At(850f - 1f, lastRow - 66f * (i + 2), 52, 60);   // up from the key pouch's tab
+                var it = _worn[i];
+                if (_bagFor[i] != it)
+                {
+                    _bagFor[i] = it; _bagLit[i] = -1;
+                    var ic = tab.GetComponentsInChildren<Image>(true).FirstOrDefault(x => x.name == "Icon"); if (ic != null) ic.sprite = it.GetIcon();
+                    var tip = tab.GetComponentInChildren<UITooltip>(true); if (tip != null) tip.Set(Localization.instance.Localize(it.m_shared.m_name), "Opens it (or closes it when open).");
+                }
+                int lit = Bags.IsOpen(it) ? 1 : 0; if (lit != _bagLit[i]) { _bagLit[i] = lit; Tint(tab, lit == 1); }
+            }
+        }
         private static void Column(bool mods)
         {
             if (_eq == null || Cfg.GearCollapsed == null) return;
@@ -612,6 +646,7 @@ namespace Jatify.UI
         private static void LayBelts()
         {
             Legible();
+            TickBagTabs();
             if (_modsTab != null)
             {
                 bool on = Equipment.ModsCount > 0; if (_modsTab.gameObject.activeSelf != on) _modsTab.gameObject.SetActive(on);
@@ -909,7 +944,7 @@ namespace Jatify.UI
             ChestPanel.Restore();
             _eq?.Destroy(); _eq = null; _tabs.Clear(); _tabOn = null; _badge = null; _badgeShown = -1;
             _trash?.Destroy(); _trash = null; _stats?.Destroy(); _stats = null;
-            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _gearTab = null; _modsTab = null; _colLit = -1; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _narrowLaid = -1; _acts.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
+            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _gearTab = null; _modsTab = null; _colLit = -1; _bagTabs.Clear(); _bagFor.Clear(); _bagLit.Clear(); _bagsAt = 0f; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _narrowLaid = -1; _acts.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
         }
     }
 
