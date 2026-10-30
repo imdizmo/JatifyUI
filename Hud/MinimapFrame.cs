@@ -48,11 +48,27 @@ namespace Jatify.UI
         }
 
         // MinimapPanel off (the default, user): no glass card behind the map and its lines, as in the Minimal look; switched live
-        private readonly Image _panelLine, _panelFill; private int _panel = -1;
+        private readonly Image _panelLine, _panelFill; private int _panel = -1; private Material[] _mat0; private Image _band;
         private void TickPanel()
         {
             int on = Cfg.MinimapPanel != null && Cfg.MinimapPanel.Value ? 1 : 0; if (on == _panel) return; _panel = on;
             _panelLine.color = on == 1 ? Theme.C(_t.glassLine) : Color.clear; _panelFill.color = on == 1 ? Theme.C(_t.glass) : Color.clear;
+            // with no card behind them the lines read against the world (user: unreadable): near-white, with a dark halo as the nameplates
+            bool bare = on == 0; var light = new Color(0.886f, 0.894f, 0.878f);
+            if (_band == null)
+            {   // a faint dark strip behind just the two lines (the compass band's contrast): the text needs it over snow and sky
+                _band = Kit.Panel(_root, "TextBand", new Color(0.05f, 0.05f, 0.06f, 0.5f), 8);
+                _band.rectTransform.At(0, _biome.rectTransform.anchoredPosition.y * -1f - 3f, _root.sizeDelta.x, 46); _band.transform.SetAsFirstSibling(); _band.raycastTarget = false;
+            }
+            _band.enabled = bare;
+            foreach (var (x, font, dim) in new[] { (_biome, Fonts.Bold, false), (_coords, Fonts.Mono, true), (_day, Fonts.Mono, true) })
+            {
+                if (_mat0 == null) _mat0 = new Material[3];
+                int k = x == _biome ? 0 : x == _coords ? 1 : 2; if (_mat0[k] == null) _mat0[k] = x.fontSharedMaterial;
+                var sh = bare ? Fonts.Shadowed(font) : null; x.fontSharedMaterial = sh ?? _mat0[k];
+                x.color = bare ? (dim ? light : Color.white) : Theme.C(dim ? _t.dim : _t.text);
+            }
+            foreach (var b in _bars) if (b != null) b.color = bare ? light : Theme.C(_t.mute);
         }
 
         internal void Tick(Player p)
