@@ -76,16 +76,16 @@ namespace Jatify.UI
             _barPanels[2] = Kit.Box(side, "FoodMeadsBar", C(t.glass), C(t.glassLine), 12); _barPanels[2].line.rectTransform.At(0, 0, RightBars - 14, 58);
             for (int i = 0; i < 6; i++) { var s = new Slot(_barPanels[2].line.transform, "", 6 + i * 52, 6, 46f, t).Cap(1); s.Bar = true; if (i < 3) _food[i] = s; else _meads[i - 3] = s; }
             // guardian power: 52 px circle, 18 px right of the hotbar, 8 px up from its bottom
-            _power = Kit.Node(dock, "Power").At(487 + 12, 28, 52, 52);   // right of the health and stamina bars, over the food and meads bar (user)
+            _power = Kit.Node(dock, "Power").At(487 + 12, 24, 64, 64);   // 64: bigger (user)   // right of the health and stamina bars, over the food and meads bar (user)
             _powerLine = Kit.Img(_power, "Line", Kit.Circle(), C(t.glassLine), false); _powerLine.rectTransform.Fill();
             _powerFill = Kit.Img(_power, "Fill", Kit.Circle(), C(t.glass), false); _powerFill.rectTransform.Fill(1f);
-            _powerIcon = Kit.Img(_power, "Icon", null, Color.white, false); _powerIcon.rectTransform.Fill(10f); _powerIcon.preserveAspect = true;
+            _powerIcon = Kit.Img(_power, "Icon", null, Color.white, false); _powerIcon.rectTransform.Fill(6f); _powerIcon.preserveAspect = true;
             _powerCd = Kit.Img(_power, "Cooldown", Kit.Circle(), new Color(0f, 0f, 0f, 0.65f), false);
             _powerCd.rectTransform.Fill(1f); _powerCd.type = Image.Type.Filled; _powerCd.fillMethod = Image.FillMethod.Radial360;
             _powerCd.fillOrigin = (int)Image.Origin360.Top; _powerCd.fillClockwise = false;
             // the key as a keycap, like the corner hints, hanging 8 px below the circle (design: .power .key bottom -8px)
             var (cap, _) = Kit.Box(_power, "Key", C(t.raised), C(t.line2), 5);
-            cap.rectTransform.At(16, 42, 20, 18);
+            cap.rectTransform.At(22, 54, 20, 18);   // centred under the 64 px circle
             var key = Kit.Text(cap.rectTransform, "K", "F", Fonts.Mono, 10.5f, C(t.text)); key.alignment = TextAlignmentOptions.Center; key.rectTransform.Fill();
 
             _abilities = Epic.On ? new EpicAbilities(dock, t) : null;   // EpicLoot's abilities beside it

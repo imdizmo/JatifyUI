@@ -59,6 +59,8 @@ namespace Jatify.UI
             });
         }
         private Image _pvpIcon, _pvpSw, _pvpSwLine, _pvpKnob; private int _pvpShown = -1;
+        internal void MovePouch(RectTransform tab, Transform popParent, float popX, float popY) => _pouch.Move(tab, popParent, popX, popY);
+        internal void TickPouch(Player p) => _pouch.Tick(p);
         internal RectTransform MovePvp(Transform to, Vector2 centre)
         {
             _pvp.SetParent(to, false); _pvp.anchorMin = _pvp.anchorMax = _pvp.pivot = new Vector2(0.5f, 0.5f); _pvp.anchoredPosition = centre;
@@ -96,7 +98,7 @@ namespace Jatify.UI
         // The keys live in ModSlots' rows 1-3, so they don't take bag space.
         private sealed class KeyPouch
         {
-            private readonly Image _icon, _hint; private readonly TextMeshProUGUI _count;
+            private readonly Image _icon, _hint; private readonly TextMeshProUGUI _count; private readonly RectTransform _slot;
             private readonly RectTransform _pop; private readonly TextMeshProUGUI _sub;
             private readonly EqSlot[] _cells = new EqSlot[12];
             private string _shown;
@@ -104,7 +106,7 @@ namespace Jatify.UI
             internal KeyPouch(RectTransform doll, ThemeData t, GameObject tooltipPrefab)
             {
                 var (line, fill) = Kit.Box(doll, "Keys", Theme.C(t.raised), Theme.C(t.glassLine), 9);
-                var rt = line.rectTransform.At(ModSlots.RingsOn ? 126 : Azu.Drives ? 52 : 192, 288, 46, 46); line.raycastTarget = true;   // AzuEPI: after the ammo, other mods' slots after it; no rings: after the hands and ammo
+                var rt = _slot = line.rectTransform.At(ModSlots.RingsOn ? 126 : Azu.Drives ? 52 : 192, 288, 46, 46); line.raycastTarget = true;   // AzuEPI: after the ammo, other mods' slots after it; no rings: after the hands and ammo
                 _hint = Kit.IconImg(rt, "key", new Color(1f, 1f, 1f, 0.3f), 24f); _hint.rectTransform.At(11, 11, 24, 24);   // our swamp-key drawing (assets/svg/key.svg)
                 _icon = Kit.Img(rt, "Icon", null, Color.white, false); _icon.rectTransform.Fill(8f); _icon.preserveAspect = true; _icon.enabled = false;
                 _count = Kit.Text(rt, "Count", "", Fonts.Mono, 10.5f, Color.white); _count.alignment = TextAlignmentOptions.BottomRight; _count.rectTransform.Fill(5f);
@@ -139,6 +141,19 @@ namespace Jatify.UI
                 for (int i = 0; i < 12; i++) _cells[i] = new EqSlot(_pop, "Key", null, 12 + (i % 4) * 47, 36 + (i / 4) * 47, t, tooltipPrefab, 42f, i % 4, ModSlots.KeyRow + i / 4);
                 var note = Kit.Text(_pop, "Note", "Keys don't use backpack space.", Fonts.Medium, 11f, Theme.C(t.mute)); note.rectTransform.At(12, 178, 190, 16);
                 _pop.gameObject.SetActive(false);
+            }
+
+            // into a tab off the inventory's right edge, above the trash (user); the pouch opens beside it inside the panel
+            internal void Move(RectTransform tab, Transform popParent, float popX, float popY)
+            {
+                _slot.SetParent(tab, false); _slot.At(3, 7, 46, 46);
+                foreach (var i in _slot.GetComponentsInChildren<Image>(true)) if (i != _icon && i != _hint) i.color = Color.clear;   // the tab is its frame: no box inside a box
+                _pop.SetParent(popParent, false); _pop.At(popX, popY, 208, 200);
+                if (_pop.GetComponent<Canvas>() == null)
+                {   // over the bag grid it now opens beside: a layer above it, as the tabs have
+                    var cv = _pop.gameObject.AddComponent<Canvas>(); cv.overrideSorting = true; cv.sortingOrder = (popParent.GetComponentInParent<Canvas>()?.rootCanvas.sortingOrder ?? 600) + 2;
+                    _pop.gameObject.AddComponent<GraphicRaycaster>();
+                }
             }
 
             internal void Tick(Player p)
@@ -239,10 +254,10 @@ namespace Jatify.UI
             _tabChar.enabled = _page == 0; _tabCharT.color = _page == 0 ? Color.white : Theme.C(_t.dim); _tabCharI.color = new Color(1f, 1f, 1f, _page == 0 ? 1f : 0.55f);
             _tabSkills.enabled = _onSkills; _tabSkillsT.color = _onSkills ? Color.white : Theme.C(_t.dim); _tabSkillsI.color = new Color(1f, 1f, 1f, _onSkills ? 1f : 0.55f);
             PaintPvp();
+            _pouch.Tick(p);   // in its own tab now: whatever page is open
             if (_page != 0) return;
             _render.Tick(p, InventoryGui.IsVisible());
             foreach (var s in _slots) s.Tick(p);
-            _pouch.Tick(p);
             var shield = Off(p) != null && Off(p).m_shared.m_blockPower > 0f ? Off(p) : Main(p);
             Block = shield != null ? shield.GetBlockPower(p.GetSkillFactor(Skills.SkillType.Blocking)) : 0f;
         }

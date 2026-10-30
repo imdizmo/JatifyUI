@@ -44,13 +44,15 @@ namespace Jatify.UI
         {
             _t = t;
             // design .trash: 60 px tile beside the item detail, Valheim's trash can, ember on hover
-            var (line, fill) = Kit.Box(panel, "jatify-trash", Theme.C(t.glass), Theme.C(t.line2), 10);   // a lip of the panel: its glass, out past its edge
-            _tile = line.rectTransform.At(754, 820, 60, 60);
-            var ic = _icon = Kit.Img(_tile, "Icon", Kit.Icon("trash_icon"), new Color(1f, 1f, 1f, 0.7f), false); ic.rectTransform.At(17, 17, 26, 26); ic.preserveAspect = true;
+            // a tab off the panel's right edge (user): its box runs 12 px back under a clip, so the side against the panel is square and
+            // has no line, the outside rounded; the panel's own border shows where they meet
+            _tile = Kit.Node(panel, "jatify-trash").At(754, 820, 52, 60); _tile.gameObject.AddComponent<RectMask2D>();
+            var (line, fill) = Kit.Box(_tile, "Tab", Theme.C(t.glass), Theme.C(t.line2), 10); line.rectTransform.At(-12, 0, 64, 60);
+            var ic = _icon = Kit.Img(line.rectTransform, "Icon", Kit.Icon("trash_icon"), new Color(1f, 1f, 1f, 0.7f), false); ic.rectTransform.At(17, 17, 26, 26); ic.preserveAspect = true;
             line.raycastTarget = true;
             // its own canvas one above the inventory's: the bag grid's root reaches under the tile and took every click and drop
             // (#15, still broken after the drag-release fix; seen with a pointer probe). Sibling order alone doesn't beat it.
-            var tc = line.gameObject.AddComponent<Canvas>(); tc.overrideSorting = true; tc.sortingOrder = (panel.GetComponentInParent<Canvas>()?.rootCanvas.sortingOrder ?? 600) + 1; line.gameObject.AddComponent<GraphicRaycaster>();
+            var tc = _tile.gameObject.AddComponent<Canvas>(); tc.overrideSorting = true; tc.sortingOrder = (panel.GetComponentInParent<Canvas>()?.rootCanvas.sortingOrder ?? 600) + 1; _tile.gameObject.AddComponent<GraphicRaycaster>();
             var b = line.gameObject.AddComponent<Button>(); b.targetGraphic = line; b.onClick.AddListener(OnClick);
             _hover = line.gameObject.AddComponent<Hover>();
             var cb = b.colors; cb.normalColor = Color.white; cb.highlightedColor = Theme.C(t.ember) * 3f; b.colors = cb;   // the outline turns ember on hover
@@ -131,7 +133,7 @@ namespace Jatify.UI
 
         private void Close() { _inv = null; _item = null; if (_dialog) _dialog.gameObject.SetActive(false); }
 
-        internal void MoveTo(float x, float y) { if (_tile != null) { _tile.At(x, y, 52, 60); _tile.SetAsLastSibling(); if (_icon != null) _icon.rectTransform.At(15, 17, 26, 26); } }   // frame (design) pixels; on top, so no row built after it covers it
+        internal void MoveTo(float x, float y) { if (_tile != null) { _tile.At(x, y, 52, 60); _tile.SetAsLastSibling(); if (_icon != null) _icon.rectTransform.At(12 + 13, 17, 26, 26); } }   // frame (design) pixels; on top, so no row built after it covers it
 
         internal void Place(InventoryGrid grid)
         {

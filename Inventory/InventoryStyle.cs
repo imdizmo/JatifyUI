@@ -105,7 +105,7 @@ namespace Jatify.UI
             var mask = grid.GetComponent<RectMask2D>();                    // our rows sit outside vanilla's grid rect: do not clip them
             if (mask != null && mask.enabled) _l.Do(() => mask.enabled = false, () => { if (mask != null) mask.enabled = true; });
             SectionLabel(_frame, "ACTION BAR", "KEYS 1–8", 285, 67, 529, t);
-            _invLabel = SectionLabel(_frame, "INVENTORY", "", 285, 184, 529, t); _countsShown = null;
+            _invLabel = SectionLabel(_frame, "INVENTORY", "", 285, 184 - BagLift, 529, t); _countsShown = null;
             // Food / Tools / Meads: three columns of six under the equipment (design .belts)
             var beltLine = Kit.Img(_frame, "BeltLine", null, Theme.C(t.glassLine)); _beltLine = beltLine.rectTransform;
             Knots.Divider(beltLine, true, Theme.C(t.accent));   // design .kdiv.shield: the shield knot above Food / Tools / Meads
@@ -124,6 +124,11 @@ namespace Jatify.UI
             // the trash sits under the grid (design position); the item detail box beside it was removed (user)
             StyleInfo(g.m_info, t);
             _trash = new Trash(_frame, t);
+            // the key pouch: a tab like the trash's, just above it (user)
+            _keyTab = Kit.Node(_frame, "jatify-keys-tab").At(849, 0, 52, 60); _keyTab.gameObject.AddComponent<RectMask2D>();
+            var kc = _keyTab.gameObject.AddComponent<Canvas>(); kc.overrideSorting = true; kc.sortingOrder = (_frame.GetComponentInParent<Canvas>()?.rootCanvas.sortingOrder ?? 600) + 1; _keyTab.gameObject.AddComponent<GraphicRaycaster>();
+            var (kb, _) = Kit.Box(_keyTab, "Tab", Theme.C(t.glass), Theme.C(t.line2), 10); kb.rectTransform.At(-12, 0, 64, 60);
+            _eq?.MovePouch(_keyTab, _frame, 850f - 208f - 10f, 0f);
             _stats = new StatsCard(_frame, t);
             LayBelts();
             var cg = ContainerGrid(g);
@@ -265,7 +270,7 @@ namespace Jatify.UI
         internal static Vector2 CellDesign(int x, int y)
         {
             if (y == 0) return new Vector2(x * Pitch, 0f);
-            if (y < SpecialRows.Start) return new Vector2(x * Pitch, 117f + (y - 1) * Pitch);
+            if (y < SpecialRows.Start) return new Vector2(x * Pitch, 117f - BagLift + (y - 1) * Pitch);
             int band = y - SpecialRows.Start;
             if (!SpecialRows.On) return new Vector2(x * Pitch, BeltTop - 123f + band * Pitch);   // AzuEPI's equipment / quick cells: rows under the grid, lined up with it
             if (BeltRows) return band == 1 ? new Vector2(x * Pitch, BeltTop - 123f + BeltLabel)             // Tools first, a row under the grid, its label over its first slot (user)
@@ -277,7 +282,8 @@ namespace Jatify.UI
         // Food / Tools / Meads (live design): three rows under the inventory grid while they fit above the trash,
         // three columns under the equipment once more rows would make them overlap it.
         private static int InvRows => SpecialRows.Start - 1;                                             // rows under the action bar
-        private static float BeltTop => 240f + InvRows * Pitch - 7f + 30f;                              // screen y of the first belt row
+        private const float BagLift = 30f;   // the bag closer under the action bar (user: the gap was too wide)
+        private static float BeltTop => 240f - BagLift + InvRows * Pitch - 7f + 30f;                              // screen y of the first belt row
         internal static bool BeltRows => BeltTop + BeltH - 7f <= 852f - 10f;         // short inventories: Tools, then Food and Meads
         private const float BeltLabel = 30f;                                          // each row's label sits over it, above the key caps
         private static float BeltH => 2f * (BeltLabel + Pitch);
@@ -313,10 +319,10 @@ namespace Jatify.UI
             }
             _beltsLaid = -1;
         }
-        private static RectTransform _fold; private static TMPro.TextMeshProUGUI _foldText;
+        private static RectTransform _fold, _keyTab; private static TMPro.TextMeshProUGUI _foldText;
 
         // the panel ends under its lowest part; the trash sits in the 8th column under the last inventory row
-        private static float GridBottom => 240f + InvRows * Pitch - 7f;
+        private static float GridBottom => 240f - BagLift + InvRows * Pitch - 7f;
         private static float TrashTop => GridBottom + 30f;                                              // just under the separator line
         // the stats card sits under the hands row (y 505) whenever Food / Tools / Meads are under the grid
         private const float StatsTop = 505f;
@@ -477,7 +483,10 @@ namespace Jatify.UI
             if (_for != null && SpecialRows.On)
                 foreach (Transform c in _for.m_playerGrid.m_gridRoot) { var e = c.GetComponent<InventoryElement>(); if (e != null && e.Position.y >= SpecialRows.Start && e.Position.y < SpecialRows.EqRow) e.gameObject.SetActive(!Folded && e.Position.x < SpecialRows.RowWidth(e.Position.y - SpecialRows.Start)); }
             if (_fold != null) { _fold.gameObject.SetActive(SpecialRows.On); _foldText.text = Folded ? "Show bars" : "Hide bars"; }
-            _trash?.MoveTo(850f - 3f, 240f - 32f + (InvRows - 1) * Pitch);   // a lip on the panel's right edge, beside the bag's last row, however many rows (user)
+            float lastRow = 240f - BagLift - 32f + (InvRows - 1) * Pitch;
+            _trash?.MoveTo(850f - 1f, lastRow);
+            _keyTab?.At(850f - 1f, lastRow - 66f, 52, 60);   // the key pouch's tab right above the trash
+            var pop = _frame.Find("KeyPouch") as RectTransform; if (pop != null) pop.At(850f - 208f - 10f, Mathf.Max(60f, lastRow - 66f - 140f), 208, 200);   // a lip on the panel's right edge, beside the bag's last row, however many rows (user)
             if (BeltRows)
             {
                 _beltLine.At(285, BeltTop - 32f - 15f, 529, 1);
@@ -746,7 +755,7 @@ namespace Jatify.UI
             ChestPanel.Restore();
             _eq?.Destroy(); _eq = null; _tabs.Clear(); _tabOn = null; _badge = null; _badgeShown = -1;
             _trash?.Destroy(); _trash = null; _stats?.Destroy(); _stats = null;
-            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _gearText = null; _narrowLaid = -1; _acts.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
+            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _gearText = null; _narrowLaid = -1; _acts.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
         }
     }
 
