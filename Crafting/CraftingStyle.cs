@@ -170,7 +170,16 @@ namespace Jatify.UI
             var ri = Kit.Img(face.rectTransform, "I", icon, Color.white, false); ri.rectTransform.At(8, 4, 22, 22); ri.preserveAspect = true;
             var tx = Kit.Text(face.rectTransform, "T", label, Fonts.Medium, 12.5f, Theme.C(_t.dim)); tx.alignment = TextAlignmentOptions.MidlineLeft; tx.rectTransform.At(38, 0, w - 42f, 30);   // a little air after the icon
             b.targetGraphic = fill;
+            // on a layer of its own: Valheim's drop area (later in the hierarchy) covered it and took the click (test: ves-check)
+            var cv = bt.GetComponent<Canvas>();
+            if (cv == null) { cv = bt.gameObject.AddComponent<Canvas>(); var gr = bt.gameObject.AddComponent<GraphicRaycaster>(); var cvv = cv; _l.Do(() => { }, () => { if (gr != null) Object.Destroy(gr); if (cvv != null) Object.Destroy(cvv); }); }
+            OnTop(cv);
             return (face, fill, ri, tx);
+        }
+        private static void OnTop(Canvas cv)
+        {
+            if (cv == null || cv.overrideSorting) return;
+            cv.overrideSorting = true; cv.sortingOrder = (cv.transform.parent != null ? cv.transform.parent.GetComponentInParent<Canvas>()?.rootCanvas.sortingOrder ?? 600 : 600) + 1;
         }
 
         // Restyle recipe rows that Valheim just (re)built. A row we styled has a child named "jatify".
@@ -223,6 +232,8 @@ namespace Jatify.UI
                 _repair.icon.color = new Color(1f, 1f, 1f, can ? 1f : 0.45f);   // Valheim's own colours, faded when there is nothing to repair
                 _repair.text.color = can ? Color.white : Theme.C(_t.mute);
             }
+            if (_repair.line != null) OnTop(_repair.line.transform.parent.GetComponent<Canvas>());   // Unity drops it while the pill is hidden
+            if (_enchant != null) OnTop(_enchant.transform.parent.GetComponent<Canvas>());
             if (_enchant != null && _for.m_repairButton != null)
             {
                 var er = (RectTransform)_enchant.transform.parent; float x = _for.m_repairButton.gameObject.activeSelf ? -110f : -4f;
