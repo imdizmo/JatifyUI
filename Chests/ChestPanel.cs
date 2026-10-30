@@ -51,7 +51,7 @@ namespace Jatify.UI
         // ---- build ------------------------------------------------------------------------------
         internal static void Build(InventoryGui g, ThemeData t, Ledger l)
         {
-            _g = g; _t = t; var c = g.m_container; if (c == null) return;
+            _g = g; _t = t; _l = l; var c = g.m_container; if (c == null) return;
             foreach (var n in new[] { "Bkg", "Darken", "Weight/bkg", "Weight/weight_icon", "ContainerScroll" }) l.Off(c.Find(n)?.GetComponent<Graphic>());
             // Valheim's name, weight and two buttons step aside: ours do their jobs
             foreach (var rt in new[] { (RectTransform)g.m_containerName?.transform, c.Find("Weight") as RectTransform, (RectTransform)g.m_stackAllButton?.transform, (RectTransform)g.m_takeAllButton?.transform })
@@ -268,8 +268,37 @@ namespace Jatify.UI
             }
         }
 
+        // other mods' buttons on the chest panel (RustyBags' Auto / Hide): our quiet raised button instead of Valheim's gold.
+        // Looked for once a second (they come when a bag opens); each styled once, put back on unload
+        private static Ledger _l; private static float _btnAt; private static readonly HashSet<int> _btnDone = new HashSet<int>();
+        private static void ForeignButtons()
+        {
+            if (Time.unscaledTime < _btnAt || _g?.m_container == null || _l == null) return; _btnAt = Time.unscaledTime + 1f;
+            foreach (var b in _g.m_container.GetComponentsInChildren<Button>(false))
+            {
+                if (b == null || b == _g.m_takeAllButton || b == _g.m_stackAllButton || _frame != null && b.transform.IsChildOf(_frame) || b.name.StartsWith("jatify") || !_btnDone.Add(b.GetInstanceID())) continue;
+                var img = b.GetComponent<Image>(); var fill = Theme.C(_t.raised);
+                if (img != null)
+                {
+                    _l.Img(img, Kit.Rounded(8), Color.white);
+                    var (tg0, tr0, cb0) = (b.targetGraphic, b.transition, b.colors); var bb = b;
+                    var cb = ColorBlock.defaultColorBlock; cb.normalColor = fill; cb.highlightedColor = fill * 1.25f; cb.pressedColor = fill * 0.85f; cb.selectedColor = fill; cb.fadeDuration = 0.08f;
+                    _l.Do(() => { bb.targetGraphic = img; bb.transition = Selectable.Transition.ColorTint; bb.colors = cb; }, () => { if (bb != null) { bb.targetGraphic = tg0; bb.transition = tr0; bb.colors = cb0; } });
+                    var line = Kit.Img(b.transform, "jatify-line", Kit.Ring(8), Theme.C(_t.line2), false); line.type = Image.Type.Sliced; line.rectTransform.Fill(); line.raycastTarget = false;
+                    var lg = line.gameObject; _l.Do(() => { }, () => { if (lg != null) Object.Destroy(lg); });
+                }
+                foreach (var m in b.GetComponentsInChildren<MonoBehaviour>(true))
+                {   // Valheim's ButtonTextColor / ButtonImageColor repaint it gold every frame
+                    if (m == null || !(m is ButtonTextColor || m is ButtonImageColor) || !m.enabled) continue;
+                    var mb = m; _l.Do(() => mb.enabled = false, () => { if (mb != null) mb.enabled = true; });
+                }
+                foreach (var tx in b.GetComponentsInChildren<TMPro.TMP_Text>(true)) _l.Txt(tx, Fonts.Medium, 14f, Color.white);
+            }
+        }
+
         internal static void Tick()
         {
+            ForeignButtons();
             var c = Open;
             if (c == null && _frame != null && Foreign is Inventory other)
             {   // another mod's grid: its title (EpicLoot: "Sockets: <item>"), how full it is
@@ -488,6 +517,6 @@ namespace Jatify.UI
 
         private static string N(ItemDrop.ItemData i) => Localization.instance.Localize(i.m_shared.m_name);
 
-        internal static void Restore() { _chestMode = true; _socketLooked = false; _socketItem = null; _frame = null; _g = null; _infoFade = null; _shown = null; _tip = null; _tipFor = null; _search = null; _query = ""; _found = null; _tipShow = null; }
+        internal static void Restore() { _btnDone.Clear(); _l = null; _chestMode = true; _socketLooked = false; _socketItem = null; _frame = null; _g = null; _infoFade = null; _shown = null; _tip = null; _tipFor = null; _search = null; _query = ""; _found = null; _tipShow = null; }
     }
 }
