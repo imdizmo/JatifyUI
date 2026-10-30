@@ -18,10 +18,32 @@ namespace Jatify.Campfire
         private static bool _want;
         private static Transform _join;
         private static ServerListGui _gui;
-        private static readonly List<(Button b, TMP_Text t)> _tabs = new List<(Button, TMP_Text)>();
+        private static readonly List<(Button b, TMP_Text t, Image img)> _tabs = new List<(Button, TMP_Text, Image)>();
         private static readonly List<(GameObject sel, TMP_Text name)> _rows = new List<(GameObject, TMP_Text)>();
-        private static Button _connect; private static TMP_Text _connectText;
+        private static Button _connect; private static TMP_Text _connectText, _topic;
         private static float _next;
+        private static Sprite _pill;
+        private static Button _hoverTab;
+        // after Valheim's own Update has written its title back
+        private sealed class KeepText : MonoBehaviour
+        {
+            internal string T; private TMP_Text _x;
+            private void LateUpdate() { if (_x == null) _x = GetComponent<TMP_Text>(); if (_x != null && _x.text != T) _x.text = T; }
+        }
+        // Valheim's tab handler draws its gold frame on the picked tab every frame: our pill goes back on after it, each frame
+        private sealed class TabHover : MonoBehaviour, UnityEngine.EventSystems.IPointerEnterHandler, UnityEngine.EventSystems.IPointerExitHandler
+        {
+            internal Button B; internal Image I;
+            private void LateUpdate()
+            {
+                if (B == null || I == null) return;
+                if (I.sprite != _pill) I.sprite = _pill;
+                if (I.overrideSprite != _pill) I.overrideSprite = null;   // the stone "picked" tab Valheim swaps in
+                I.color = !B.interactable ? White : _hoverTab == B ? C("raised") * 1.25f : C("raised");
+            }
+            public void OnPointerEnter(UnityEngine.EventSystems.PointerEventData e) => _hoverTab = B;
+            public void OnPointerExit(UnityEngine.EventSystems.PointerEventData e) { if (_hoverTab == B) _hoverTab = null; }
+        }
 
         // Fejd.ServerBrowser: the panel is about to open (after Valheim's EULA, if it asks first)
         internal static void Opening() => _want = true;
@@ -36,8 +58,11 @@ namespace Jatify.Campfire
             if (_gui != null && _gui.m_serverListRoot != null)
                 foreach (Transform c in _gui.m_serverListRoot) if (c.gameObject.activeSelf && _done.Add(c.GetInstanceID())) Row(c);
             // states Valheim changes: the picked tab is the one that can't be clicked; the picked row has "selected" on
-            foreach (var (b, t) in _tabs) if (b != null && t != null) t.color = b.interactable ? C("dim") : SegInk;
-            foreach (var (sel, name) in _rows) if (sel != null && name != null) name.color = sel.activeSelf ? C("accent") : White;
+            foreach (var (b, t, img) in _tabs)
+            {
+                if (b == null || t == null) continue;
+                t.color = b.interactable ? C("dim") : SegInk;
+            }
             if (_connect != null && _connectText != null) _connectText.color = _connect.interactable ? Ink : C("mute");
         }
 
@@ -50,7 +75,7 @@ namespace Jatify.Campfire
         internal static void Restore()
         {
             _l.Undo(); _done.Clear(); _tabs.Clear(); _rows.Clear();
-            _join = null; _gui = null; _connect = null; _connectText = null;
+            _join = null; _gui = null; _connect = null; _connectText = null; _topic = null; _hoverTab = null;
         }
 
         private static void Style(Transform join)
@@ -70,8 +95,19 @@ namespace Jatify.Campfire
                 if (r.sizeDelta.y < 10f) _l.Off(img);   // the braid under the tabs
                 else { _l.Img(img, JatifyLook.Rounded(14), C("glass")); Line(c, C("glassLine"), 14); }
             }
-            var topic = join.Find("topic")?.GetComponent<TMP_Text>();
-            if (topic != null) { _l.Txt(topic, JatifyLook.Font("title"), 30f, White); var was = topic.text; _l.Do(() => topic.text = "Find servers", () => { if (topic != null) topic.text = was; }); }
+            // Valheim's wood panel behind the list is off in this scene: our own glass card behind everything, title to buttons
+            // (user: the list stood straight on the snow)
+            var card = _l.Own(JatifyLook.Img(join, JatifyLook.Rounded(14), C("glass"), "jatify-card")); card.type = Image.Type.Sliced; card.raycastTarget = true;
+            var cr = card.rectTransform; cr.anchorMin = Vector2.zero; cr.anchorMax = Vector2.one; cr.offsetMin = new Vector2(-24f, -40f); cr.offsetMax = new Vector2(24f, 64f);
+            card.transform.SetAsFirstSibling(); Line(card.transform, C("glassLine"), 14);
+            // Valheim writes "Select Server" back into its title: ours sits on top of it, its own faded out
+            var topic = join.Find("topic");
+            if (topic?.GetComponent<TMP_Text>() is TMP_Text tt)
+            {
+                _l.Txt(tt, JatifyLook.Font("title"), 30f, White); var was = tt.text;
+                var keep = topic.gameObject.AddComponent<KeepText>(); keep.T = "Find servers";
+                _l.Do(() => { }, () => { if (keep != null) Object.Destroy(keep); if (tt != null) tt.text = was; });
+            }
             _l.Txt(join.Find("serverCount")?.GetComponent<TMP_Text>(), JatifyLook.Font("mono"), 13f, C("mute"));
 
             // the list: a dark well; the scroll bar thin and quiet
@@ -111,12 +147,14 @@ namespace Jatify.Campfire
         {
             var b = c.GetComponent<Button>(); var t = c.GetComponentInChildren<TMP_Text>(); if (b == null) return;
             var img = c.GetComponent<Image>();
-            _l.Img(img, JatifyLook.Rounded(8), White);
+            _l.Img(img, _pill = JatifyLook.Rounded(8), White);
             var cb = ColorBlock.defaultColorBlock; cb.normalColor = C("raised"); cb.highlightedColor = C("raised") * 1.25f; cb.pressedColor = C("raised2");
             cb.selectedColor = C("raised"); cb.disabledColor = White; cb.colorMultiplier = 1f; cb.fadeDuration = 0.08f;
-            Transition(b, img, cb);
+            var (tr0, tg0) = (b.transition, b.targetGraphic); _l.Do(() => { b.transition = Selectable.Transition.None; img.CrossFadeColor(Color.white, 0f, true, true); }, () => { if (b != null) { b.transition = tr0; b.targetGraphic = tg0; } });   // the tint a colour transition left on the renderer goes too
+            var hv = c.gameObject.AddComponent<TabHover>(); hv.B = b; hv.I = img; _l.Do(() => { }, () => { if (hv != null) Object.Destroy(hv); });
             _l.Txt(t, JatifyLook.Font("medium"), 14f, C("dim"));
-            _tabs.Add((b, t));
+            NoTinters(c);
+            _tabs.Add((b, t, img));
         }
 
         // a server row like the favourites list: flat, a raised fill on hover, soft green and a green name when picked
@@ -136,7 +174,8 @@ namespace Jatify.Campfire
             _l.Txt(c.Find("modifiers")?.GetComponent<TMP_Text>(), JatifyLook.Font("medium"), 12f, C("mute"));
             _l.Txt(c.Find("version")?.GetComponent<TMP_Text>(), JatifyLook.Font("mono"), 12f, C("mute"));
             _l.Txt(c.Find("players")?.GetComponent<TMP_Text>(), JatifyLook.Font("medium"), 13f, C("dim"));
-            foreach (var n in new[] { "crossplay", "Private", "PVP", "UPNP" }) { var i = c.Find(n)?.GetComponent<Image>(); if (i != null) TintImg(i, C("dim")); }   // status keeps Valheim's green / red / grey
+            foreach (var n in new[] { "crossplay", "Private", "PVP", "UPNP" }) Dim(c.Find(n), 0.35f);
+            Dim(c.Find("status"), 0.5f);   // Valheim's state colour, quieter
             if (sel != null) _rows.Add((sel.gameObject, name));
         }
 
@@ -157,7 +196,7 @@ namespace Jatify.Campfire
         private static void Quiet(Transform b, bool icon)
         {
             if (b == null) return;
-            Tint(b, C("raised"), C("raised2"), JatifyLook.Rounded(8)); Line(b, C("line2"), 8);
+            Tint(b, C("raised"), C("raised2"), JatifyLook.Rounded(8)); Line(b, C("line2"), 8); NoTinters(b);
             if (icon) { var i = b.Find("Image")?.GetComponent<Image>(); if (i != null) TintImg(i, C("dim")); }
             else _l.Txt(b.Find("Text")?.GetComponent<TMP_Text>(), JatifyLook.Font("medium"), 14f, White);
         }
@@ -175,6 +214,25 @@ namespace Jatify.Campfire
         {
             var (tg0, tr0, cb0, ss0) = (b.targetGraphic, b.transition, b.colors, b.spriteState);
             _l.Do(() => { b.targetGraphic = target; b.transition = Selectable.Transition.ColorTint; b.colors = cb; }, () => { if (b != null) { b.targetGraphic = tg0; b.transition = tr0; b.colors = cb0; b.spriteState = ss0; } });
+        }
+
+        // Valheim's ButtonTextColor / ButtonImageColor repaint every frame (gold when picked or hovered): off while we style
+        private static void NoTinters(Transform b)
+        {
+            foreach (var m in b.GetComponentsInChildren<MonoBehaviour>(true))
+            {
+                if (m == null || (!(m is ButtonTextColor) && !(m is ButtonImageColor)) || !m.enabled) continue;
+                var mb = m; _l.Do(() => mb.enabled = false, () => { if (mb != null) mb.enabled = true; });
+            }
+        }
+
+        // dimmed whatever colour Valheim gives it (a row's state icons, set again on each refresh)
+        private static void Dim(Transform t, float a)
+        {
+            if (t == null) return;
+            var g = t.GetComponent<CanvasGroup>(); if (g != null) return;
+            g = t.gameObject.AddComponent<CanvasGroup>(); g.alpha = a; g.blocksRaycasts = true; var gg = g;
+            _l.Do(() => { }, () => { if (gg != null) Object.Destroy(gg); });
         }
 
         private static void TintImg(Image i, Color c) { var c0 = i.color; c.a = c0.a; _l.Do(() => i.color = c, () => { if (i != null) i.color = c0; }); }
