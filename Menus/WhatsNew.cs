@@ -116,6 +116,7 @@ Thanks for the reports and ideas!";
                 h += ph + 12f;
             }
             Flush();
+            Links.Row(_content, (548f - 484f) / 2f, h + 6f, t); h += 6f + 44f + 8f;   // Discord and Buy me a coffee at the end of the notes (user)
             _content.sizeDelta = new Vector2(0f, h + 4f);
             _scroll = view.gameObject.AddComponent<ScrollRect>(); _scroll.content = _content; _scroll.horizontal = false; _scroll.scrollSensitivity = Kit.ScrollSpeed; _scroll.movementType = ScrollRect.MovementType.Clamped;
             var bar = Kit.Node(b, "Bar").At(598, 88, 4, 470);

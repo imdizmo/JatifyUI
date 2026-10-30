@@ -11,6 +11,14 @@ namespace Jatify.UI
         internal static void Add(Menu m, Ledger l, ThemeData t) => AddTo(m.m_root.Find("Menu/MenuEntries"), l, t);
 
         // any menu list with a "Settings" entry (the pause menu, the title menu)
+        // the title menu: Jatify's Discord at its end too, as other mods sign theirs (user)
+        internal static void AddDiscord(Transform entries, Ledger l)
+        {
+            var settings = entries?.Find("Settings"); if (settings == null) return;
+            var quit = entries.Find("Exit") ?? entries.Find("Quit");
+            Clone(settings, "Jatify Discord", quit != null ? quit.GetSiblingIndex() : entries.childCount, l, () => Application.OpenURL(Links.Discord));
+        }
+
         internal static void AddTo(Transform entries, Ledger l, ThemeData t)
         {
             var settings = entries?.Find("Settings");

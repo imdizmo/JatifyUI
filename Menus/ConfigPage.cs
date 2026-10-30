@@ -58,7 +58,8 @@ namespace Jatify.UI
             // search over every section (on Mods: every mod), then the rows: a scroll view right of the navigation
             Pages.T = Pages.T ?? t;
             _search = Pages.Search(_root, mods ? "Search mod settings" : "Search settings", 720, 262, 360, q => { _q = q.Trim().ToLowerInvariant(); BuildRows(); });
-            var view = Kit.Node(_root, "View").At(720, 312, 800, 710);
+            var view = Kit.Node(_root, "View").At(720, 312, 800, 660);   // 50 shorter: the links sit under it
+            Links.Row(_root, 720, 984, t);
             view.gameObject.AddComponent<RectMask2D>();
             var img = view.gameObject.AddComponent<Image>(); img.color = new Color(0, 0, 0, 0); img.raycastTarget = true;
             _content = Kit.Node(view, "Content");
