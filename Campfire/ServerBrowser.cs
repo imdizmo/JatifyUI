@@ -129,6 +129,7 @@ namespace Jatify.Campfire
                 _connect = connect.GetComponent<Button>();
                 Tint(connect, C("accent"), C("raised2"), JatifyLook.Rounded(10));
                 _connectText = connect.Find("Text")?.GetComponent<TMP_Text>(); _l.Txt(_connectText, JatifyLook.Font("bold"), 16f, Ink);
+                NoTinters(connect);   // Valheim's ButtonTextColor painted the label orange on the orange button (user)
                 _l.Rect((RectTransform)connect, r => r.sizeDelta = new Vector2(r.sizeDelta.x, 48f));   // 70 tall in vanilla: as tall as Back now
             }
 
@@ -188,7 +189,11 @@ namespace Jatify.Campfire
             {
                 _l.Txt(x, JatifyLook.Font("medium"), 14f, x.name == "Placeholder" ? C("mute") : White);
                 _l.Align(x, TextAlignmentOptions.MidlineLeft);
-                if (x.name == "Placeholder") { var tx = x; var was = tx.text; _l.Do(() => tx.text = "Search servers", () => { if (tx != null) tx.text = was; }); }
+                if (x.name == "Placeholder")
+                {   // Valheim writes "[Filter]" back: kept after its update, as the title
+                    var tx = x; var was = tx.text; var keep = tx.gameObject.AddComponent<KeepText>(); keep.T = "Search servers";
+                    _l.Do(() => tx.text = "Search servers", () => { if (keep != null) Object.Destroy(keep); if (tx != null) tx.text = was; });
+                }
             }
         }
 
