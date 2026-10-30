@@ -15,7 +15,7 @@ namespace Jatify.UI
         internal const int Count = 3, Width = 6, Rows = Count + 1;   // + the hidden equipment row
         internal static int EqRow => Start + Count;
         internal static readonly string[] Names = { "FOOD", "TOOLS", "MEADS" };
-        internal static bool On => !Azu.Drives;   // AzuEPI owns the grid: no rows of ours (it has its own equipment and quick-slot cells)
+        internal static bool On => !SlotHost.Other;   // AzuEPI or ExtraSlots owns the grid: no rows of ours (it has its own equipment and quick-slot cells)
         internal static int Start => On ? ExtraRows.Base + ExtraRows.Extra.Value : Azu.NormalRows;   // first reserved row (AzuEPI: its first equipment row; the bag is above either way)
         internal static bool Is(Inventory inv, int y) => On && IsPlayer(inv) && y >= Start && y < Start + Rows;
         internal static bool IsPlayer(Inventory inv) => inv != null && Player.m_localPlayer != null && inv == Player.m_localPlayer.GetInventory();

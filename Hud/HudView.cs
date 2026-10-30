@@ -138,7 +138,7 @@ namespace Jatify.UI
             for (int i = 0; i < 6; i++)
             {
                 _food[i].Set(have ? inv.GetItemAt(i, sr) : null);
-                if (!Azu.Drives) { var it = have ? inv.GetItemAt(i, sr + 1) : null; _tools[i].Set(it, Ammo(inv, it)); }
+                if (SpecialRows.On) { var it = have ? inv.GetItemAt(i, sr + 1) : null; _tools[i].Set(it, Ammo(inv, it)); }
                 _meads[i].Set(have ? inv.GetItemAt(i, sr + 2) : null);
             }
 
@@ -179,7 +179,7 @@ namespace Jatify.UI
             if (_chestKeys.gameObject.activeSelf != chestOpen) _chestKeys.gameObject.SetActive(chestOpen);
             bool screen = invOpen || StoreGui.IsVisible();   // a full window open: the inventory, or the trader's shop (user: the HUD drew over it)
             foreach (var r in new[] { _dock, _hintsL, _buffs, _compass.Root, _flags.Box }) if (r.gameObject.activeSelf == screen) r.gameObject.SetActive(!screen); // the inventory screen has no dock
-            bool side = !screen && !Azu.Drives; if (_side.gameObject.activeSelf != side) _side.gameObject.SetActive(side);   // AzuEPI: no Food / Meads rows to show
+            bool side = !screen && SpecialRows.On; if (_side.gameObject.activeSelf != side) _side.gameObject.SetActive(side);   // AzuEPI: no Food / Meads rows to show
             bool placing = !invOpen && p.InPlaceMode();   // hammer, hoe, cultivator: the corner shows placing keys instead of combat
             if (_hintsR.gameObject.activeSelf != (!screen && !placing)) _hintsR.gameObject.SetActive(!screen && !placing);
             SetHints(!screen && !placing);
@@ -394,7 +394,7 @@ namespace Jatify.UI
 
         private void KeyLabels()
         {
-            if (Azu.Drives) return;   // the tools bar carries AzuEPI's keys
+            if (!SpecialRows.On) return;   // the tools bar carries AzuEPI's keys
             if (SpecialRows.Keys == null || Time.unscaledTime < _nextKeys) return;
             _nextKeys = Time.unscaledTime + 1f;
             var rows = new[] { _food, _tools.Take(6).ToArray(), _meads };
