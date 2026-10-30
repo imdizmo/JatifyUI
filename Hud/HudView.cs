@@ -69,7 +69,7 @@ namespace Jatify.UI
             tb.rectTransform.At(-14 - 318, 96 + 14, 318, 58);
             for (int i = 0; i < _tools.Length; i++) { _tools[i] = new Slot(tb.transform, "", 6 + i * 52, 6, 46f, t).Cap(1); _tools[i].Bar = true; _tools[i].Shown(i < 6); }
             // FoodTimersAsBuffs off (#31): eaten food's timers in a centred row above the health bar (user), over the held item's name
-            _foodRow = Kit.Node(dock, "FoodTimers").At(0, -37, 534, 61);   // icons just over the bar (user: less gap); the held item's name moves above them
+            _foodRow = Kit.Node(dock, "FoodTimers").At(0, -(Size + 19f) + 24f, 534, Size + 19f);   // icons just over the bar (user: less gap); the held item's name moves above them
             // food and meads (user): one bar like the tools bar, 3 food then 3 meads, 14 px right of the hotbar, bottoms aligned;
             // key labels: KeyLabels
             var side = _side = Kit.Node(dock, "Sidebars").At(534 + 14, 96 + 14, RightBars - 14, 58);
@@ -201,20 +201,20 @@ namespace Jatify.UI
                 var burn = f.m_item.m_shared.m_foodBurnTime;
                 (asBuffs ? Pool(n++) : FoodPool(nf++)).Set(f.m_item.GetIcon(), f.m_time, burn > 0f && f.m_time / burn < 0.3f, false, burn > 0f ? f.m_time / burn : -1f);
             }
-            float up = !asBuffs && nf > 0 ? 59f : 0f;   // the held item's name (y 0 in the dock) over the food row while it shows
+            float up = !asBuffs && nf > 0 ? Size + 21f : 0f;   // the held item's name (y 0 in the dock) over the food row while it shows
             foreach (var (rt, y) in new[] { (_held.rectTransform, 0f), (_heldStar.rectTransform, 4f), (_heldQ.rectTransform, 0f) }) rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, up - y);
-            for (int i = 0; i < _foodPool.Count; i++) { bool on = i < nf; if (_foodPool[i].Root.gameObject.activeSelf != on) _foodPool[i].Root.gameObject.SetActive(on); if (on) _foodPool[i].Root.At((534f - (nf * 46f - 6f)) / 2f + i * 46f, 0, 40, 61); }
+            for (int i = 0; i < _foodPool.Count; i++) { bool on = i < nf; if (_foodPool[i].Root.gameObject.activeSelf != on) _foodPool[i].Root.gameObject.SetActive(on); if (on) _foodPool[i].Root.At((534f - (nf * Pitch - (Pitch - Size))) / 2f + i * Pitch, 0, Size, Size + 19f); }
             for (int i = 0; i < _buffPool.Count; i++) { bool on = i < n; if (_buffPool[i].Root.gameObject.activeSelf != on) _buffPool[i].Root.gameObject.SetActive(on); }
             // WoW style (user): buffs from the top, right to left, 46 px apart, a new row 64 px lower once 420 px is used;
             // debuffs on their own row, frames level with the bottom edge of the minimap (y 260 on screen, this block starts at 24)
             float x = 0f; int row = 0;
             for (int i = bad; i < n; i++)
             {
-                if (x + 40f > 420f) { x = 0f; row++; }
-                _buffPool[i].Root.At(420 - 40 - x, row * 64, 40, 58);
-                x += 46f;
+                if (x + Size > 420f) { x = 0f; row++; }
+                _buffPool[i].Root.At(420 - Size - x, row * (Size + 24f), Size, Size + 19f);
+                x += Pitch;
             }
-            for (int i = 0; i < bad; i++) _buffPool[i].Root.At(420 - 40 - i * 46, 260 - 24 - 42, 40, 58);
+            for (int i = 0; i < bad; i++) _buffPool[i].Root.At(420 - Size - i * Pitch, 260 - 24 - Size, Size, Size + 19f);
         }
 
         // Ailments, as BuffMeDaddy (and the admin hammer) sort them: wet, cold, freezing, burning, poison, smoked...
@@ -590,6 +590,7 @@ namespace Jatify.UI
 
         // An effect or food: its icon in a frame, the time left on a small dark pill under it (detail pass: readable over a bright
         // sky; ember in the last two minutes). Food fills from the bottom with what's left of it (ember tint), its frame ember.
+        internal const float Size = 48f, Pitch = 54f;   // buff icons: 48 px, 54 apart
         private sealed class Buff
         {
             internal readonly RectTransform Root;
@@ -603,15 +604,16 @@ namespace Jatify.UI
             private readonly float _py;
             internal Buff(Transform parent, ThemeData t, bool top = false)
             {
-                _t = t; _py = top ? 0f : 45f;
+                _t = t; _py = top ? 0f : Size + 3f;
                 Root = Kit.Node(parent, "Buff");
-                Image fill; (_line, fill) = Kit.Box(Root, "Frame", C(t.glass), C(t.line2), 8);
-                _line.rectTransform.At(-1, top ? 19 : 0, 42, 42);
-                fill.gameObject.AddComponent<Mask>().showMaskGraphic = true;   // the food fill keeps to the frame's round corners
+                // Valheim's look (user): the icon alone and a bit bigger, no frame or panel behind it
+                Image fill; (_line, fill) = Kit.Box(Root, "Frame", Color.clear, Color.clear, 8);
+                _line.rectTransform.At(0, top ? 19 : 0, Size, Size);
+                fill.gameObject.AddComponent<Mask>().showMaskGraphic = false;
                 _left = Kit.Img(fill.rectTransform, "Left", null, new Color(0.949f, 0.439f, 0.227f, 0.22f)).rectTransform;   // design: rgba(242,112,58,.22)
                 _left.anchorMin = Vector2.zero; _left.anchorMax = new Vector2(1f, 0f); _left.offsetMin = _left.offsetMax = Vector2.zero; _left.gameObject.SetActive(false);
-                _icon = Kit.Img(_line.rectTransform, "Icon", null, Color.white, false); _icon.rectTransform.At(4, 4, 34, 34); _icon.preserveAspect = true;
-                _pill = Kit.Panel(Root, "Pill", new Color(0.078f, 0.078f, 0.086f, 0.86f), 8f); _pill.rectTransform.At(0, _py, 40, 16); _pill.enabled = false;   // design .timer: 16 tall, rgba(20,20,22,.86)
+                _icon = Kit.Img(_line.rectTransform, "Icon", null, Color.white, false); _icon.rectTransform.At(0, 0, Size, Size); _icon.preserveAspect = true;
+                _pill = Kit.Panel(Root, "Pill", new Color(0.078f, 0.078f, 0.086f, 0.86f), 8f); _pill.rectTransform.At(0, _py, Size, 16); _pill.enabled = false;   // design .timer: 16 tall, rgba(20,20,22,.86)
                 _time = Kit.Text(_pill.rectTransform, "Time", "", Fonts.Mono, 10.5f, Color.white); _time.alignment = TextAlignmentOptions.Center; _time.rectTransform.Fill();
             }
 
@@ -625,27 +627,27 @@ namespace Jatify.UI
                 int shownKey = s < 0 ? -1 : s >= 60 ? 100000 + Mathf.CeilToInt(s / 60f) : s; // minutes above a minute, seconds below
                 if (s < 0 && !string.IsNullOrEmpty(text))
                 {
-                    if (_shown != -2 || _text != text) { _shown = -2; _text = text; _time.text = text; _pill.enabled = true; float w = Mathf.Ceil(Kit.W(_time)) + 12f; _pill.rectTransform.At(20f - w / 2f, _py, w, 16f); }
+                    if (_shown != -2 || _text != text) { _shown = -2; _text = text; _time.text = text; _pill.enabled = true; float w = Mathf.Ceil(Kit.W(_time)) + 12f; _pill.rectTransform.At(Size / 2f - w / 2f, _py, w, 16f); }
                 }
                 else if (shownKey != _shown)
                 {
                     _shown = shownKey; _time.text = s < 0 ? "" : s >= 60 ? Mathf.CeilToInt(s / 60f) + "m" : s + "s";
                     _pill.enabled = s >= 0;
-                    if (s >= 0) { float w = Mathf.Ceil(Kit.W(_time)) + 12f; _pill.rectTransform.At(20f - w / 2f, _py, w, 16f); }   // centred under the 40 px icon
+                    if (s >= 0) { float w = Mathf.Ceil(Kit.W(_time)) + 12f; _pill.rectTransform.At(Size / 2f - w / 2f, _py, w, 16f); }   // centred under the 40 px icon
                 }
                 bool warn = s >= 0 && s <= 120;
                 if (warn != _warn) { _warn = warn; _time.color = warn ? C(_t.ember) : Color.white; }
                 int pct = left < 0f ? -1 : Mathf.RoundToInt(Mathf.Clamp01(left) * 100f);
                 if (pct != _leftPct)
                 {
-                    _leftPct = pct; _left.gameObject.SetActive(pct > 0);
+                    _leftPct = pct; _left.gameObject.SetActive(false);   // no panel to fill (Valheim's look)
                     if (pct > 0) _left.anchorMax = new Vector2(1f, pct / 100f);
                 }
                 int frame = bad ? 0 : low ? 1 : left >= 0f ? 2 : 3;
                 if (frame != _frame)
                 {
                     _frame = frame; var e = C(_t.ember);
-                    _line.color = frame == 0 ? C(_t.health) : frame == 1 ? e : frame == 2 ? new Color(e.r, e.g, e.b, 0.55f) : C(_t.line2);   // design .eicon.food: ember .55
+                    _line.color = Color.clear;   // no frame (user); a debuff still reads from its own icon, as in Valheim
                 }
             }
         }
