@@ -161,6 +161,7 @@ namespace Jatify.UI
             Safe("target-health", TargetHealth.Tick);
             Safe("map-marks", () => MapMarks.Tick(Minimap.instance));
             Safe("mod-slot-lift", ModSlots.TickStaged);
+            Safe("screen-check", ScreenCheck.Tick);
 #if JATIFY_DEV
             if (Dev.Build) Safe("test-panel", TestPanel.Tick);   // F8 test kit and shot.request: dev builds only
             if (Dev.Build) Safe("devshot", DevShot.Tick);
