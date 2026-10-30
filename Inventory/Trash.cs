@@ -14,7 +14,7 @@ namespace Jatify.UI
         private static readonly AccessTools.FieldRef<InventoryGui, Inventory> DragInv = AccessTools.FieldRefAccess<InventoryGui, Inventory>("m_dragInventory");
         private static readonly AccessTools.FieldRef<InventoryGui, int> DragAmount = AccessTools.FieldRefAccess<InventoryGui, int>("m_dragAmount");
         private static readonly System.Reflection.MethodInfo SetupDrag = AccessTools.Method(typeof(InventoryGui), "SetupDragItem");
-        private readonly RectTransform _tile, _dialog; private readonly Image _icon;
+        private readonly RectTransform _tile, _dialog; private readonly Image _icon; private readonly UITooltip _tip;
         private readonly TextMeshProUGUI _ask;
         private readonly ThemeData _t;
         private Inventory _inv; private ItemDrop.ItemData _item; private int _amount;
@@ -57,7 +57,7 @@ namespace Jatify.UI
             var b = line.gameObject.AddComponent<Button>(); b.targetGraphic = line; b.onClick.AddListener(OnClick);
             _hover = line.gameObject.AddComponent<Hover>();
             var cb = b.colors; cb.normalColor = Color.white; cb.highlightedColor = Theme.C(t.ember) * 3f; b.colors = cb;   // the outline turns ember on hover
-            var tip = line.gameObject.AddComponent<UITooltip>(); var vt = InventoryGui.instance?.m_playerGrid.m_elementPrefab.GetComponent<UITooltip>();
+            var tip = _tip = line.gameObject.AddComponent<UITooltip>(); var vt = InventoryGui.instance?.m_playerGrid.m_elementPrefab.GetComponent<UITooltip>();
             if (vt != null) { tip.m_tooltipPrefab = vt.m_tooltipPrefab; tip.Set("Trash", "Drag an item here to destroy it."); }
 
             // confirm dialog, centred on the screen, on our own top canvas
@@ -94,7 +94,7 @@ namespace Jatify.UI
             var g = InventoryGui.instance; if (g == null) return;
             var item = DragItem(g); var inv = DragInv(g); int amount = DragAmount(g);
             if (item == null && _heldItem != null && _heldInv != null && _heldInv.ContainsItem(_heldItem)) { item = _heldItem; inv = _heldInv; amount = _heldAmount; }   // let go over the tile: Valheim may have dropped it from the cursor first
-            if (item == null) return;
+            if (item == null) { Undo(); return; }   // nothing in hand: a click on the tab brings the last destroyed item back, while it can
             _inv = inv; _item = item; _amount = Mathf.Clamp(amount, 1, item.m_stack);
             SetupDrag.Invoke(g, new object[] { null, null, 1 });                   // drop it from the cursor first
             _ask.text = $"Destroy {Localization.instance.Localize(item.m_shared.m_name)}{(_amount > 1 ? " ×" + _amount : "")}?";
@@ -127,9 +127,31 @@ namespace Jatify.UI
                 if (_inv == p.GetInventory() && p.IsItemEquiped(_item)) p.UnequipItem(_item, false);
                 int n = Mathf.Min(_amount, _item.m_stack);
                 Log.Info($"trash: destroyed {_item.m_shared.m_name} x{n}" + (Cfg.ConfirmDelete.Value ? "" : " (no confirm)"));   // so a lost item can always be traced
+                _undo = _item.Clone(); _undo.m_stack = n; _undo.m_equipped = false; _undoInv = _inv; _undoUntil = Time.unscaledTime + UndoSeconds;   // kept for Undo (user)
                 _inv.RemoveItem(_item, n);
             }
             Close();
+        }
+
+        // Undo (user): the last destroyed stack comes back for 15 s, a click on the tab with nothing in hand; the tab shows an undo
+        // arrow meanwhile. Into the inventory it came from, or at your feet if it's full now. One step: a newer destroy replaces it.
+        private const float UndoSeconds = 15f;
+        private ItemDrop.ItemData _undo; private Inventory _undoInv; private float _undoUntil;
+        private bool CanUndo => _undo != null && Time.unscaledTime < _undoUntil;
+        internal void Undo()
+        {
+            var p = Player.m_localPlayer; if (!CanUndo || p == null) return;
+            var it = _undo; var inv = _undoInv ?? p.GetInventory(); _undo = null;
+            if (inv.AddItem(it)) Log.Info($"trash: undo, {it.m_shared.m_name} x{it.m_stack} back in the inventory");
+            else { ItemDrop.DropItem(it, it.m_stack, p.transform.position + p.transform.forward + Vector3.up, p.transform.rotation); Log.Info($"trash: undo, {it.m_shared.m_name} x{it.m_stack} at your feet (inventory full)"); }
+            Paint();
+        }
+        private bool _undoShown;
+        private void Paint()
+        {
+            bool u = CanUndo; if (u == _undoShown || _icon == null) return; _undoShown = u;
+            _icon.sprite = Kit.Icon(u ? "undo" : "trash_icon");
+            if (_tip != null) _tip.Set(u ? "Undo" : "Trash", u ? $"Click to bring back {Localization.instance.Localize(_undo.m_shared.m_name)}{(_undo.m_stack > 1 ? " ×" + _undo.m_stack : "")}." : "Drag an item here to destroy it.");
         }
 
         private void Close() { _inv = null; _item = null; if (_dialog) _dialog.gameObject.SetActive(false); }
@@ -139,6 +161,7 @@ namespace Jatify.UI
         internal void Place(InventoryGrid grid)
         {
             if (!InventoryGui.IsVisible() && _dialog && _dialog.gameObject.activeSelf) Close();
+            Paint();
             TickRelease();
         }
 
