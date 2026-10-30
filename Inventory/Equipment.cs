@@ -31,12 +31,15 @@ namespace Jatify.UI
         }
         internal float Block;                                  // for the stats card
         internal bool OnSkills => _page == 1;
-        internal bool OnStats => _page == 2;   // stats, resistances and effects on a tab of their own (user), the panel shorter for it
+        internal bool OnStats => _page == 2;
+        // other mods' slots (backpacks, jewellery, tomes, lanterns...) on a page of their own, opened from an edge tab (user)
+        internal bool OnMods { get => _page == 3; set => _page = value ? 3 : 0; }
+        internal static int ModsCount;          // how many: set by InventoryStyle from the slot host; the edge tab shows only when there are any
         private readonly RectTransform _root, _doll;
         private readonly SkillsList _skills;
         private int _page; private bool _onSkills => _page == 1;
         internal static bool ForceSkills; // dev
-        private Image _tabChar, _tabSkills, _tabCharI, _tabSkillsI, _tabStats, _tabStatsI; private TextMeshProUGUI _tabCharT, _tabSkillsT, _tabStatsT; private RectTransform _pvp;
+        private Image _tabChar, _tabSkills, _tabCharI, _tabSkillsI, _tabStats, _tabStatsI; private RectTransform _mods; private TextMeshProUGUI _tabCharT, _tabSkillsT, _tabStatsT; private RectTransform _pvp;
         private readonly ThemeData _t;
 
         private void Tabs(ThemeData t)
@@ -235,6 +238,16 @@ namespace Jatify.UI
         private readonly Dictionary<int, RectTransform> _es = new Dictionary<int, RectTransform>();
         // row 0 is our own bottom row's shape (user: as close to ours as can be): two 60 px ring spots at the ends, two 46 px ammo
         // spots between them; further rows: 56 px cells, 4 a row
+        // the Mod slots page: 56 px cells, 4 a row, under the tabs
+        private readonly List<RectTransform> _modCells = new List<RectTransform>();
+        internal RectTransform ModCell(int i)
+        {
+            if (_page != 3) return null;
+            if (_mods == null) _mods = Kit.Node(_root, "ModSlots").At(0, 49, 240, 371);
+            while (_modCells.Count <= i) { int n = _modCells.Count; _modCells.Add(Kit.Node(_mods, "Mod" + n).At(n % EsPerRow * EsPitch, 8 + n / EsPerRow * (EsPitch + 6), EsSize, EsSize)); }
+            return _modCells[i];
+        }
+
         internal RectTransform EsCell(int row, int col)
         {
             if (!_doll.gameObject.activeInHierarchy) return null;
@@ -272,6 +285,8 @@ namespace Jatify.UI
         {
             if (p != null && _name != null && _name.text.Length == 0) _name.text = p.GetPlayerName();   // once: a name can't change in the world
             if (ForceSkills) { _page = 1; ForceSkills = false; }
+            if (ModsCount == 0 && _page == 3) _page = 0;
+            if (_mods != null && _mods.gameObject.activeSelf != (_page == 3)) _mods.gameObject.SetActive(_page == 3);
             if (_doll.gameObject.activeSelf != (_page == 0)) _doll.gameObject.SetActive(_page == 0);
             _skills.Show(_onSkills, p);
             _tabStats.enabled = _page == 2; _tabStatsT.color = _page == 2 ? Color.white : Theme.C(_t.dim); _tabStatsI.color = new Color(1f, 1f, 1f, _page == 2 ? 1f : 0.55f);

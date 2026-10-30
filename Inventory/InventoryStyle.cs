@@ -115,6 +115,12 @@ namespace Jatify.UI
             // the folds as tabs like the trash (user): the bars' under the trash on the right edge, the gear's off the left edge level
             // with the action bar
             _fold = EdgeTab("jatify-bars-tab", false, "Icon_Radial_WeaponsTools", "Tools, food and meads", "Shows or hides the Tools, Food and Meads rows. They keep working from the HUD.", () => { if (Cfg.BarsCollapsed != null) Cfg.BarsCollapsed.Value = !Cfg.BarsCollapsed.Value; }, t, g, down: true);
+            // other mods' slots: a tab under the gear's opening their own page of the column (user), shown when a mod adds any
+            _modsTab = EdgeTab("jatify-mods-tab", true, "box", "Mod slots", "Slots other mods add: backpacks, jewellery, tomes, lanterns...", () =>
+            {
+                if (_eq == null) return;
+                if (Narrow) { Cfg.GearCollapsed.Value = false; _eq.OnMods = true; } else _eq.OnMods = !_eq.OnMods;
+            }, t, g);
             _gearTab = EdgeTab("jatify-gear-tab", true, "host_helmet_icon", "Character", "Shows or hides the character, gear, skills and stats column.", () => { if (Cfg.GearCollapsed != null) Cfg.GearCollapsed.Value = !Cfg.GearCollapsed.Value; }, t, g);
             // the trash sits under the grid (design position); the item detail box beside it was removed (user)
             StyleInfo(g.m_info, t);
@@ -325,7 +331,7 @@ namespace Jatify.UI
             }
             _beltsLaid = -1;
         }
-        private static RectTransform _fold, _keyTab, _gearTab; private static TMPro.TextMeshProUGUI _foldText;
+        private static RectTransform _fold, _keyTab, _gearTab, _modsTab; private static int _modsLit = -1; private static TMPro.TextMeshProUGUI _foldText;
         // a tab off the panel's edge: square where it meets the panel (its box runs 12 px back under a clip), rounded outside, one icon;
         // on its own layer so the bag grid and Valheim's drop area under it don't take the click
         private static RectTransform EdgeTab(string name, bool left, string icon, string topic, string text, System.Action click, ThemeData t, InventoryGui g, bool down = false)
@@ -391,6 +397,7 @@ namespace Jatify.UI
         // the rest under the doll: rings first, then ammo on a row of its own (with no rings it takes the hands' row), then the rest.
         // It keeps storing and equipping them; we only move and show its cells, and hide its panel.
         private static readonly Dictionary<string, (int row, int col)> _esPlace = new Dictionary<string, (int, int)>();
+        private static readonly Dictionary<string, int> _esMods = new Dictionary<string, int>();   // other mods' slots: the Mod slots tab
         private static float EsBelow;   // how much further down the doll's column goes for its rows
         private static void EsPanels(InventoryGui g)
         {
@@ -399,7 +406,7 @@ namespace Jatify.UI
             // our bottom row's shape: its extra utilities 3 and 4 where our rings sit (the ends), ammo 1 and 2 between them where our
             // ammo and keys sit, ammo 3 centred above those two; then a row for other mods' slots (rings, necklace, lantern...) and a Misc slot that holds
             // something (keys go in our pouch, user: empty Misc slots stay out of sight)
-            _esPlace.Clear(); int row = 1, col = 0; var inv = Player.m_localPlayer?.GetInventory();
+            _esPlace.Clear(); _esMods.Clear(); int row = 1, col = 0; var inv = Player.m_localPlayer?.GetInventory();
             void Put(string id) { if (col == Equipment.EsPerRow) { row++; col = 0; } _esPlace[id] = (row, col++); }
             var all = Es.Slots;
             foreach (var s in all)
@@ -409,10 +416,11 @@ namespace Jatify.UI
                 else if (s.Id == "Ammo1") _esPlace[s.Id] = (0, 1); else if (s.Id == "Ammo2") _esPlace[s.Id] = (0, 2);
             }
             foreach (var s in all) if (s.Active && s.Id == "Ammo3") _esPlace[s.Id] = (-1, 0);   // centred above ammo 1 and 2
-            foreach (var s in all) if (s.Active && Es.IsRing(s.Id) && Es.DollCell(s.Id) == null) Put(s.Id);
+            // everything else (other mods' slots, a Misc slot holding something) on the Mod slots tab (user)
             foreach (var s in all)
                 if (s.Active && !_esPlace.ContainsKey(s.Id) && Es.DollCell(s.Id) == null && Es.Quick(s.Id) < 0 && Es.Food(s.Id) < 0 && Es.Ammo(s.Id) < 0
-                    && (!s.Id.StartsWith("Misc") || inv != null && inv.GetItemAt(s.Cell.x, s.Cell.y) != null)) Put(s.Id);
+                    && (!s.Id.StartsWith("Misc") || inv != null && inv.GetItemAt(s.Cell.x, s.Cell.y) != null)) _esMods[s.Id] = _esMods.Count;
+            Equipment.ModsCount = _esMods.Count;
             int rows = col > 0 ? row : row - 1;
             EsBelow = rows >= 1 ? rows * Equipment.EsPitch + 12f : 0f;   // each extra row pushes the strip down (the doll's 420 ends at our bottom row)
         }
@@ -426,6 +434,7 @@ namespace Jatify.UI
             if (doll != null) over = _eq?.DollCell(doll);
             else if (q >= 0 || f >= 0) strip = !Folded && (q >= 0 ? q < SpecialRows.Width : f < SpecialRows.ShortWidth);
             else if (_esPlace.TryGetValue(sl.Id, out var at)) over = _eq?.EsCell(at.row, at.col);
+            else if (_esMods.TryGetValue(sl.Id, out var mi)) over = _eq?.ModCell(mi);
             bool show = over != null || strip;
             if (c.gameObject.activeSelf != show) c.gameObject.SetActive(show);
             if (!show) return;
@@ -595,6 +604,12 @@ namespace Jatify.UI
         private static void LayBelts()
         {
             Legible();
+            if (_modsTab != null)
+            {
+                bool on = Equipment.ModsCount > 0; if (_modsTab.gameObject.activeSelf != on) _modsTab.gameObject.SetActive(on);
+                _modsTab.At(Lx - 52f + 1f, 123f - 32f + 66f, 52, 60);
+                int lit = !Narrow && _eq != null && _eq.OnMods ? 1 : 0; if (lit != _modsLit) { _modsLit = lit; Tint(_modsTab, lit == 1); }   // lit while its page shows
+            }
             int key = SpecialRows.Start * 4 + (Folded ? 1 : 0) + (Narrow ? 2 : 0) + Mathf.RoundToInt(EsBelow) * 1000 + (UnderBag ? 1 << 24 : 0);   // ExtraSlots adding a row under the doll moves the strip
             if (_beltLine == null || _beltsLaid == key) return;
             _beltsLaid = key;
@@ -883,7 +898,7 @@ namespace Jatify.UI
             ChestPanel.Restore();
             _eq?.Destroy(); _eq = null; _tabs.Clear(); _tabOn = null; _badge = null; _badgeShown = -1;
             _trash?.Destroy(); _trash = null; _stats?.Destroy(); _stats = null;
-            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _gearTab = null; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _narrowLaid = -1; _acts.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
+            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _gearTab = null; _modsTab = null; _modsLit = -1; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _narrowLaid = -1; _acts.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
         }
     }
 
