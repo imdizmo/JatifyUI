@@ -696,6 +696,7 @@ namespace Jatify.UI
         {
             var d = _embedIn; if (d == null) return;
             if (!d.gameObject.activeInHierarchy || !Root.gameObject.activeInHierarchy) { Unembed(false); return; }
+            var cv = _back.GetComponent<Canvas>(); if (cv != null && !cv.overrideSorting) { cv.overrideSorting = true; cv.sortingOrder = 30500; }   // Unity drops it while the button is hidden: under the dialog, its clicks went to the dialog (user)
             var frame = d.transform.Find("Texts_frame") as RectTransform; if (frame == null) return;
             // the part to show, in the frame's own units: EpicLoot's text area and the buttons under it
             float xMin = float.MaxValue, yMin = float.MaxValue, xMax = float.MinValue, yMax = float.MinValue;
