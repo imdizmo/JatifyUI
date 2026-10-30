@@ -233,10 +233,15 @@ namespace Jatify.UI
         // 56 px placeholders 61 apart from the hands' row down: its cells are laid over them
         internal const float EsPitch = 61f, EsSize = 56f; internal const int EsPerRow = 4;
         private readonly Dictionary<int, RectTransform> _es = new Dictionary<int, RectTransform>();
+        // row 0 is our own bottom row's shape (user: as close to ours as can be): two 60 px ring spots at the ends, two 46 px ammo
+        // spots between them; further rows: 56 px cells, 4 a row
         internal RectTransform EsCell(int row, int col)
         {
             if (!_doll.gameObject.activeInHierarchy) return null;
-            int k = row * 16 + col; if (!_es.TryGetValue(k, out var r) || r == null) _es[k] = r = Kit.Node(_doll, "Es" + k).At(col * EsPitch, 281 + row * EsPitch, EsSize, EsSize);
+            int k = row * 16 + col;
+            if (!_es.TryGetValue(k, out var r) || r == null)
+                _es[k] = r = row == 0 ? Kit.Node(_doll, "Es" + k).At(col == 0 ? 0 : col == 1 ? 70 : col == 2 ? 126 : 180, col == 0 || col == 3 ? 281 : 288, col == 0 || col == 3 ? 60 : 46, col == 0 || col == 3 ? 60 : 46)
+                    : Kit.Node(_doll, "Es" + k).At(col * EsPitch, 281 + 67 + (row - 1) * EsPitch, EsSize, EsSize);
             return r;
         }
 

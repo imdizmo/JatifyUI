@@ -393,16 +393,25 @@ namespace Jatify.UI
         {
             var panel = g.m_player != null ? g.m_player.Find("ExtraSlotsEquipmentPanel") : null;
             if (panel != null) { var cg = panel.GetComponent<CanvasGroup>(); if (cg == null) { cg = panel.gameObject.AddComponent<CanvasGroup>(); _azuHidden.Add(cg); } if (cg.alpha != 0f) { cg.alpha = 0f; cg.blocksRaycasts = false; cg.interactable = false; } }
-            _esPlace.Clear(); int row = 0, col = 0;
+            // our bottom row's shape: its extra utilities 3 and 4 where our rings sit (the ends), ammo 1 and 2 between them where our
+            // ammo and keys sit; then a row for ammo 3, other mods' slots (rings, necklace, lantern...) and a Misc slot that holds
+            // something (keys go in our pouch, user: empty Misc slots stay out of sight)
+            _esPlace.Clear(); int row = 1, col = 0; var inv = Player.m_localPlayer?.GetInventory();
             void Put(string id) { if (col == Equipment.EsPerRow) { row++; col = 0; } _esPlace[id] = (row, col++); }
-            void NewRow() { if (col > 0) { row++; col = 0; } }
             var all = Es.Slots;
+            foreach (var s in all)
+            {
+                if (!s.Active) continue;
+                if (s.Id == "ExtraUtility3") _esPlace[s.Id] = (0, 0); else if (s.Id == "ExtraUtility4") _esPlace[s.Id] = (0, 3);
+                else if (s.Id == "Ammo1") _esPlace[s.Id] = (0, 1); else if (s.Id == "Ammo2") _esPlace[s.Id] = (0, 2);
+            }
+            foreach (var s in all) if (s.Active && s.Id == "Ammo3") Put(s.Id);
             foreach (var s in all) if (s.Active && Es.IsRing(s.Id) && Es.DollCell(s.Id) == null) Put(s.Id);
-            NewRow();
-            foreach (var s in all) if (s.Active && Es.Ammo(s.Id) >= 0) Put(s.Id);
-            foreach (var s in all) if (s.Active && Es.DollCell(s.Id) == null && Es.Quick(s.Id) < 0 && Es.Food(s.Id) < 0 && Es.Ammo(s.Id) < 0 && !Es.IsRing(s.Id)) Put(s.Id);
-            int rows = _esPlace.Count == 0 ? 0 : row + 1;
-            EsBelow = Mathf.Max(0f, 281f + rows * Equipment.EsPitch - 420f);
+            foreach (var s in all)
+                if (s.Active && !_esPlace.ContainsKey(s.Id) && Es.DollCell(s.Id) == null && Es.Quick(s.Id) < 0 && Es.Food(s.Id) < 0 && Es.Ammo(s.Id) < 0
+                    && (!s.Id.StartsWith("Misc") || inv != null && inv.GetItemAt(s.Cell.x, s.Cell.y) != null)) Put(s.Id);
+            int rows = col > 0 ? row : row - 1;
+            EsBelow = rows >= 1 ? rows * Equipment.EsPitch + 12f : 0f;   // each extra row pushes the strip down (the doll's 420 ends at our bottom row)
         }
 
         private static void EsCell(Transform c, InventoryElement el, Inventory inv, Vector2 origin)
