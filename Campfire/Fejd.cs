@@ -165,9 +165,10 @@ namespace Jatify.Campfire
 
         internal static void ManageSaves(bool worlds) { CharScreen.Hide(); F.OnManageSaves(worlds ? 0 : 1); }
 
-        // Opens Valheim's own server browser (add / remove favourites); its Back returns here.
+        // Opens Valheim's own server browser (add / remove favourites) in our look (Campfire.ServerBrowser); its Back returns here.
         internal static void ServerBrowser()
         {
+            Campfire.ServerBrowser.Opening();
             CharScreen.Hide();
             F.m_characterSelectScreen.SetActive(false);
             F.m_startGamePanel.SetActive(true);

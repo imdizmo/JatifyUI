@@ -75,6 +75,7 @@ namespace Jatify.Campfire
             LoadBar.Tick();
             if (NewCharView.Visible) { CharScreen.HideForeign(); NewCharView.Tick(); }
             Fejd.TitleTick();
+            ServerBrowser.Tick();
             if (!CharScreen.Visible) return;
             if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && Input.GetKeyDown(KeyCode.R))
             {
@@ -101,6 +102,7 @@ namespace Jatify.Campfire
         {
             if (!On) return;
             On = false;
+            ServerBrowser.Restore();
             HandBack();
             PasswordPrompt.Unload();
             LoadBar.Unload();
