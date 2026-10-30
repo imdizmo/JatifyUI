@@ -5,7 +5,7 @@ namespace Jatify.UI
     // Jatify UI's own options (shown on the Jatify UI page; saved by BepInEx in jatify.ui.cfg).
     internal static class Cfg
     {
-        internal static ConfigEntry<bool> FoodAsBuffs, BuffFrames, MinimapPanel, CompassMinimal, SlotBackdrops, Tracker, TrackerCollapsed, Banners, CompassPins, CharacterView, InstantEquip, SkillBanner, PickupFloat, Messages, ConfirmDelete, CharacterIdle, CraftFromChests, BuildFromChests, JatifyCursor, Knotwork, CompUndiscovered, CompDevInfo, GraveReequip, GraveCompass, GraveTouch, UtilityTogether;
+        internal static ConfigEntry<bool> Hints, FoodAsBuffs, BuffFrames, MinimapPanel, CompassMinimal, SlotBackdrops, Tracker, TrackerCollapsed, Banners, CompassPins, CharacterView, InstantEquip, SkillBanner, PickupFloat, Messages, ConfirmDelete, CharacterIdle, CraftFromChests, BuildFromChests, JatifyCursor, Knotwork, CompUndiscovered, CompDevInfo, GraveReequip, GraveCompass, GraveTouch, UtilityTogether;
         internal enum Regear { Everything, ArmourOnly, ArmourAndWeapons }
         internal static ConfigEntry<Regear> GraveReequipWhat;
         internal static ConfigEntry<int> PinRange, StackRange, CursorSize, MapPinSize, MapNameSize, MapZoomIn;
@@ -23,6 +23,7 @@ namespace Jatify.UI
             BuffFrames = c.Bind("HUD", "BuffFrames", false, "A framed panel behind each buff and food timer; off (the default, user): Valheim's bare icons.");
             MinimapPanel = c.Bind("HUD", "MinimapPanel", false, "The glass panel behind the minimap and its lines; off (the default, user): the map and its text stand on their own.");
             CompassMinimal = c.Bind("HUD", "CompassMinimal", false, "The Minimal look's compass: one faint line and the letters, no band or ticks.");
+            Hints = c.Bind("HUD", "KeyHints", true, "The key hints across the UI: the HUD corners, the inventory and chest key bars, the build menu's and the map's foot rows.");
             SlotBackdrops = c.Bind("HUD", "ActionBarPanels", false, "The glass panel behind the 1-8 bar, the tools bar and the food and mead columns; off (the default, user): the slots stand on their own.");
             Tracker = c.Bind("HUD", "AchievementTracker", true, "Tracked achievements in the top left corner.");
             TrackerCollapsed = c.Bind("HUD", "TrackerCollapsed", false, "The tracker shows only its header (Y or a click on the header).");

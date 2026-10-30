@@ -378,18 +378,19 @@ namespace Jatify.UI
         private static void HintBar(RectTransform w, ThemeData t)
         {
             var bar = Kit.Node(w, "Hints").At(Side, WH - Bar, WW - Side, Bar);
+            var rows = Kit.Node(bar, "Keys").Fill(); HintRows.Register(rows.gameObject);   // the key rows go with the KeyHints setting; Undo stays
             float x = 16f;
             var hints = new List<(string, string)> { ("Double-click", "pin"), ("Click", "cross off"), ("Right-click", "remove"), ("Middle", "ping"), ("Drag", "move"), ("Wheel", "zoom") };
 #if JATIFY_DEV
             if (Dev.Build) hints.Add(("Alt + right", "teleport"));
 #endif
             foreach (var (k, what) in hints)
-                x += HoverCard.Row(bar, k, what, x, 11f, t) + 18f;
+                x += HoverCard.Row(rows, k, what, x, 11f, t) + 18f;
             var (ub, _) = Kit.Box(bar, "Undo", Theme.C(t.raised), Theme.C(t.line2), 7); ub.rectTransform.At(x + 6, 8, 92, 28); ub.raycastTarget = true;   // design: bring back the last removed pin
             ub.gameObject.AddComponent<Button>().onClick.AddListener(UndoRemove);
             _undo = Kit.Text(ub.rectTransform, "T", "", Fonts.Medium, 12f, Color.white); _undo.alignment = TextAlignmentOptions.Center; _undo.rectTransform.Fill();
             var close = Kit.Node(bar, "Close").At(WW - Side - 90, 0, 90, Bar);
-            HoverCard.Row(close, "M", "close", 0f, 11f, t);
+            HoverCard.Row(close, "M", "close", 0f, 11f, t); HintRows.Register(close.gameObject);
         }
 
         private static void UndoRemove()

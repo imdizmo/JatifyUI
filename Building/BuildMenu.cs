@@ -469,7 +469,7 @@ namespace Jatify.UI
             }
             if (piece.m_craftingStation != null) { bool st = StationOk(piece); x += FootChip(piece.m_craftingStation.m_icon, Localization.instance.Localize(piece.m_craftingStation.m_name), st, st ? Theme.C(t.accent) : Theme.C(t.ember), x) + 6f; }
             if (x == 0f) { var free = Kit.Text(_detail, "Free", "No cost", Fonts.Medium, 12.5f, Theme.C(t.mute)); free.rectTransform.At(0, 0, 120, Foot); }
-            var keys = Kit.Node(_detail, "Keys").At(W - 2 * ColX - 340, 0, 340, Foot); float kx = 0f;
+            var keys = Kit.Node(_detail, "Keys").At(W - 2 * ColX - 340, 0, 340, Foot); float kx = 0f; HintRows.Register(keys.gameObject);
             float ky = (Foot - 20f) / 2f;
             kx += HoverCard.Row(keys, "Click", "place", kx, ky, t) + 16f;
             {   // the star you click, as it looks on the tiles (a text star drew as nothing in the key font)

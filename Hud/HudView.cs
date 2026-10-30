@@ -179,15 +179,17 @@ namespace Jatify.UI
             Ach.Tick();
             bool invOpen = InventoryGui.IsVisible();
             bool chestOpen = invOpen && ChestPanel.Open != null;
-            if (_invKeys.gameObject.activeSelf != (invOpen && !chestOpen)) _invKeys.gameObject.SetActive(invOpen && !chestOpen);
-            if (_chestKeys.gameObject.activeSelf != chestOpen) _chestKeys.gameObject.SetActive(chestOpen);
+            HintRows.Tick(); bool hints = HintRows.On;
+            if (_invKeys.gameObject.activeSelf != (hints && invOpen && !chestOpen)) _invKeys.gameObject.SetActive(hints && invOpen && !chestOpen);
+            if (_chestKeys.gameObject.activeSelf != (hints && chestOpen)) _chestKeys.gameObject.SetActive(hints && chestOpen);
             bool screen = invOpen || StoreGui.IsVisible();   // a full window open: the inventory, or the trader's shop (user: the HUD drew over it)
-            foreach (var r in new[] { _dock, _hintsL, _buffs, _compass.Root, _flags.Box }) if (r.gameObject.activeSelf == screen) r.gameObject.SetActive(!screen); // the inventory screen has no dock
+            if (_hintsL.gameObject.activeSelf != (hints && !screen)) _hintsL.gameObject.SetActive(hints && !screen);
+            foreach (var r in new[] { _dock, _buffs, _compass.Root, _flags.Box }) if (r.gameObject.activeSelf == screen) r.gameObject.SetActive(!screen); // the inventory screen has no dock
             bool side = !screen && SpecialRows.On; if (_side.gameObject.activeSelf != side) _side.gameObject.SetActive(side);   // AzuEPI: no Food / Meads rows to show
             bool placing = !invOpen && p.InPlaceMode();   // hammer, hoe, cultivator: the corner shows placing keys instead of combat
-            if (_hintsR.gameObject.activeSelf != (!screen && !placing)) _hintsR.gameObject.SetActive(!screen && !placing);
-            SetHints(!screen && !placing);
-            if (_hintsPlace.gameObject.activeSelf != placing) _hintsPlace.gameObject.SetActive(placing);
+            if (_hintsR.gameObject.activeSelf != (hints && !screen && !placing)) _hintsR.gameObject.SetActive(hints && !screen && !placing);
+            SetHints(hints && !screen && !placing);
+            if (_hintsPlace.gameObject.activeSelf != (hints && placing)) _hintsPlace.gameObject.SetActive(hints && placing);
         }
 
         private void TickBuffs(Player p)
