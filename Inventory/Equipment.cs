@@ -229,6 +229,17 @@ namespace Jatify.UI
         internal const int ExtraPerRow = 5, ExtraBeside = 3; internal const float ExtraPitch = 49f;
         internal static float ExtraRowsBelow(int n) => n <= ExtraBeside ? 0f : (n - ExtraBeside + ExtraPerRow - 1) / ExtraPerRow * ExtraPitch;   // what the stats card moves down
         private readonly List<RectTransform> _extra = new List<RectTransform>();
+        // ExtraSlots' other slots under the doll (InventoryStyle orders them: rings, then ammo on a row of its own, then the rest),
+        // 56 px placeholders 61 apart from the hands' row down: its cells are laid over them
+        internal const float EsPitch = 61f, EsSize = 56f; internal const int EsPerRow = 4;
+        private readonly Dictionary<int, RectTransform> _es = new Dictionary<int, RectTransform>();
+        internal RectTransform EsCell(int row, int col)
+        {
+            if (!_doll.gameObject.activeInHierarchy) return null;
+            int k = row * 16 + col; if (!_es.TryGetValue(k, out var r) || r == null) _es[k] = r = Kit.Node(_doll, "Es" + k).At(col * EsPitch, 281 + row * EsPitch, EsSize, EsSize);
+            return r;
+        }
+
         internal RectTransform ExtraCell(int i)
         {
             if (!_doll.gameObject.activeInHierarchy) return null;
@@ -392,7 +403,8 @@ namespace Jatify.UI
 
             internal void Tick(Player p)
             {
-                bool azu = (_get == null && _cy == 0 || System.Array.IndexOf(Azu.DollNames, _name) >= 0) && Azu.Drives;   // AzuEPI: its own equipment cells laid here instead of ours (it keeps gear in them worn or not)
+                bool azu = (_get == null && _cy == 0 || System.Array.IndexOf(Azu.DollNames, _name) >= 0) && SlotHost.Other   // AzuEPI / ExtraSlots: their own equipment cells laid here instead of ours (they keep gear in them worn or not)
+                        || Es.Drives && (_name == "Main hand" || _name == "Off hand" || _name == "Ammo");   // ExtraSlots: its ammo cells take the hand and ammo row (user)
                 if (_rt.gameObject.activeSelf == azu) _rt.gameObject.SetActive(!azu);
                 if (azu) return;
                 var it = _get != null ? _get(p) : ModSlots.At(p, _cx, _cy);

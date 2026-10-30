@@ -19,7 +19,7 @@ namespace Jatify.UI
         internal static int RowWidth(int band) => band == 1 ? Width : ShortWidth;
         internal static readonly string[] Names = { "FOOD", "TOOLS", "MEADS" };
         internal static bool On => !SlotHost.Other;   // AzuEPI or ExtraSlots owns the grid: no rows of ours (it has its own equipment and quick-slot cells)
-        internal static int Start => On ? ExtraRows.Base + ExtraRows.Extra.Value : Azu.NormalRows;   // first reserved row (AzuEPI: its first equipment row; the bag is above either way)
+        internal static int Start => On ? ExtraRows.Base + ExtraRows.Extra.Value : Es.Drives ? Es.NormalRows : Azu.NormalRows;   // first reserved row (AzuEPI / ExtraSlots: their first slot row; the bag is above either way)
         internal static bool Is(Inventory inv, int y) => On && IsPlayer(inv) && y >= Start && y < Start + Rows;
         internal static bool IsPlayer(Inventory inv) => inv != null && Player.m_localPlayer != null && inv == Player.m_localPlayer.GetInventory();
 

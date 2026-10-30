@@ -146,6 +146,7 @@ namespace Jatify.UI
             }
 
             if (Azu.Drives) AzuQuick(p, inv);
+            if (Es.Drives) EsBars(inv);
 
             var held = p.GetCurrentWeapon();
             if (held != null && held.m_dropPrefab == null) held = null; // bare hands are a weapon too, without a prefab
@@ -188,7 +189,7 @@ namespace Jatify.UI
             bool screen = invOpen || StoreGui.IsVisible();   // a full window open: the inventory, or the trader's shop (user: the HUD drew over it)
             if (_hintsL.gameObject.activeSelf != (hints && !screen)) _hintsL.gameObject.SetActive(hints && !screen);
             foreach (var r in new[] { _dock, _buffs, _compass.Root, _flags.Box }) if (r.gameObject.activeSelf == screen) r.gameObject.SetActive(!screen); // the inventory screen has no dock
-            bool side = !screen && SpecialRows.On; if (_side.gameObject.activeSelf != side) _side.gameObject.SetActive(side);   // AzuEPI: no Food / Meads rows to show
+            bool side = !screen && (SpecialRows.On || Es.Drives); if (_side.gameObject.activeSelf != side) _side.gameObject.SetActive(side);   // AzuEPI: no Food / Meads rows to show
             bool placing = !invOpen && p.InPlaceMode();   // hammer, hoe, cultivator: the corner shows placing keys instead of combat
             if (_hintsR.gameObject.activeSelf != (hints && !screen && !placing)) _hintsR.gameObject.SetActive(hints && !screen && !placing);
             SetHints(hints && !screen && !placing);
@@ -366,6 +367,42 @@ namespace Jatify.UI
         // AzuEPI: its quick slots (Alt + Z ...) in the tools bar, its keys on the caps; the bar as wide as it has slots.
         // Its own HUD bar is hidden by InventoryStyle.AzuQuickBar. Looked up every 2 s (its slots can change with its config).
         private readonly List<Vector2i> _quick = new List<Vector2i>(); private readonly List<string> _quickKeys = new List<string>(); private float _quickAt; private int _quickShown = -1;
+        // ExtraSlots: its quick slots on the tools bar, its food and ammo slots on the food and meads bar, with its own keys; its three
+        // hotbars unseen (put back on unload)
+        private readonly List<CanvasGroup> _esBars = new List<CanvasGroup>(); private float _esBarsAt;
+        private void EsBars(Inventory inv)
+        {
+            if (Time.unscaledTime >= _esBarsAt && Hud.instance != null)
+            {
+                _esBarsAt = Time.unscaledTime + 2f;
+                foreach (var n in new[] { "ExtraSlotsQuickSlotsHotBar", "ExtraSlotsAmmoHotBar", "ExtraSlotsFoodHotBar" })
+                {
+                    var b = Hud.instance.m_rootObject.transform.Find(n); if (b == null) continue;
+                    var cg = b.GetComponent<CanvasGroup>(); if (cg == null) { cg = b.gameObject.AddComponent<CanvasGroup>(); _esBars.Add(cg); }
+                    cg.alpha = 0f; cg.blocksRaycasts = false;
+                }
+            }
+            int nq = 0;
+            for (int i = 0; i < _tools.Length; i++) _tools[i].Set(null);
+            for (int i = 0; i < _food.Length; i++) { _food[i].Set(null); _meads[i].Set(null); }
+            foreach (var sl in Es.Slots)
+            {
+                if (!sl.Active) continue; var it = inv.GetItemAt(sl.Cell.x, sl.Cell.y); var key = sl.Key.Replace(" + ", " ").Replace("+", " ");
+                int q = Es.Quick(sl.Id), f = Es.Food(sl.Id), a = Es.Ammo(sl.Id);
+                if (q >= 0 && q < 6) { _tools[q].Set(it, Ammo(inv, it)); _tools[q].Key(key); nq = Mathf.Max(nq, q + 1); }
+                else if (f >= 0 && f < _food.Length) { _food[f].Set(it); _food[f].Key(key); }
+                else if (a >= 0 && a < _meads.Length) { _meads[a].Set(it); _meads[a].Key(key); }
+            }
+            if (nq != _quickShown)
+            {
+                _quickShown = nq; float w = 6 + nq * 52;
+                _barPanels[1].line.rectTransform.At(-14 - w, 96 + 14, w, 58);
+                _barPanels[1].line.gameObject.SetActive(nq > 0);
+                for (int i = 0; i < _tools.Length; i++) _tools[i].Shown(i < nq);
+            }
+        }
+        internal void EsRestore() { foreach (var cg in _esBars) if (cg != null) Object.Destroy(cg); _esBars.Clear(); }
+
         private void AzuQuick(Player p, Inventory inv)
         {
             if (Time.unscaledTime >= _quickAt)
@@ -450,7 +487,7 @@ namespace Jatify.UI
             return _buffPool[i];
         }
 
-        internal void Destroy() { foreach (var g in _gaugeSrc) { var cg = g.bar != null ? g.bar.transform.parent.parent.GetComponent<CanvasGroup>() : null; if (cg != null) cg.alpha = 1f; } _abilities?.Restore(); if (_root != null) Object.Destroy(_root.gameObject); }
+        internal void Destroy() { EsRestore(); foreach (var g in _gaugeSrc) { var cg = g.bar != null ? g.bar.transform.parent.parent.GetComponent<CanvasGroup>() : null; if (cg != null) cg.alpha = 1f; } _abilities?.Restore(); if (_root != null) Object.Destroy(_root.gameObject); }
 
         internal static Color C(string hex) => Theme.C(hex);
 

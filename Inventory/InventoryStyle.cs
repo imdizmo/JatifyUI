@@ -268,7 +268,7 @@ namespace Jatify.UI
             if (y == 0) return new Vector2(x * Pitch, 0f);
             if (y < SpecialRows.Start) return new Vector2(x * Pitch, 117f - BagLift + (y - 1) * Pitch);
             int band = y - SpecialRows.Start;
-            if (!SpecialRows.On) return new Vector2(x * Pitch, BeltTop - 123f + band * Pitch);   // AzuEPI's equipment / quick cells: rows under the grid, lined up with it
+            if (!SpecialRows.On && !Es.Drives) return new Vector2(x * Pitch, BeltTop - 123f + band * Pitch);   // AzuEPI's equipment / quick cells: rows under the grid, lined up with it
             if (BeltRows && Strip) return new Vector2(19f - 285f + StripX(band, x), BeltTop - 123f + BeltLabel);   // one strip across the panel: Tools, Food, Meads (user)
             if (BeltRows) return band == 1 ? new Vector2(x * Pitch, BeltTop - 123f + BeltLabel)             // narrow: Tools first, a row under the grid, its label over its first slot (user)
                 : new Vector2((band == 2 ? MeadsX : 0f) + x * Pitch, BeltTop - 123f + 2f * BeltLabel + Pitch);   // then Food and Meads side by side
@@ -286,7 +286,7 @@ namespace Jatify.UI
         private static bool Strip => !Narrow;
         private const float StripPitch = 64f, StripGap = 15f;
         private static float StripX(int band, int x) => (band == 1 ? 0f : band == 0 ? 6f * StripPitch + StripGap : 9f * StripPitch + 2f * StripGap) + x * StripPitch;
-        private static float CharBottom => 67f + 420f + 32f + Equipment.ExtraRowsBelow(_azuExtras.Count);   // the Character page's end (the Stats tab's card fits above it)                              // screen y of the first belt row
+        private static float CharBottom => 67f + 420f + 32f + Equipment.ExtraRowsBelow(_azuExtras.Count) + EsBelow;   // the Character page's end (the Stats tab's card fits above it)                              // screen y of the first belt row
         internal static bool BeltRows => BeltTop + BeltH - 7f <= 852f - 10f;         // short inventories: Tools, then Food and Meads
         private const float BeltLabel = 30f;                                          // each row's label sits over it, above the key caps
         private static float BeltH => Strip ? BeltLabel + Pitch : 2f * (BeltLabel + Pitch);
@@ -299,7 +299,7 @@ namespace Jatify.UI
         internal static bool BeltBlocks => !BeltRows && BlocksBottom + 18f <= 1062f;
         private static RectTransform _beltLine; private static readonly List<RectTransform> _beltLabels = new List<RectTransform>(); private static int _beltsLaid = -1;
         // the Tools / Food / Meads rows fold away with a button on their line (user); the items stay and work from the HUD
-        private static bool Folded => SpecialRows.On && Cfg.BarsCollapsed != null && Cfg.BarsCollapsed.Value;
+        private static bool Folded => (SpecialRows.On || Es.Drives) && Cfg.BarsCollapsed != null && Cfg.BarsCollapsed.Value;
         // the left column folded (GearCollapsed, user): everything shifts left by its width and the panel narrows; the header's
         // actions show their icons only so the weight still fits
         private static bool Narrow => Cfg.GearCollapsed != null && Cfg.GearCollapsed.Value;
@@ -356,7 +356,7 @@ namespace Jatify.UI
         private static float StatsH => _stats != null ? _stats.Height : StatsCard.Needed;
         // the left column's end: the Stats tab's card, or the character / skills page (with other mods' slots under it); nothing folded
         private const float StatsTabTop = 67f + 44f + 32f;
-        private static float LeftBottom => Narrow ? 0f : _eq != null && _eq.OnStats ? StatsTabTop + StatsH : 67f + 420f + 32f + Equipment.ExtraRowsBelow(_azuExtras.Count);
+        private static float LeftBottom => Narrow ? 0f : _eq != null && _eq.OnStats ? StatsTabTop + StatsH : 67f + 420f + 32f + Equipment.ExtraRowsBelow(_azuExtras.Count) + EsBelow;
         private static float PanelBottom => Folded ? Mathf.Max(TrashTop + 60f, LeftBottom)
             : BeltRows ? Mathf.Max(BeltTop + BeltH - 7f, LeftBottom)
             : BeltBlocks ? Mathf.Max(BlocksBottom, LeftBottom) : Mathf.Max(943f, TrashTop + 60f);
@@ -380,6 +380,58 @@ namespace Jatify.UI
             }
             var t = nm.GetComponent<TMPro.TextMeshProUGUI>(); var want = it == null && slot.Known ? slot.Name : "";
             if (t.text != want) t.text = want;
+            AzuBind(c);
+        }
+
+        // ---- ExtraSlots: its slot cells (vanilla cells of our grid, which it places in its floating panel each update) go where
+        // our own slots sit (user): armour and its first two extra utilities on the doll, quick slots under Tools, food under Food,
+        // the rest under the doll: rings first, then ammo on a row of its own (with no rings it takes the hands' row), then the rest.
+        // It keeps storing and equipping them; we only move and show its cells, and hide its panel.
+        private static readonly Dictionary<string, (int row, int col)> _esPlace = new Dictionary<string, (int, int)>();
+        private static float EsBelow;   // how much further down the doll's column goes for its rows
+        private static void EsPanels(InventoryGui g)
+        {
+            var panel = g.m_player != null ? g.m_player.Find("ExtraSlotsEquipmentPanel") : null;
+            if (panel != null) { var cg = panel.GetComponent<CanvasGroup>(); if (cg == null) { cg = panel.gameObject.AddComponent<CanvasGroup>(); _azuHidden.Add(cg); } if (cg.alpha != 0f) { cg.alpha = 0f; cg.blocksRaycasts = false; cg.interactable = false; } }
+            _esPlace.Clear(); int row = 0, col = 0;
+            void Put(string id) { if (col == Equipment.EsPerRow) { row++; col = 0; } _esPlace[id] = (row, col++); }
+            void NewRow() { if (col > 0) { row++; col = 0; } }
+            var all = Es.Slots;
+            foreach (var s in all) if (s.Active && Es.IsRing(s.Id) && Es.DollCell(s.Id) == null) Put(s.Id);
+            NewRow();
+            foreach (var s in all) if (s.Active && Es.Ammo(s.Id) >= 0) Put(s.Id);
+            foreach (var s in all) if (s.Active && Es.DollCell(s.Id) == null && Es.Quick(s.Id) < 0 && Es.Food(s.Id) < 0 && Es.Ammo(s.Id) < 0 && !Es.IsRing(s.Id)) Put(s.Id);
+            int rows = _esPlace.Count == 0 ? 0 : row + 1;
+            EsBelow = Mathf.Max(0f, 281f + rows * Equipment.EsPitch - 420f);
+        }
+
+        private static void EsCell(Transform c, InventoryElement el, Inventory inv, Vector2 origin)
+        {
+            var rt = (RectTransform)c;
+            if (!Es.At(el.Position.x, el.Position.y, out var sl) || !sl.Active) { if (c.gameObject.activeSelf) c.gameObject.SetActive(false); return; }
+            var doll = Es.DollCell(sl.Id); int q = Es.Quick(sl.Id), f = Es.Food(sl.Id);
+            RectTransform over = null; bool strip = false;
+            if (doll != null) over = _eq?.DollCell(doll);
+            else if (q >= 0 || f >= 0) strip = !Folded && (q >= 0 ? q < SpecialRows.Width : f < SpecialRows.ShortWidth);
+            else if (_esPlace.TryGetValue(sl.Id, out var at)) over = _eq?.EsCell(at.row, at.col);
+            bool show = over != null || strip;
+            if (c.gameObject.activeSelf != show) c.gameObject.SetActive(show);
+            if (!show) return;
+            if (strip)
+            {   // in the strip, in our grid's own space
+                var d = CellDesign(q >= 0 ? q : f, SpecialRows.Start + (q >= 0 ? 1 : 0)); var pos = origin + new Vector2(d.x, -d.y);
+                if (rt.localScale != Vector3.one) rt.localScale = Vector3.one;
+                if (rt.anchoredPosition != pos) rt.anchoredPosition = pos;
+                if (rt.sizeDelta != new Vector2(Slot, Slot)) rt.sizeDelta = new Vector2(Slot, Slot);
+            }
+            else
+            {   // over our doll cell or placeholder, in screen space (they live in another panel)
+                float k = over.lossyScale.x / Mathf.Max(0.0001f, rt.parent.lossyScale.x);
+                if (Mathf.Abs(rt.localScale.x - k) > 0.0001f) rt.localScale = new Vector3(k, k, 1f);
+                if (rt.pivot != new Vector2(0.5f, 0.5f)) rt.pivot = new Vector2(0.5f, 0.5f);
+                if (rt.sizeDelta != over.rect.size) rt.sizeDelta = over.rect.size;
+                var wp = over.TransformPoint(over.rect.center); if ((rt.position - wp).sqrMagnitude > 0.01f) rt.position = wp;
+            }
             AzuBind(c);
         }
 
@@ -515,10 +567,10 @@ namespace Jatify.UI
             int key = SpecialRows.Start * 4 + (Folded ? 1 : 0) + (Narrow ? 2 : 0);
             if (_beltLine == null || _beltsLaid == key) return;
             _beltsLaid = key;
-            foreach (var l in _beltLabels) if (l != null && l.gameObject.activeSelf != (SpecialRows.On && !Folded)) l.gameObject.SetActive(SpecialRows.On && !Folded);   // AzuEPI: its cells carry their own names
+            for (int i = 0; i < _beltLabels.Count; i++) { var l = _beltLabels[i]; bool on = (SpecialRows.On || Es.Drives && i != 2) && !Folded; if (l != null && l.gameObject.activeSelf != on) l.gameObject.SetActive(on); }   // ExtraSlots: its quick and food slots under Tools and Food (no meads)   // AzuEPI: its cells carry their own names
             if (_for != null && SpecialRows.On)
                 foreach (Transform c in _for.m_playerGrid.m_gridRoot) { var e = c.GetComponent<InventoryElement>(); if (e != null && e.Position.y >= SpecialRows.Start && e.Position.y < SpecialRows.EqRow) e.gameObject.SetActive(!Folded && e.Position.x < SpecialRows.RowWidth(e.Position.y - SpecialRows.Start)); }
-            if (_fold != null) { _fold.gameObject.SetActive(SpecialRows.On); Tint(_fold, Folded); }
+            if (_fold != null) { _fold.gameObject.SetActive(SpecialRows.On || Es.Drives); Tint(_fold, Folded); }
             float lastRow = 240f - BagLift - 32f + (InvRows - 1) * Pitch;
             _trash?.MoveTo(850f - 1f, lastRow);
             _keyTab?.At(850f - 1f, lastRow - 66f, 52, 60);   // the key pouch's tab right above the trash
@@ -687,11 +739,12 @@ namespace Jatify.UI
             _trash?.TickDelete();
             var inv = p.GetInventory(); int used = 0, locked = 0, slots = 0;
             Vector2 origin = default; bool azu = !SpecialRows.On;
-            if (azu) { AzuPanels(_for); foreach (Transform c in _for.m_playerGrid.m_gridRoot) { var e0 = c.GetComponent<InventoryElement>(); if (e0 != null && e0.Position.x == 0 && e0.Position.y == 0) { origin = ((RectTransform)c).anchoredPosition; break; } } }
+            if (azu && Es.Drives) { EsPanels(_for); foreach (Transform c in _for.m_playerGrid.m_gridRoot) { var e0 = c.GetComponent<InventoryElement>(); if (e0 != null && e0.Position.x == 0 && e0.Position.y == 0) { origin = ((RectTransform)c).anchoredPosition; break; } } }
+            else if (azu) { AzuPanels(_for); foreach (Transform c in _for.m_playerGrid.m_gridRoot) { var e0 = c.GetComponent<InventoryElement>(); if (e0 != null && e0.Position.x == 0 && e0.Position.y == 0) { origin = ((RectTransform)c).anchoredPosition; break; } } }
             foreach (Transform c in _for.m_playerGrid.m_gridRoot)
             {
                 var el = c.GetComponent<InventoryElement>(); var lk = c.Find("jatify-lock")?.GetComponent<Image>();
-                if (el != null && azu && el.Position.y >= SpecialRows.Start && lk == null) { AzuCell(c, el, inv, origin); continue; }   // cells it added later (more slots), never styled: still ours to hide
+                if (el != null && azu && el.Position.y >= SpecialRows.Start && lk == null) { if (Es.Drives) EsCell(c, el, inv, origin); else AzuCell(c, el, inv, origin); continue; }   // cells it added later (more slots), never styled: still ours to hide
                 if (el == null || lk == null) continue;
                 bool isLocked = InvActions.Locked(el.Position.x, el.Position.y), ownLock = !azu || InvActions.Locks.Contains(el.Position.y * 128 + el.Position.x);   // AzuEPI's favourites: its border shows them, not our padlock
                 if (azu) { var fb = el.m_queued != null && el.m_queued.transform.childCount > 0 ? el.m_queued.transform.Find("AzuEPIFavoritingBorder")?.GetComponent<Image>() : null; if (fb != null && fb.sprite != Kit.Ring(10)) { fb.sprite = Kit.Ring(10); fb.type = Image.Type.Sliced; } }   // its square border: our rounded ring, its colours
@@ -699,7 +752,7 @@ namespace Jatify.UI
                 if (lk.enabled != isLocked) { lk.enabled = isLocked; var dm = c.Find("jatify-dim")?.GetComponent<Image>(); if (dm) dm.enabled = isLocked; }
                 var st = c.Find("jatify-star")?.GetComponent<Image>();
                 if (st) { bool q = el.m_quality != null && el.m_quality.isActiveAndEnabled && el.m_quality.text.Length > 0 && el.m_quality.text != "1"; if (st.enabled != q) st.enabled = q; }
-                if (azu && el.Position.y >= SpecialRows.Start) AzuCell(c, el, inv, origin);
+                if (azu && el.Position.y >= SpecialRows.Start) { if (Es.Drives) EsCell(c, el, inv, origin); else AzuCell(c, el, inv, origin); }
                 if (el.Position.y >= 1 && el.Position.y < SpecialRows.Start) { slots++; if (isLocked) locked++; if (inv.GetItemAt(el.Position.x, el.Position.y) != null) used++; }
             }
             if (azu)
