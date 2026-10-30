@@ -48,27 +48,41 @@ namespace Jatify.UI
         }
 
         // MinimapPanel off (the default, user): no glass card behind the map and its lines, as in the Minimal look; switched live
-        private readonly Image _panelLine, _panelFill; private int _panel = -1; private Material[] _mat0; private Image _band;
+        private readonly Image _panelLine, _panelFill; private int _panel = -1; private Material[] _mat0;
+        private readonly System.Collections.Generic.List<GameObject> _shades = new System.Collections.Generic.List<GameObject>();
+        private sealed class TextShade : MonoBehaviour
+        {   // a shade copy follows its line's text and size
+            internal TMP_Text Src, Me;
+            private void LateUpdate() { if (Src == null || Me == null) return; if (Me.text != Src.text) Me.text = Src.text; if (Me.fontSize != Src.fontSize) Me.fontSize = Src.fontSize; }
+        }
         private void TickPanel()
         {
             int on = Cfg.MinimapPanel != null && Cfg.MinimapPanel.Value ? 1 : 0; if (on == _panel) return; _panel = on;
             _panelLine.color = on == 1 ? Theme.C(_t.glassLine) : Color.clear; _panelFill.color = on == 1 ? Theme.C(_t.glass) : Color.clear;
-            // with no card behind them the lines read against the world (user: unreadable): near-white, with a dark halo as the nameplates
-            bool bare = on == 0; var light = new Color(0.886f, 0.894f, 0.878f);
-            if (_band == null)
-            {   // a faint dark strip behind just the two lines (the compass band's contrast): the text needs it over snow and sky
-                _band = Kit.Panel(_root, "TextBand", new Color(0.05f, 0.05f, 0.06f, 0.5f), 8);
-                _band.rectTransform.At(0, _biome.rectTransform.anchoredPosition.y * -1f - 3f, _root.sizeDelta.x, 46); _band.transform.SetAsFirstSibling(); _band.raycastTarget = false;
-            }
-            _band.enabled = bare;
+            // with no card behind them the lines read against the world (user: unreadable; a strip behind them, no): white with a
+            // solid dark outline and shadow
+            bool bare = on == 0;
             foreach (var (x, font, dim) in new[] { (_biome, Fonts.Bold, false), (_coords, Fonts.Mono, true), (_day, Fonts.Mono, true) })
             {
                 if (_mat0 == null) _mat0 = new Material[3];
                 int k = x == _biome ? 0 : x == _coords ? 1 : 2; if (_mat0[k] == null) _mat0[k] = x.fontSharedMaterial;
-                var sh = bare ? Fonts.Shadowed(font) : null; x.fontSharedMaterial = sh ?? _mat0[k];
-                x.color = bare ? (dim ? light : Color.white) : Theme.C(dim ? _t.dim : _t.text);
+                x.fontSharedMaterial = _mat0[k];
+                x.color = bare ? Color.white : Theme.C(dim ? _t.dim : _t.text);
             }
-            foreach (var b in _bars) if (b != null) b.color = bare ? light : Theme.C(_t.mute);
+            // the edge: four black copies of each line a pixel off it, drawn behind (TMP's own outline is too thin on these fonts)
+            if (_shades.Count == 0)
+                foreach (var x in new[] { _biome, _coords, _day })
+                    foreach (var d in new[] { new Vector2(1.2f, -1.2f), new Vector2(-1f, -1f), new Vector2(1f, 1f), new Vector2(-1f, 1f) })
+                    {
+                        var c = Object.Instantiate(x.gameObject, x.transform.parent); c.name = x.name + "-shade";
+                        var ct = c.GetComponent<TextMeshProUGUI>(); ct.color = new Color(0f, 0f, 0f, 0.85f); ct.raycastTarget = false;
+                        var crt = (RectTransform)c.transform; crt.anchoredPosition = x.rectTransform.anchoredPosition + d; c.transform.SetSiblingIndex(x.transform.GetSiblingIndex());
+                        var f = c.AddComponent<TextShade>(); f.Src = x; f.Me = ct; _shades.Add(c);
+                    }
+            foreach (var c in _shades) if (c != null) c.SetActive(bare);
+            foreach (var b in _bars) if (b != null) b.color = bare ? Color.white : Theme.C(_t.mute);
+            foreach (var b in _bars) if (b != null) { var o = b.GetComponent<Outline>() ?? b.gameObject.AddComponent<Outline>(); o.effectColor = Color.black; o.effectDistance = new Vector2(1f, -1f); o.enabled = bare; }
+            var arrow = _windArrow.GetComponentInChildren<Image>(); if (arrow != null) { arrow.color = bare ? Color.white : Theme.C(_t.dim); var o = arrow.GetComponent<Outline>() ?? arrow.gameObject.AddComponent<Outline>(); o.effectColor = Color.black; o.effectDistance = new Vector2(1f, -1f); o.enabled = bare; }
         }
 
         internal void Tick(Player p)
