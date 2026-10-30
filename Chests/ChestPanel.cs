@@ -73,9 +73,10 @@ namespace Jatify.UI
             // tools: icon buttons right-aligned, a card under each on hover
             _tools = Kit.Node(_frame, "Tools");
             float x = 0f;
-            x = Icon("take-all", "Take all", "Takes every stack out of the chest into your bag (locked slots stay).", () => Keys(HotKeys.TakeAll, "Ctrl E"), () => Say(Take(false)), x);
+            // user: the arrows read from the chest's side, up and out to take, down and in to put (they were swapped)
+            x = Icon("put-all", "Take all", "Takes every stack out of the chest into your bag (locked slots stay).", () => Keys(HotKeys.TakeAll, "Ctrl E"), () => Say(Take(false)), x);
             x = Icon("from-chest", "Top up", "Fills up the stacks you already carry from this chest.", () => Keys(HotKeys.TakeSimilar, null), () => Say(Take(true)), x);
-            x = Icon("put-all", "Put all", "Puts everything in your bag into the chest (not the action bar, worn or locked slots).", () => Keys(HotKeys.PutAll, null), () => Say(Put(false)), x);
+            x = Icon("take-all", "Put all", "Puts everything in your bag into the chest (not the action bar, worn or locked slots).", () => Keys(HotKeys.PutAll, null), () => Say(Put(false)), x);
             x = Icon("stack", "Stack similar", "Moves everything you carry that this chest already has into it.", () => Keys(HotKeys.PutSimilar, "Ctrl Q"), () => Say(Put(true)), x);
             var sep = Kit.Img(_tools, "Sep", null, new Color(1f, 1f, 1f, 0.12f)); sep.rectTransform.At(x + 4f, 5, 1, 22); x += 9f + 4f;
             x = Icon("sort-ud", "Sort", null, () => Keys(HotKeys.ChestSort, null), () =>
