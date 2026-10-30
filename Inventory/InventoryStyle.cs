@@ -291,7 +291,7 @@ namespace Jatify.UI
         private static bool Strip => !Narrow && !UnderBag;
         // under the bag the cells are smaller (user), so the two rows end above where the strip would; else the strip
         private static bool UnderBag => !Narrow && GridBottom + 14f + 2f * (UbLabel + UbPitch) - (UbPitch - UbSlot) < CharBottom + 30f + BeltLabel + Pitch - 7f;
-        private const float UbSlot = 48f, UbPitch = 54f, UbLabel = 24f;
+        private const float UbSlot = 60f, UbPitch = 67f, UbLabel = 30f;   // full size again (user)
         private static float RowPitch => UnderBag ? UbPitch : Pitch;
         private static float RowLabel => UnderBag ? UbLabel : BeltLabel;
         internal static float BeltSlot => UnderBag ? UbSlot : Slot;   // not via BeltRows: that asks BeltH, which asks this
