@@ -28,13 +28,24 @@ namespace Jatify.UI
             var name = Kit.Text(row, "Name", "Jatify UI", Fonts.Norse, 20f, Color.white); name.alignment = TextAlignmentOptions.MidlineLeft; name.raycastTarget = true;
             name.fontSharedMaterial = Fonts.Shadowed(Fonts.Norse) ?? name.fontSharedMaterial; name.rectTransform.At(54, 2, 120, 44);
             name.gameObject.AddComponent<Button>().onClick.AddListener(() => Application.OpenURL(Links.Discord));
+            var accent = Theme.C(t.accent);   // the accent on hover, as the menu's entries (user): the icon and the name light together
+            foreach (var go in new[] { b.gameObject, name.gameObject }) { var h = go.AddComponent<HoverTint>(); h.Lit = accent; h.Parts = new Graphic[] { ic, name }; }
             // What's new: white, tilted, pulsing; a click opens the notes
             var wn = Kit.Text(row, "WhatsNew", "What's new!", Fonts.Norse, 26f, Color.white); wn.alignment = TextAlignmentOptions.MidlineLeft; wn.raycastTarget = true;
             wn.fontSharedMaterial = Fonts.Shadowed(Fonts.Norse) ?? wn.fontSharedMaterial;
-            var wr = wn.rectTransform; wr.anchorMin = wr.anchorMax = new Vector2(0f, 0f); wr.pivot = new Vector2(0.5f, 0.5f); wr.sizeDelta = new Vector2(170f, 40f); wr.anchoredPosition = new Vector2(150f, 66f);   // above the name, to its right, as a splash
+            var wr = wn.rectTransform; wr.anchorMin = wr.anchorMax = new Vector2(0f, 0f); wr.pivot = new Vector2(0.5f, 0.5f); wr.sizeDelta = new Vector2(170f, 40f); wr.anchoredPosition = new Vector2(132f, 56f);   // just above the name, to its right, as a splash
             wr.localEulerAngles = new Vector3(0f, 0f, 8f);
             wn.gameObject.AddComponent<Pulse>();
+            { var h = wn.gameObject.AddComponent<HoverTint>(); h.Lit = accent; h.Parts = new Graphic[] { wn }; }
             wn.gameObject.AddComponent<Button>().onClick.AddListener(() => { if (!WhatsNew.Open) WhatsNew.Show(false); });
+        }
+
+        private sealed class HoverTint : MonoBehaviour, UnityEngine.EventSystems.IPointerEnterHandler, UnityEngine.EventSystems.IPointerExitHandler
+        {
+            internal Graphic[] Parts; internal Color Lit;
+            public void OnPointerEnter(UnityEngine.EventSystems.PointerEventData e) { foreach (var g in Parts) if (g != null) g.color = Lit; }
+            public void OnPointerExit(UnityEngine.EventSystems.PointerEventData e) { foreach (var g in Parts) if (g != null) g.color = Color.white; }
+            private void OnDisable() { if (Parts != null) foreach (var g in Parts) if (g != null) g.color = Color.white; }
         }
 
         // bigger and smaller in a loop, as if coming at you (unscaled time: the title screen has no game clock)
