@@ -110,6 +110,9 @@ namespace Jatify.UI
                 _beltLabels.Add(bl.rectTransform);
             }
             _beltsLaid = -1;
+            var (fb, _) = Kit.Box(_frame, "jatify-fold", Theme.C(t.raised), Theme.C(t.line2), 6); fb.raycastTarget = true; _fold = fb.rectTransform;
+            _foldText = Kit.Text(_fold, "T", "", Fonts.Medium, 11.5f, Theme.C(t.dim)); _foldText.alignment = TMPro.TextAlignmentOptions.Center; _foldText.rectTransform.Fill();
+            fb.gameObject.AddComponent<Button>().onClick.AddListener(() => { if (Cfg.BarsCollapsed != null) Cfg.BarsCollapsed.Value = !Cfg.BarsCollapsed.Value; });
             // the trash sits under the grid (design position); the item detail box beside it was removed (user)
             StyleInfo(g.m_info, t);
             _trash = new Trash(_frame, t);
@@ -277,6 +280,9 @@ namespace Jatify.UI
         private static float BlocksBottom => BlockTop + 3f * Pitch - 7f;
         internal static bool BeltBlocks => !BeltRows && BlocksBottom + 18f <= 1062f;
         private static RectTransform _beltLine; private static readonly List<RectTransform> _beltLabels = new List<RectTransform>(); private static int _beltsLaid = -1;
+        // the Tools / Food / Meads rows fold away with a button on their line (user); the items stay and work from the HUD
+        private static bool Folded => SpecialRows.On && Cfg.BarsCollapsed != null && Cfg.BarsCollapsed.Value;
+        private static RectTransform _fold; private static TMPro.TextMeshProUGUI _foldText;
 
         // the panel ends under its lowest part; the trash sits in the 8th column under the last inventory row
         private static float GridBottom => 240f + InvRows * Pitch - 7f;
@@ -285,7 +291,8 @@ namespace Jatify.UI
         private const float StatsTop = 505f;
         private static bool BeltColumns => !BeltRows && !BeltBlocks;
         private static float StatsH => _stats != null ? _stats.Height : StatsCard.Needed;
-        private static float PanelBottom => BeltRows ? Mathf.Max(BeltTop + BeltH - 7f, StatsTop + StatsH)
+        private static float PanelBottom => Folded ? Mathf.Max(TrashTop + 60f, StatsTop + StatsH)
+            : BeltRows ? Mathf.Max(BeltTop + BeltH - 7f, StatsTop + StatsH)
             : BeltBlocks ? Mathf.Max(BlocksBottom, StatsTop + StatsH) : Mathf.Max(943f, TrashTop + 60f);
         private static StatsCard _stats;
         internal static float FrameH => PanelBottom + 18f - 32f;
@@ -407,23 +414,30 @@ namespace Jatify.UI
 
         private static void LayBelts()
         {
-            if (_beltLine == null || _beltsLaid == SpecialRows.Start) return;
-            _beltsLaid = SpecialRows.Start;
-            foreach (var l in _beltLabels) if (l != null && l.gameObject.activeSelf != SpecialRows.On) l.gameObject.SetActive(SpecialRows.On);   // AzuEPI: its cells carry their own names
+            int key = SpecialRows.Start * 2 + (Folded ? 1 : 0);
+            if (_beltLine == null || _beltsLaid == key) return;
+            _beltsLaid = key;
+            foreach (var l in _beltLabels) if (l != null && l.gameObject.activeSelf != (SpecialRows.On && !Folded)) l.gameObject.SetActive(SpecialRows.On && !Folded);   // AzuEPI: its cells carry their own names
+            if (_for != null && SpecialRows.On)
+                foreach (Transform c in _for.m_playerGrid.m_gridRoot) { var e = c.GetComponent<InventoryElement>(); if (e != null && e.Position.y >= SpecialRows.Start && e.Position.y < SpecialRows.EqRow) e.gameObject.SetActive(!Folded && e.Position.x < SpecialRows.RowWidth(e.Position.y - SpecialRows.Start)); }
+            if (_fold != null) { _fold.gameObject.SetActive(SpecialRows.On); _foldText.text = Folded ? "Show bars" : "Hide bars"; }
             _trash?.MoveTo(914f - 160f, Azu.Drives ? PanelBottom - 32f - 8f : TrashTop - 32f);   // AzuEPI: its quick slots fill the row under the grid, so the bottom right corner
             if (BeltRows)
             {
                 _beltLine.At(285, BeltTop - 32f - 15f, 529, 1);
+                _fold?.At(285 + 529 - 84, BeltTop - 32f - 15f - 11f, 84, 22);   // on the line, its right end
                 for (int i = 0; i < _beltLabels.Count; i++) if (_beltLabels[i] != null) _beltLabels[i].At(285 + (i == 2 ? MeadsX : 0f), BeltTop - 32f + (i == 1 ? 0f : BeltLabel + Pitch) + 2f, 120, 14);   // labels: Food 0, Tools 1, Meads 2
             }
             else if (BeltBlocks)
             {
                 _beltLine.At(285, GridBottom + 16f - 32f, 529, 1);
+                _fold?.At(285 + 529 - 84, GridBottom + 16f - 32f - 11f, 84, 22);
                 for (int i = 0; i < _beltLabels.Count; i++) if (_beltLabels[i] != null) _beltLabels[i].At(285 + i * BlockStep, BlockTop - 20f - 32f, 127, 14);
             }
             else
             {
                 _beltLine.At(19, 479, 240, 1);
+                _fold?.At(19 + 240 - 84, 479 - 11f, 84, 22);
                 for (int i = 0; i < _beltLabels.Count; i++) if (_beltLabels[i] != null) _beltLabels[i].At(19 + i * 90, 494, 60, 14);
             }
         }
@@ -514,7 +528,7 @@ namespace Jatify.UI
             {
                 var d = CellDesign(e.Position.x, e.Position.y);   // vanilla put it at (x, -y) * pitch from the first cell
                 rt.anchoredPosition += new Vector2(d.x - e.Position.x * Pitch, -(d.y - e.Position.y * Pitch));
-                if (SpecialRows.On && (e.Position.y == SpecialRows.EqRow || (e.Position.y >= SpecialRows.Start && e.Position.y < SpecialRows.EqRow && e.Position.x >= SpecialRows.RowWidth(e.Position.y - SpecialRows.Start)))) e.gameObject.SetActive(false); // reserved rows are 6 wide; the worn-armour row is hidden (AzuEPI's cells: never hidden here)
+                if (SpecialRows.On && (e.Position.y == SpecialRows.EqRow || (e.Position.y >= SpecialRows.Start && e.Position.y < SpecialRows.EqRow && (Folded || e.Position.x >= SpecialRows.RowWidth(e.Position.y - SpecialRows.Start))))) e.gameObject.SetActive(false); // reserved rows are 6 wide; the worn-armour row is hidden (AzuEPI's cells: never hidden here)
             }
             rt.sizeDelta = new Vector2(Slot, Slot);
             var bg = e.GetComponent<Image>();
@@ -670,7 +684,7 @@ namespace Jatify.UI
             ChestPanel.Restore();
             _eq?.Destroy(); _eq = null; _tabs.Clear(); _tabOn = null; _badge = null; _badgeShown = -1;
             _trash?.Destroy(); _trash = null; _stats?.Destroy(); _stats = null;
-            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
+            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _foldText = null; _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
         }
     }
 
