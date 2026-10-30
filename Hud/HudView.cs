@@ -77,8 +77,8 @@ namespace Jatify.UI
             for (int i = 0; i < 6; i++) { var s = new Slot(_barPanels[2].line.transform, "", 6 + i * 52, 6, 46f, t).Cap(1); s.Bar = true; if (i < 3) _food[i] = s; else _meads[i - 3] = s; }
             // guardian power: 52 px circle, 18 px right of the hotbar, 8 px up from its bottom
             _power = Kit.Node(dock, "Power").At(487 + 12, 28, 52, 52);   // right of the health and stamina bars, over the food and meads bar (user)
-            Kit.Img(_power, "Line", Kit.Circle(), C(t.glassLine), false).rectTransform.Fill();
-            Kit.Img(_power, "Fill", Kit.Circle(), C(t.glass), false).rectTransform.Fill(1f);
+            _powerLine = Kit.Img(_power, "Line", Kit.Circle(), C(t.glassLine), false); _powerLine.rectTransform.Fill();
+            _powerFill = Kit.Img(_power, "Fill", Kit.Circle(), C(t.glass), false); _powerFill.rectTransform.Fill(1f);
             _powerIcon = Kit.Img(_power, "Icon", null, Color.white, false); _powerIcon.rectTransform.Fill(10f); _powerIcon.preserveAspect = true;
             _powerCd = Kit.Img(_power, "Cooldown", Kit.Circle(), new Color(0f, 0f, 0f, 0.65f), false);
             _powerCd.rectTransform.Fill(1f); _powerCd.type = Image.Type.Filled; _powerCd.fillMethod = Image.FillMethod.Radial360;
@@ -110,8 +110,11 @@ namespace Jatify.UI
         // ActionBarPanels (user): the glass panel behind each bar on or off, the slots unchanged; read every tick so a change shows at once
         private readonly (Image line, Image fill)[] _barPanels = new (Image, Image)[3];   // 1-8, tools, food and meads
         private bool _panelsShown = true;
+        private Image _powerLine, _powerFill;
         private void TickBarPanels()
         {
+            bool pp = Cfg.PowerPanel != null && Cfg.PowerPanel.Value;   // PowerPanel (user, off by default): the power's round panel
+            if (_powerLine != null && _powerLine.enabled != pp) { _powerLine.enabled = pp; _powerFill.enabled = pp; }
             bool on = Cfg.SlotBackdrops == null || Cfg.SlotBackdrops.Value; if (on == _panelsShown) return; _panelsShown = on;
             foreach (var (line, fill) in _barPanels) { if (line != null) line.enabled = on; if (fill != null) fill.enabled = on; }
         }
