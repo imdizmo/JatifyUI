@@ -256,7 +256,8 @@ namespace Jatify.UI
             if (y < SpecialRows.Start) return new Vector2(x * Pitch, 117f + (y - 1) * Pitch);
             int band = y - SpecialRows.Start;
             if (!SpecialRows.On) return new Vector2(x * Pitch, BeltTop - 123f + band * Pitch);   // AzuEPI's equipment / quick cells: rows under the grid, lined up with it
-            if (BeltRows) return new Vector2(66f + x * Pitch, BeltTop - 123f + band * Pitch);          // a row under the grid, after its label
+            if (BeltRows) return band == 1 ? new Vector2(66f + x * Pitch, BeltTop - 123f)                  // Tools first, a row under the grid after its label (user)
+                : new Vector2(66f + (band == 2 ? MeadsX : 0f) + x * Pitch, BeltTop - 123f + Pitch);   // then Food and Meads side by side, each after its label
             if (BeltBlocks) return new Vector2(band * BlockStep + (x % 2) * Pitch, BlockTop - 123f + (x / 2) * Pitch);   // 2 x 3 blocks under the grid
             return new Vector2(179f - 445f + band * 90f, 548f - 123f + x * Pitch);                   // a column under the equipment
         }
@@ -265,7 +266,9 @@ namespace Jatify.UI
         // three columns under the equipment once more rows would make them overlap it.
         private static int InvRows => SpecialRows.Start - 1;                                             // rows under the action bar
         private static float BeltTop => 240f + InvRows * Pitch - 7f + 30f;                              // screen y of the first belt row
-        internal static bool BeltRows => BeltTop + SpecialRows.Count * Pitch - 7f <= 852f - 10f;         // short inventories: three rows
+        internal static bool BeltRows => BeltTop + BeltRowCount * Pitch - 7f <= 852f - 10f;         // short inventories: Tools, then Food and Meads
+        private const int BeltRowCount = 2;
+        private const float MeadsX = SpecialRows.ShortWidth * Pitch + 66f;   // Meads' label and cells after Food's 3 cells
         // more rows (user): Food / Tools / Meads as 2 x 3 blocks side by side under the grid, labels above; the
         // panel grows. Columns under the equipment only when even that would leave the screen.
         private const float BlockStep = 157f;                                                           // 2 slots (127) + 30 between blocks
@@ -281,7 +284,7 @@ namespace Jatify.UI
         private const float StatsTop = 505f;
         private static bool BeltColumns => !BeltRows && !BeltBlocks;
         private static float StatsH => _stats != null ? _stats.Height : StatsCard.Needed;
-        private static float PanelBottom => BeltRows ? Mathf.Max(BeltTop + SpecialRows.Count * Pitch - 7f, StatsTop + StatsH)
+        private static float PanelBottom => BeltRows ? Mathf.Max(BeltTop + BeltRowCount * Pitch - 7f, StatsTop + StatsH)
             : BeltBlocks ? Mathf.Max(BlocksBottom, StatsTop + StatsH) : Mathf.Max(943f, TrashTop + 60f);
         private static StatsCard _stats;
         internal static float FrameH => PanelBottom + 18f - 32f;
@@ -410,7 +413,7 @@ namespace Jatify.UI
             if (BeltRows)
             {
                 _beltLine.At(285, BeltTop - 32f - 15f, 529, 1);
-                for (int i = 0; i < _beltLabels.Count; i++) if (_beltLabels[i] != null) _beltLabels[i].At(285, BeltTop - 32f + i * Pitch + 23f, 56, 14);
+                for (int i = 0; i < _beltLabels.Count; i++) if (_beltLabels[i] != null) _beltLabels[i].At(285 + (i == 2 ? MeadsX : 0f), BeltTop - 32f + (i == 1 ? 0f : Pitch) + 23f, 56, 14);   // labels: Food 0, Tools 1, Meads 2
             }
             else if (BeltBlocks)
             {
