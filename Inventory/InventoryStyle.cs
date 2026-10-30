@@ -477,7 +477,7 @@ namespace Jatify.UI
             if (_for != null && SpecialRows.On)
                 foreach (Transform c in _for.m_playerGrid.m_gridRoot) { var e = c.GetComponent<InventoryElement>(); if (e != null && e.Position.y >= SpecialRows.Start && e.Position.y < SpecialRows.EqRow) e.gameObject.SetActive(!Folded && e.Position.x < SpecialRows.RowWidth(e.Position.y - SpecialRows.Start)); }
             if (_fold != null) { _fold.gameObject.SetActive(SpecialRows.On); _foldText.text = Folded ? "Show bars" : "Hide bars"; }
-            _trash?.MoveTo(914f - 160f, Azu.Drives ? PanelBottom - 32f - 8f : TrashTop - 32f);   // AzuEPI: its quick slots fill the row under the grid, so the bottom right corner
+            _trash?.MoveTo(850f - 3f, 240f - 32f + (InvRows - 1) * Pitch);   // a lip on the panel's right edge, beside the bag's last row, however many rows (user)
             if (BeltRows)
             {
                 _beltLine.At(285, BeltTop - 32f - 15f, 529, 1);

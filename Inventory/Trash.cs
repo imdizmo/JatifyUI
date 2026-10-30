@@ -14,7 +14,7 @@ namespace Jatify.UI
         private static readonly AccessTools.FieldRef<InventoryGui, Inventory> DragInv = AccessTools.FieldRefAccess<InventoryGui, Inventory>("m_dragInventory");
         private static readonly AccessTools.FieldRef<InventoryGui, int> DragAmount = AccessTools.FieldRefAccess<InventoryGui, int>("m_dragAmount");
         private static readonly System.Reflection.MethodInfo SetupDrag = AccessTools.Method(typeof(InventoryGui), "SetupDragItem");
-        private readonly RectTransform _tile, _dialog;
+        private readonly RectTransform _tile, _dialog; private readonly Image _icon;
         private readonly TextMeshProUGUI _ask;
         private readonly ThemeData _t;
         private Inventory _inv; private ItemDrop.ItemData _item; private int _amount;
@@ -44,9 +44,9 @@ namespace Jatify.UI
         {
             _t = t;
             // design .trash: 60 px tile beside the item detail, Valheim's trash can, ember on hover
-            var (line, fill) = Kit.Box(panel, "jatify-trash", new Color(0f, 0f, 0f, 0f), Theme.C(t.line2), 10);
+            var (line, fill) = Kit.Box(panel, "jatify-trash", Theme.C(t.glass), Theme.C(t.line2), 10);   // a lip of the panel: its glass, out past its edge
             _tile = line.rectTransform.At(754, 820, 60, 60);
-            var ic = Kit.Img(_tile, "Icon", Kit.Icon("trash_icon"), new Color(1f, 1f, 1f, 0.7f), false); ic.rectTransform.At(17, 17, 26, 26); ic.preserveAspect = true;
+            var ic = _icon = Kit.Img(_tile, "Icon", Kit.Icon("trash_icon"), new Color(1f, 1f, 1f, 0.7f), false); ic.rectTransform.At(17, 17, 26, 26); ic.preserveAspect = true;
             line.raycastTarget = true;
             // its own canvas one above the inventory's: the bag grid's root reaches under the tile and took every click and drop
             // (#15, still broken after the drag-release fix; seen with a pointer probe). Sibling order alone doesn't beat it.
@@ -131,7 +131,7 @@ namespace Jatify.UI
 
         private void Close() { _inv = null; _item = null; if (_dialog) _dialog.gameObject.SetActive(false); }
 
-        internal void MoveTo(float x, float y) { if (_tile != null) { _tile.At(x, y, 60, 60); _tile.SetAsLastSibling(); } }   // frame (design) pixels; on top, so no row built after it covers it
+        internal void MoveTo(float x, float y) { if (_tile != null) { _tile.At(x, y, 52, 60); _tile.SetAsLastSibling(); if (_icon != null) _icon.rectTransform.At(15, 17, 26, 26); } }   // frame (design) pixels; on top, so no row built after it covers it
 
         internal void Place(InventoryGrid grid)
         {
