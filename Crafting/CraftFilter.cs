@@ -115,6 +115,16 @@ namespace Jatify.UI
         }
 
         internal static void Poke() => Apply();
+
+        // another station (or none): its search starts empty. User: "hamm" typed at the workbench left the forge's list blank.
+        private static CraftingStation _station; private static bool _stationSeen;
+        internal static void NewStation(CraftingStation st)
+        {
+            if (_stationSeen && st == _station) return;
+            _stationSeen = true; _station = st;
+            if (Query.Length == 0) return;
+            Query = ""; _field?.SetTextWithoutNotify("");
+        }
         private static TMP_InputField _field;
         internal static void SetQuery(string q) { if (_field != null) _field.text = q; else { Query = q; Apply(); } }
         internal static string FieldInfo() => _field == null ? "null" : $"{_field.name} active {_field.isActiveAndEnabled} interactable {_field.IsInteractable()}";
@@ -227,6 +237,7 @@ namespace Jatify.UI
         private static void Prefix(List<Recipe> recipes)
         {
             var p = Player.m_localPlayer; if (p == null) return;
+            CraftFilter.NewStation(p.GetCurrentCraftingStation());
             CraftFilter.Seen(recipes);
             recipes.RemoveAll(r => !CraftFilter.Matches(r, p));
         }
