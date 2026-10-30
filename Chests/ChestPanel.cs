@@ -213,7 +213,7 @@ namespace Jatify.UI
             cols = shownCols; rows = shownRows;
             var canvas = (RectTransform)Root.Canvas.transform;
             float gridW = cols * Pitch - 7f, gridH = rows * Pitch - 7f, pw = Mathf.Max(MinW, gridW + 2f * Pad);   // the panel is the grid's width (at least the header's)
-            float h = GridTop + gridH + Foot, left = Mathf.Min(Left, canvas.rect.width - 16f - pw);
+            float h = GridTop + gridH + Foot, left = Mathf.Min(InventoryStyle.RightLeft, canvas.rect.width - 16f - pw);
             // ponytail: a container taller than the screen (modded) keeps vanilla's scroll view and the panel stops at the screen edge
             bool fits = Top + h <= canvas.rect.height - 16f; if (!fits) h = canvas.rect.height - 16f - Top;
             var gsr = Grid(_g).GetComponent<ScrollRect>(); var gmask = Grid(_g).GetComponent<RectMask2D>();

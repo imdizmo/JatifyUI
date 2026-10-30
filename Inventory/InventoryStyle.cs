@@ -674,16 +674,21 @@ namespace Jatify.UI
         // Design coordinates (1080p, top-left): inventory grid area at (474, 88) = panel left 160 + 14
         // padding + 300 equipment column, top 32 + 56 header; crafting at (1044, 204).
         private static readonly Vector3[] _c = new Vector3[4];
+        // the right-hand column's left edge (top panel, crafting, chests: 670 wide in the design): as far from the screen's right edge
+        // as the inventory is from its left
+        internal static float RightLeft { get { var c = Root.Canvas != null ? (RectTransform)Root.Canvas.transform : null; return c != null ? Mathf.Max(1030f, c.rect.width - 160f - 670f) : 1030f; } }
+
         internal static void Layout()
         {
             if (_for == null || !InventoryGui.IsVisible() || Root.Canvas == null) return;
             PlaceGrid();
             PlaceFrame();
             bool chest = _for.m_container != null && _for.m_container.gameObject.activeInHierarchy;
-            Place(_for.m_crafting, 1044f, 204f);
+            float rx = RightLeft - 1030f;   // the design's right-hand column moved so its gap to the right edge matches the inventory's 160 to the left (user)
+            Place(_for.m_crafting, 1044f + rx, 204f);
             ChestPanel.Layout();
             if (_craftFade != null) { _craftFade.alpha = chest ? 0f : 1f; _craftFade.blocksRaycasts = !chest; _craftFade.interactable = !chest; }
-            Place(_for.m_info, 1080f, 39f); // inside the design's 670 x 140 character panel at (1030, 32); vanilla's name sits above its box
+            Place(_for.m_info, 1080f + rx, 39f); // inside the design's 670 x 140 character panel at (1030, 32); vanilla's name sits above its box
         }
 
         // the first action-bar cell's top-left to 445, 123 (design)
