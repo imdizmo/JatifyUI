@@ -594,7 +594,7 @@ namespace Jatify.UI
         private sealed class Buff
         {
             internal readonly RectTransform Root;
-            private readonly Image _line, _icon, _pill;
+            private readonly Image _line, _icon, _pill, _fill; private readonly Mask _mask; private int _framed = -1;
             private readonly RectTransform _left;
             private readonly TextMeshProUGUI _time;
             private readonly ThemeData _t;
@@ -607,9 +607,9 @@ namespace Jatify.UI
                 _t = t; _py = top ? 0f : Size + 3f;
                 Root = Kit.Node(parent, "Buff");
                 // Valheim's look (user): the icon alone and a bit bigger, no frame or panel behind it
-                Image fill; (_line, fill) = Kit.Box(Root, "Frame", Color.clear, Color.clear, 8);
+                Image fill; (_line, fill) = Kit.Box(Root, "Frame", Color.clear, Color.clear, 8); _fill = fill;
                 _line.rectTransform.At(0, top ? 19 : 0, Size, Size);
-                fill.gameObject.AddComponent<Mask>().showMaskGraphic = false;
+                _mask = fill.gameObject.AddComponent<Mask>(); _mask.showMaskGraphic = false;   // BuffFrames on: the panel shows and the food fill keeps to its corners
                 _left = Kit.Img(fill.rectTransform, "Left", null, new Color(0.949f, 0.439f, 0.227f, 0.22f)).rectTransform;   // design: rgba(242,112,58,.22)
                 _left.anchorMin = Vector2.zero; _left.anchorMax = new Vector2(1f, 0f); _left.offsetMin = _left.offsetMax = Vector2.zero; _left.gameObject.SetActive(false);
                 _icon = Kit.Img(_line.rectTransform, "Icon", null, Color.white, false); _icon.rectTransform.At(0, 0, Size, Size); _icon.preserveAspect = true;
@@ -640,14 +640,23 @@ namespace Jatify.UI
                 int pct = left < 0f ? -1 : Mathf.RoundToInt(Mathf.Clamp01(left) * 100f);
                 if (pct != _leftPct)
                 {
-                    _leftPct = pct; _left.gameObject.SetActive(false);   // no panel to fill (Valheim's look)
+                    _leftPct = pct; _left.gameObject.SetActive(pct > 0 && _framed == 1);   // the share left fills the panel, when there is one
                     if (pct > 0) _left.anchorMax = new Vector2(1f, pct / 100f);
+                    if (pct > 0) _left.anchorMax = new Vector2(1f, pct / 100f);
+                }
+                int framed = Cfg.BuffFrames != null && Cfg.BuffFrames.Value ? 1 : 0;
+                if (framed != _framed)
+                {   // BuffFrames: the framed panel (as before) or Valheim's bare icon, switched live
+                    _framed = framed; _frame = -1; _leftPct = -2; bool f = framed == 1;
+                    _fill.color = f ? C(_t.glass) : Color.clear; _mask.showMaskGraphic = f;
+                    float pad = f ? 6f : 0f; _icon.rectTransform.At(pad, pad, Size - 2f * pad, Size - 2f * pad);
                 }
                 int frame = bad ? 0 : low ? 1 : left >= 0f ? 2 : 3;
                 if (frame != _frame)
                 {
                     _frame = frame; var e = C(_t.ember);
-                    _line.color = Color.clear;   // no frame (user); a debuff still reads from its own icon, as in Valheim
+                    _line.color = _framed != 1 ? Color.clear   // no frame (user); a debuff still reads from its own icon, as in Valheim
+                        : frame == 0 ? C(_t.health) : frame == 1 ? e : frame == 2 ? new Color(e.r, e.g, e.b, 0.55f) : C(_t.line2);   // design .eicon.food: ember .55
                 }
             }
         }

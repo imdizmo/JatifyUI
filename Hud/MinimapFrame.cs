@@ -23,8 +23,8 @@ namespace Jatify.UI
         internal MinimapFrame(Transform parent, ThemeData t)
         {
             _t = t;
-            var (line, _) = Kit.Box(parent, "Minimap", Theme.C(t.glass), Theme.C(t.glassLine), 12);
-            _root = line.rectTransform;
+            var (line, fill) = Kit.Box(parent, "Minimap", Theme.C(t.glass), Theme.C(t.glassLine), 12);
+            _root = line.rectTransform; _panelLine = line; _panelFill = fill;
             _root.anchorMin = _root.anchorMax = _root.pivot = new Vector2(1f, 1f);
             _root.anchoredPosition = new Vector2(-28f, -24f); _root.sizeDelta = new Vector2(W, Pad + Map + 6 + 18 + 4 + 18 + Pad);
             _hole = Kit.Node(_root, "MapArea").At(Pad, Pad, Map, Map);  // where Valheim's map image is placed
@@ -47,8 +47,17 @@ namespace Jatify.UI
             }
         }
 
+        // MinimapPanel off (the default, user): no glass card behind the map and its lines, as in the Minimal look; switched live
+        private readonly Image _panelLine, _panelFill; private int _panel = -1;
+        private void TickPanel()
+        {
+            int on = Cfg.MinimapPanel != null && Cfg.MinimapPanel.Value ? 1 : 0; if (on == _panel) return; _panel = on;
+            _panelLine.color = on == 1 ? Theme.C(_t.glassLine) : Color.clear; _panelFill.color = on == 1 ? Theme.C(_t.glass) : Color.clear;
+        }
+
         internal void Tick(Player p)
         {
+            TickPanel();
             var map = Minimap.instance;
             bool cover = Menu.IsVisible() || ConfigPage.Open != null || InventoryGui.IsVisible();   // design: no minimap over the pause menu or the inventory
             bool show = map != null && map.m_smallRoot != null && map.m_smallRoot.activeInHierarchy && !cover;
