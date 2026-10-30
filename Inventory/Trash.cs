@@ -48,6 +48,9 @@ namespace Jatify.UI
             _tile = line.rectTransform.At(754, 820, 60, 60);
             var ic = Kit.Img(_tile, "Icon", Kit.Icon("trash_icon"), new Color(1f, 1f, 1f, 0.7f), false); ic.rectTransform.At(17, 17, 26, 26); ic.preserveAspect = true;
             line.raycastTarget = true;
+            // its own canvas one above the inventory's: the bag grid's root reaches under the tile and took every click and drop
+            // (#15, still broken after the drag-release fix; seen with a pointer probe). Sibling order alone doesn't beat it.
+            var tc = line.gameObject.AddComponent<Canvas>(); tc.overrideSorting = true; tc.sortingOrder = (panel.GetComponentInParent<Canvas>()?.rootCanvas.sortingOrder ?? 600) + 1; line.gameObject.AddComponent<GraphicRaycaster>();
             var b = line.gameObject.AddComponent<Button>(); b.targetGraphic = line; b.onClick.AddListener(OnClick);
             _hover = line.gameObject.AddComponent<Hover>();
             var cb = b.colors; cb.normalColor = Color.white; cb.highlightedColor = Theme.C(t.ember) * 3f; b.colors = cb;   // the outline turns ember on hover
@@ -107,6 +110,7 @@ namespace Jatify.UI
             Ask();
         }
 
+        internal RectTransform Tile => _tile;
         internal void DevShow(bool on) { _inv = null; _item = null; _ask.text = "Destroy Wood ×10?"; _tick.enabled = false; _dialog.gameObject.SetActive(on); }   // dev: look only, nothing to destroy
 
         internal void Confirm()
