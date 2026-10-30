@@ -22,7 +22,7 @@ namespace Jatify.UI
             FoodAsBuffs = c.Bind("HUD", "FoodTimersAsBuffs", true, "Eaten food's time left with the buffs by the minimap; off: in a row of its own above the health bar.");
             BuffFrames = c.Bind("HUD", "BuffFrames", false, "A framed panel behind each buff and food timer; off (the default): Valheim's plain icons.");
             MinimapPanel = c.Bind("HUD", "MinimapPanel", false, "The glass panel behind the minimap and its lines; off (the default): the map and its text stand on their own.");
-            CompassMinimal = c.Bind("HUD", "CompassMinimal", false, "The Minimal look's compass: one faint line and the letters, no band or ticks.");
+            CompassMinimal = c.Bind("HUD", "CompassMinimal", true, "The Minimal look's compass: one faint line and the letters, no band or ticks (the default); off: the full band with ticks.");
             PowerPanel = c.Bind("HUD", "PowerPanel", false, "The round glass panel behind the guardian power's icon; off (the default): the icon alone.");
             Hints = c.Bind("HUD", "KeyHints", true, "The key hints across the UI: the HUD corners, the inventory and chest key bars, the build menu's and the map's foot rows.");
             SlotBackdrops = c.Bind("HUD", "ActionBarPanels", false, "The glass panel behind the 1-8 bar, the tools bar and the food and meads bar; off (the default): the slots stand on their own.");

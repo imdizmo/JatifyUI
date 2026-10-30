@@ -20,7 +20,7 @@ namespace Jatify.UI
         private readonly Bar _hp, _st, _ei;
         private readonly Bar[] _gauges = new Bar[3];
         private readonly Slot[] _slots = new Slot[8];
-        private readonly Slot[] _tools = new Slot[8], _food = new Slot[SpecialRows.ShortWidth], _meads = new Slot[SpecialRows.ShortWidth], _ammo = new Slot[3];   // ammo: ExtraSlots' three, after the meads   // tools: 6, or AzuEPI's quick slots (up to 8)
+        private readonly Slot[] _tools = new Slot[8], _food = new Slot[SpecialRows.ShortWidth], _meads = new Slot[SpecialRows.ShortWidth], _ammo = new Slot[3];   // ammo: ExtraSlots' three, in a bar of their own bottom left   // tools: 6, or AzuEPI's quick slots (up to 8)
         private readonly RectTransform _power;
         private readonly Image _powerIcon, _powerCd;
         private readonly EpicAbilities _abilities;
@@ -74,7 +74,12 @@ namespace Jatify.UI
             // key labels: KeyLabels
             var side = _side = Kit.Node(dock, "Sidebars").At(534 + 14, 96 + 14, RightBars - 14, 58);
             _barPanels[2] = Kit.Box(side, "FoodMeadsBar", C(t.glass), C(t.glassLine), 12); _barPanels[2].line.rectTransform.At(0, 0, RightBars - 14, 58);
-            for (int i = 0; i < 9; i++) { var s = new Slot(_barPanels[2].line.transform, "", 6 + i * 52, 6, 46f, t).Cap(1); s.Bar = true; if (i < 3) _food[i] = s; else if (i < 6) _meads[i - 3] = s; else { _ammo[i - 6] = s; s.Shown(false); } }
+            for (int i = 0; i < 6; i++) { var s = new Slot(_barPanels[2].line.transform, "", 6 + i * 52, 6, 46f, t).Cap(1); s.Bar = true; if (i < 3) _food[i] = s; else _meads[i - 3] = s; }
+            // ExtraSlots' ammo slots (user): bottom left, above the key hints, as long as it has slots
+            _barPanels[3] = Kit.Box(_root, "AmmoBar", C(t.glass), C(t.glassLine), 12); _ammoBar = _barPanels[3].line.rectTransform;
+            _ammoBar.anchorMin = _ammoBar.anchorMax = _ammoBar.pivot = Vector2.zero; _ammoBar.anchoredPosition = new Vector2(28f, 36f + 20f + 12f); _ammoBar.sizeDelta = new Vector2(6 + 3 * 52, 58);
+            for (int i = 0; i < 3; i++) { _ammo[i] = new Slot(_ammoBar, "", 6 + i * 52, 6, 46f, t).Cap(1); _ammo[i].Bar = true; }
+            _ammoBar.gameObject.SetActive(false);
             // guardian power: 52 px circle, 18 px right of the hotbar, 8 px up from its bottom
             _power = Kit.Node(dock, "Power").At(487 + 12, 24, 64, 64);   // 64: bigger (user)   // right of the health and stamina bars, over the food and meads bar (user)
             _powerLine = Kit.Img(_power, "Line", Kit.Circle(), C(t.glassLine), false); _powerLine.rectTransform.Fill();
@@ -108,7 +113,8 @@ namespace Jatify.UI
         }
 
         // ActionBarPanels (user): the glass panel behind each bar on or off, the slots unchanged; read every tick so a change shows at once
-        private readonly (Image line, Image fill)[] _barPanels = new (Image, Image)[3];   // 1-8, tools, food and meads
+        private readonly (Image line, Image fill)[] _barPanels = new (Image, Image)[4];   // 1-8, tools, food and meads, ExtraSlots' ammo
+        private RectTransform _ammoBar;
         private bool _panelsShown = true;
         private Image _powerLine, _powerFill;
         private void TickBarPanels()
@@ -189,7 +195,9 @@ namespace Jatify.UI
             bool screen = invOpen || StoreGui.IsVisible();   // a full window open: the inventory, or the trader's shop (user: the HUD drew over it)
             if (_hintsL.gameObject.activeSelf != (hints && !screen)) _hintsL.gameObject.SetActive(hints && !screen);
             foreach (var r in new[] { _dock, _buffs, _compass.Root, _flags.Box }) if (r.gameObject.activeSelf == screen) r.gameObject.SetActive(!screen); // the inventory screen has no dock
-            bool side = !screen && (SpecialRows.On || Es.Drives); if (_side.gameObject.activeSelf != side) _side.gameObject.SetActive(side);   // AzuEPI: no Food / Meads rows to show
+            bool side = !screen && (SpecialRows.On || Es.Drives); if (_side.gameObject.activeSelf != side) _side.gameObject.SetActive(side);
+            if (Time.unscaledTime >= _hintsAt) { _hintsAt = Time.unscaledTime + 2f; ClearHints(_hintsR); ClearHints(_hintsPlace); }   // every 2 s: a resolution change re-checks
+            bool ammo = !screen && Es.Drives && _ammoShown > 0; if (_ammoBar != null && _ammoBar.gameObject.activeSelf != ammo) _ammoBar.gameObject.SetActive(ammo);   // AzuEPI: no Food / Meads rows to show
             bool placing = !invOpen && p.InPlaceMode();   // hammer, hoe, cultivator: the corner shows placing keys instead of combat
             if (_hintsR.gameObject.activeSelf != (hints && !screen && !placing)) _hintsR.gameObject.SetActive(hints && !screen && !placing);
             SetHints(hints && !screen && !placing);
@@ -376,7 +384,6 @@ namespace Jatify.UI
             {
                 _esBarsAt = Time.unscaledTime + 2f;
                 if (SpecialRows.Keys != null) for (int i = 0; i < _meads.Length; i++) _meads[i].Key(Short(SpecialRows.Keys[2, i].Value));   // our meads' keys (a rebind shows within 2 s)
-                ClearHints(_hintsR); ClearHints(_hintsPlace);
                 foreach (var n in new[] { "ExtraSlotsQuickSlotsHotBar", "ExtraSlotsAmmoHotBar", "ExtraSlotsFoodHotBar" })
                 {
                     var b = Hud.instance.m_rootObject.transform.Find(n); if (b == null) continue;
@@ -399,8 +406,8 @@ namespace Jatify.UI
                 else if (a >= 0 && a < _ammo.Length) { _ammo[a].Set(it); _ammo[a].Key(key); na = Mathf.Max(na, a + 1); }
             }
             if (na != _ammoShown)
-            {   // the right bar as long as it has slots
-                _ammoShown = na; _barPanels[2].line.rectTransform.At(0, 0, RightBars - 14 + na * 52, 58);
+            {   // the ammo bar as long as it has slots
+                _ammoShown = na; _ammoBar.sizeDelta = new Vector2(6 + Mathf.Max(1, na) * 52, 58);
                 for (int i = 0; i < _ammo.Length; i++) _ammo[i].Shown(i < na);
             }
             if (nq != _quickShown)
@@ -411,16 +418,18 @@ namespace Jatify.UI
                 for (int i = 0; i < _tools.Length; i++) _tools[i].Shown(i < nq);
             }
         }
-        // the right bar grown with its ammo can reach the corner's key hints: then they sit above the bar
+        // the food and meads bar can reach the corner's key hints (1920 wide it does): then they sit above the bar
         private static readonly Vector3[] _c = new Vector3[4];
         private void ClearHints(RectTransform h)
         {
-            if (h == null) return;
+            if (h == null || _barPanels[2].line == null) return;
             _barPanels[2].line.rectTransform.GetWorldCorners(_c); float barRight = _c[2].x, barTop = _c[1].y;
             h.GetWorldCorners(_c); float left = _c[0].x, bottom = _c[0].y, k = Mathf.Max(0.0001f, h.lossyScale.y);
             float y = left < barRight + 8f * k ? h.anchoredPosition.y + (barTop + 10f * k - bottom) / k : 36f;
             if (Mathf.Abs(h.anchoredPosition.y - y) > 0.5f) h.anchoredPosition = new Vector2(h.anchoredPosition.x, y);
         }
+        private float _hintsAt;
+
         internal void EsRestore() { foreach (var cg in _esBars) if (cg != null) Object.Destroy(cg); _esBars.Clear(); }
 
         private void AzuQuick(Player p, Inventory inv)
