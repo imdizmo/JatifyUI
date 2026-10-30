@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -36,20 +37,20 @@ namespace Jatify.UI
             _day.enableAutoSizing = true; _day.fontSizeMin = 8f; _day.fontSizeMax = 11f;   // ends before the wind: the real clock ran under it (#22)
             // wind: an arrow pointing where the wind blows, relative to the camera, then five strength bars
             var arrow = Kit.Node(_root, "Wind").At(W - Pad - 52, y + 3, 12, 12);
-            var icon = Kit.IconImg(arrow, "arrow-up", Theme.C(t.dim), 12f); icon.rectTransform.At(0, 0, 12, 12);   // a whole arrow (user: the stick and square read as broken)
+            var icon = Kit.IconImg(arrow, "arrow-up", Theme.C(t.dim), 14f); icon.rectTransform.At(-1, -1, 14, 14);   // a whole arrow (user: the stick and square read as broken)
             arrow.pivot = new Vector2(0.5f, 0.5f); arrow.anchoredPosition += new Vector2(6f, -6f);
             _windArrow = arrow;
             for (int i = 0; i < 5; i++)
             {
                 float h = 4 + i * 2;
                 _bars[i] = Kit.Panel(_root, "Bar" + i, Theme.C(t.mute), 2);
-                _bars[i].rectTransform.At(W - Pad - 32 + i * 6, y + 15 - h, 3, h);
+                _bars[i].rectTransform.At(W - Pad - 34 + i * 7, y + 15 - h, 4, h);
             }
         }
 
         // MinimapPanel off (the default, user): no glass card behind the map and its lines, as in the Minimal look; switched live
-        private readonly Image _panelLine, _panelFill; private int _panel = -1; private Material[] _mat0;
-        private readonly System.Collections.Generic.List<GameObject> _shades = new System.Collections.Generic.List<GameObject>();
+        private readonly Image _panelLine, _panelFill; private int _panel = -1, _windPanel = -1; private Material[] _mat0;
+        private readonly System.Collections.Generic.List<GameObject> _shades = new System.Collections.Generic.List<GameObject>(), _windShades = new System.Collections.Generic.List<GameObject>();
         private sealed class TextShade : MonoBehaviour
         {   // a shade copy follows its line's text and size
             internal TMP_Text Src, Me;
@@ -81,8 +82,18 @@ namespace Jatify.UI
                     }
             foreach (var c in _shades) if (c != null) c.SetActive(bare);
             foreach (var b in _bars) if (b != null) b.color = bare ? Color.white : Theme.C(_t.mute);
-            foreach (var b in _bars) if (b != null) { var o = b.GetComponent<Outline>() ?? b.gameObject.AddComponent<Outline>(); o.effectColor = Color.black; o.effectDistance = new Vector2(1f, -1f); o.enabled = bare; }
-            var arrow = _windArrow.GetComponentInChildren<Image>(); if (arrow != null) { arrow.color = bare ? Color.white : Theme.C(_t.dim); var o = arrow.GetComponent<Outline>() ?? arrow.gameObject.AddComponent<Outline>(); o.effectColor = Color.black; o.effectDistance = new Vector2(1f, -1f); o.enabled = bare; }
+            // the wind arrow and bars: crisp, one soft drop shadow each (user: an outline all round smudged them)
+            var arrow = _windArrow.GetComponentInChildren<Image>(); if (arrow != null) arrow.color = bare ? Color.white : Theme.C(_t.dim);
+            if (_windShades.Count == 0)
+                foreach (var g in _bars.Cast<Image>().Append(arrow))
+                {
+                    if (g == null) continue;
+                    var c = Object.Instantiate(g.gameObject, g.transform.parent); c.name = g.name + "-shade";
+                    var ci = c.GetComponent<Image>(); ci.color = new Color(0f, 0f, 0f, 0.7f); ci.raycastTarget = false;
+                    var crt = (RectTransform)c.transform; crt.anchoredPosition = g.rectTransform.anchoredPosition + new Vector2(1f, -1f); c.transform.SetSiblingIndex(g.transform.GetSiblingIndex());
+                    _windShades.Add(c);
+                }
+            foreach (var c in _windShades) if (c != null) c.SetActive(bare);
         }
 
         internal void Tick(Player p)
@@ -119,7 +130,7 @@ namespace Jatify.UI
                 var wd = env.GetWindDir();
                 _windArrow.localEulerAngles = new Vector3(0f, 0f, -Quaternion.LookRotation(wd).eulerAngles.y);   // as Valheim's marker on this north-up map (user: ours pointed the other way)
                 int n = Mathf.Clamp(Mathf.CeilToInt(env.GetWindIntensity() * 5f), 0, 5);
-                if (n != _windN) { _windN = n; for (int i = 0; i < 5; i++) _bars[i].color = Theme.C(i < n ? _t.text : _t.mute); }
+                if (n != _windN || _panel != _windPanel) { _windN = n; _windPanel = _panel; for (int i = 0; i < 5; i++) _bars[i].color = _panel == 0 ? (i < n ? Color.white : new Color(0f, 0f, 0f, 0.4f)) : Theme.C(i < n ? _t.text : _t.mute); }   // no panel: lit white, the rest dark (user: read as a smudge)
             }
         }
 
