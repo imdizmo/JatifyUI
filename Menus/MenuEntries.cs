@@ -33,7 +33,7 @@ namespace Jatify.UI
             // What's new: white, tilted, pulsing; a click opens the notes
             var wn = Kit.Text(row, "WhatsNew", "What's new!", Fonts.Norse, 26f, Color.white); wn.alignment = TextAlignmentOptions.MidlineLeft; wn.raycastTarget = true;
             wn.fontSharedMaterial = Fonts.Shadowed(Fonts.Norse) ?? wn.fontSharedMaterial;
-            var wr = wn.rectTransform; wr.anchorMin = wr.anchorMax = new Vector2(0f, 0f); wr.pivot = new Vector2(0.5f, 0.5f); wr.sizeDelta = new Vector2(170f, 40f); wr.anchoredPosition = new Vector2(132f, 56f);   // just above the name, to its right, as a splash
+            var wr = wn.rectTransform; wr.anchorMin = wr.anchorMax = new Vector2(0f, 0f); wr.pivot = new Vector2(0.5f, 0.5f); wr.sizeDelta = new Vector2(170f, 40f); wr.anchoredPosition = new Vector2(70f, 58f);   // resting on the icon's top edge, a splash on it (user)
             wr.localEulerAngles = new Vector3(0f, 0f, 8f);
             wn.gameObject.AddComponent<Pulse>();
             { var h = wn.gameObject.AddComponent<HoverTint>(); h.Lit = accent; h.Parts = new Graphic[] { wn }; }
