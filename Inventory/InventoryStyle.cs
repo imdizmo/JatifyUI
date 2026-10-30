@@ -111,6 +111,8 @@ namespace Jatify.UI
             }
             _beltsLaid = -1;
             var (fb, _) = Kit.Box(_frame, "jatify-fold", Theme.C(t.raised), Theme.C(t.line2), 6); fb.raycastTarget = true; _fold = fb.rectTransform;
+            // its own canvas one up, as the trash: Valheim's drop-item area and the bag grid lie over this spot and took the click (user)
+            var fc = fb.gameObject.AddComponent<Canvas>(); fc.overrideSorting = true; fc.sortingOrder = (_frame.GetComponentInParent<Canvas>()?.rootCanvas.sortingOrder ?? 600) + 1; fb.gameObject.AddComponent<GraphicRaycaster>();
             _foldText = Kit.Text(_fold, "T", "", Fonts.Medium, 11.5f, Theme.C(t.dim)); _foldText.alignment = TMPro.TextAlignmentOptions.Center; _foldText.rectTransform.Fill();
             fb.gameObject.AddComponent<Button>().onClick.AddListener(() => { if (Cfg.BarsCollapsed != null) Cfg.BarsCollapsed.Value = !Cfg.BarsCollapsed.Value; });
             // the trash sits under the grid (design position); the item detail box beside it was removed (user)
@@ -425,19 +427,19 @@ namespace Jatify.UI
             if (BeltRows)
             {
                 _beltLine.At(285, BeltTop - 32f - 15f, 529, 1);
-                _fold?.At(285 + 529 - 84, BeltTop - 32f - 15f - 11f, 84, 22);   // on the line, its right end
+                _fold?.At(285, BeltTop - 32f - 15f - 11f, 84, 22);   // on the line, its left end (user)
                 for (int i = 0; i < _beltLabels.Count; i++) if (_beltLabels[i] != null) _beltLabels[i].At(285 + (i == 2 ? MeadsX : 0f), BeltTop - 32f + (i == 1 ? 0f : BeltLabel + Pitch) + 2f, 120, 14);   // labels: Food 0, Tools 1, Meads 2
             }
             else if (BeltBlocks)
             {
                 _beltLine.At(285, GridBottom + 16f - 32f, 529, 1);
-                _fold?.At(285 + 529 - 84, GridBottom + 16f - 32f - 11f, 84, 22);
+                _fold?.At(285, GridBottom + 16f - 32f - 11f, 84, 22);
                 for (int i = 0; i < _beltLabels.Count; i++) if (_beltLabels[i] != null) _beltLabels[i].At(285 + i * BlockStep, BlockTop - 20f - 32f, 127, 14);
             }
             else
             {
                 _beltLine.At(19, 479, 240, 1);
-                _fold?.At(19 + 240 - 84, 479 - 11f, 84, 22);
+                _fold?.At(19, 479 - 11f, 84, 22);
                 for (int i = 0; i < _beltLabels.Count; i++) if (_beltLabels[i] != null) _beltLabels[i].At(19 + i * 90, 494, 60, 14);
             }
         }

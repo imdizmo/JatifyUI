@@ -89,8 +89,10 @@ namespace Jatify.UI
         internal void OnClick()
         {
             var g = InventoryGui.instance; if (g == null) return;
-            var item = DragItem(g); if (item == null) return;
-            _inv = DragInv(g); _item = item; _amount = Mathf.Clamp(DragAmount(g), 1, item.m_stack);
+            var item = DragItem(g); var inv = DragInv(g); int amount = DragAmount(g);
+            if (item == null && _heldItem != null && _heldInv != null && _heldInv.ContainsItem(_heldItem)) { item = _heldItem; inv = _heldInv; amount = _heldAmount; }   // let go over the tile: Valheim may have dropped it from the cursor first
+            if (item == null) return;
+            _inv = inv; _item = item; _amount = Mathf.Clamp(amount, 1, item.m_stack);
             SetupDrag.Invoke(g, new object[] { null, null, 1 });                   // drop it from the cursor first
             _ask.text = $"Destroy {Localization.instance.Localize(item.m_shared.m_name)}{(_amount > 1 ? " ×" + _amount : "")}?";
             Ask();
@@ -139,13 +141,17 @@ namespace Jatify.UI
 
         // Valheim also moves items by holding the button and letting go over the target: letting go over the trash counts as
         // dropping on it (#15: only a full click on the tile did). A press on the tile itself is its Button's click.
-        private bool _downOnTile;
+        private bool _downOnTile; private ItemDrop.ItemData _heldItem; private Inventory _heldInv; private int _heldAmount;
         private void TickRelease()
         {
             if (_tile == null || !InventoryGui.IsVisible() || (_dialog && _dialog.gameObject.activeSelf)) return;
+            var g = InventoryGui.instance;
             if (ZInput.GetMouseButtonDown(0)) _downOnTile = Over();
+            if (g != null && DragItem(g) != null) { _heldItem = DragItem(g); _heldInv = DragInv(g); _heldAmount = DragAmount(g); }   // what was on the cursor last, for a release
+            else if (!ZInput.GetMouseButton(0) && !ZInput.GetMouseButtonUp(0)) _heldItem = null;
             if (!ZInput.GetMouseButtonUp(0) || _downOnTile || !Over()) return;
-            var g = InventoryGui.instance; if (g != null && DragItem(g) != null) OnClick();
+            if (g != null && (DragItem(g) != null || _heldItem != null)) OnClick();
+            _heldItem = null;
         }
         // the pointer is on the tile itself, not on something drawn over it (the event system's enter / exit, as for any button)
         private bool Over() => _tile.gameObject.activeInHierarchy && _hover != null && _hover.On;
