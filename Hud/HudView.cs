@@ -223,7 +223,9 @@ namespace Jatify.UI
                 _buffPool[i].Root.At(420 - Size - x, row * (Size + 24f), Size, Size + 19f);
                 x += Pitch;
             }
-            for (int i = 0; i < bad; i++) _buffPool[i].Root.At(420 - Size - i * Pitch, 260 - 24 - Size, Size, Size + 19f);
+            // debuffs on their own row level with the minimap's foot, or under the last buff row when the buffs run that far (user: they overlapped)
+            float dy = Mathf.Max(260 - 24 - Size, n > bad ? (row + 1) * (Size + 24f) : 0f);
+            for (int i = 0; i < bad; i++) _buffPool[i].Root.At(420 - Size - i * Pitch, dy, Size, Size + 19f);
         }
 
         // Ailments, as BuffMeDaddy (and the admin hammer) sort them: wet, cold, freezing, burning, poison, smoked...
