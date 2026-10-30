@@ -14,6 +14,9 @@ namespace Jatify.UI
     {
         internal const int Count = 3, Width = 6, Rows = Count + 1;   // + the hidden equipment row
         internal static int EqRow => Start + Count;
+        // Food and Meads keep 3 slots, Tools 6 (user): what sits further along those two rows is moved to the bag (ExtraRows.Rescue)
+        internal const int ShortWidth = 3;
+        internal static int RowWidth(int band) => band == 1 ? Width : ShortWidth;
         internal static readonly string[] Names = { "FOOD", "TOOLS", "MEADS" };
         internal static bool On => !SlotHost.Other;   // AzuEPI or ExtraSlots owns the grid: no rows of ours (it has its own equipment and quick-slot cells)
         internal static int Start => On ? ExtraRows.Base + ExtraRows.Extra.Value : Azu.NormalRows;   // first reserved row (AzuEPI: its first equipment row; the bag is above either way)
@@ -77,7 +80,7 @@ namespace Jatify.UI
             var p = Player.m_localPlayer;
             if (!On || Keys == null || p == null || InventoryGui.IsVisible() || Menu.IsVisible() || Chat.instance != null && Chat.instance.HasFocus() || Console.IsVisible() || TextInput.IsVisible() || Minimap.IsOpen()) return;
             for (int r = 0; r < Count; r++)
-                for (int i = 0; i < Width; i++)
+                for (int i = 0; i < RowWidth(r); i++)
                 {
                     var k = Keys[r, i].Value; if (!Pressed(k)) continue;
                     var it = p.GetInventory().GetItemAt(i, Start + r);
@@ -129,7 +132,7 @@ namespace Jatify.UI
             _blocked.Clear(); _latched.RemoveWhere(k => !ZInput.GetKey(k, false));
             var p = Player.m_localPlayer; if (p == null) { _latched.Clear(); return; }
             for (int r = 0; r < Count; r++)
-                for (int i = 0; i < Width; i++)
+                for (int i = 0; i < RowWidth(r); i++)
                 {
                     var k = Keys[r, i].Value; if (k.MainKey == KeyCode.None || _latched.Contains(k.MainKey) || !ZInput.GetKey(k.MainKey, false) || !Mods(k)) continue;
                     if ((k.Modifiers.Any() || p.GetInventory().GetItemAt(i, Start + r) != null) && _latched.Add(k.MainKey) && Dev.Build) Log.Info($"slot keys: {k} claims {k.MainKey}");
@@ -344,7 +347,7 @@ namespace Jatify.UI
             __result = false; return false;
         }
 
-        private static bool Fits(Inventory inv, int x, int y, ItemDrop.ItemData it) => !SpecialRows.Is(inv, y) || (x < SpecialRows.Width && SpecialRows.Accepts(y - SpecialRows.Start, it));
+        private static bool Fits(Inventory inv, int x, int y, ItemDrop.ItemData it) => !SpecialRows.Is(inv, y) || (x < SpecialRows.RowWidth(y - SpecialRows.Start) && SpecialRows.Accepts(y - SpecialRows.Start, it));
     }
 
     [HarmonyPatch(typeof(Inventory), nameof(Inventory.MoveItemToThis), typeof(Inventory), typeof(ItemDrop.ItemData), typeof(int), typeof(int), typeof(int))]
@@ -353,7 +356,7 @@ namespace Jatify.UI
         private static bool Prefix(Inventory __instance, ItemDrop.ItemData item, int x, int y, ref bool __result)
         {
             if (!SpecialRows.Is(__instance, y)) return true;
-            if (x < SpecialRows.Width && SpecialRows.Accepts(y - SpecialRows.Start, item)) return true;
+            if (x < SpecialRows.RowWidth(y - SpecialRows.Start) && SpecialRows.Accepts(y - SpecialRows.Start, item)) return true;
             __result = false; return false;                                  // not this row's kind: nothing moves
         }
     }

@@ -510,7 +510,7 @@ namespace Jatify.UI
             {
                 var d = CellDesign(e.Position.x, e.Position.y);   // vanilla put it at (x, -y) * pitch from the first cell
                 rt.anchoredPosition += new Vector2(d.x - e.Position.x * Pitch, -(d.y - e.Position.y * Pitch));
-                if (SpecialRows.On && (e.Position.y == SpecialRows.EqRow || (e.Position.y >= SpecialRows.Start && e.Position.x >= SpecialRows.Width))) e.gameObject.SetActive(false); // reserved rows are 6 wide; the worn-armour row is hidden (AzuEPI's cells: never hidden here)
+                if (SpecialRows.On && (e.Position.y == SpecialRows.EqRow || (e.Position.y >= SpecialRows.Start && e.Position.y < SpecialRows.EqRow && e.Position.x >= SpecialRows.RowWidth(e.Position.y - SpecialRows.Start)))) e.gameObject.SetActive(false); // reserved rows are 6 wide; the worn-armour row is hidden (AzuEPI's cells: never hidden here)
             }
             rt.sizeDelta = new Vector2(Slot, Slot);
             var bg = e.GetComponent<Image>();

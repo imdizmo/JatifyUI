@@ -116,13 +116,22 @@ namespace Jatify.UI
             {
                 int band = it.m_gridPos.y - SpecialRows.Start;
                 bool inGrid = it.m_gridPos.x < w && it.m_gridPos.y < h && it.m_gridPos.x >= 0 && it.m_gridPos.y >= 0;
-                bool wrongBand = inGrid && band >= 0 && band < SpecialRows.Count && !SpecialRows.Accepts(band, it);   // left there by an older layout
+                bool wrongBand = inGrid && band >= 0 && band < SpecialRows.Count && (!SpecialRows.Accepts(band, it) || it.m_gridPos.x >= SpecialRows.RowWidth(band));   // left there by an older layout (6 food / mead slots before)
                 if (inGrid && !wrongBand) continue;
                 Vector2i cell = new Vector2i(-1, -1);
-                for (int y = 0; y < SpecialRows.Start && cell.x < 0; y++)
+                for (int k = 1; k <= SpecialRows.Start && cell.x < 0; k++)
+                {   // the bag rows first, the 1-8 bar last (it was getting the food from a closed slot)
+                    int y = k % SpecialRows.Start;
                     for (int x = 0; x < w && cell.x < 0; x++) if (inv.GetItemAt(x, y) == null && !InvActions.Locked(x, y)) cell = new Vector2i(x, y);
+                }
                 for (int b = 0; b < SpecialRows.Count && cell.x < 0; b++)
-                    for (int x = 0; x < SpecialRows.Width && cell.x < 0; x++) if (inv.GetItemAt(x, SpecialRows.Start + b) == null && SpecialRows.Accepts(b, it)) cell = new Vector2i(x, SpecialRows.Start + b);
+                    for (int x = 0; x < SpecialRows.RowWidth(b) && cell.x < 0; x++) if (inv.GetItemAt(x, SpecialRows.Start + b) == null && SpecialRows.Accepts(b, it)) cell = new Vector2i(x, SpecialRows.Start + b);
+                if (cell.x < 0 && wrongBand && band != 1 && it.m_gridPos.x >= SpecialRows.RowWidth(band) && Player.m_localPlayer is Player me && inv == me.GetInventory())
+                {   // a food / mead slot that closed, the bag full: on the ground at your feet (user), never kept out of sight
+                    Log.Info($"extra rows: {it.m_shared.m_name} x{it.m_stack} from a closed {(band == 0 ? "food" : "mead")} slot, bag full: dropped");
+                    if (me.DropItem(inv, it, it.m_stack)) n++;
+                    continue;
+                }
                 if (cell.x < 0) { if (!inGrid) Log.Warn($"extra rows: no room for {it.m_shared.m_name} outside the grid; it stays in the inventory list"); continue; }   // misplaced but visible: waits for room
                 it.m_gridPos = cell; n++;
             }
