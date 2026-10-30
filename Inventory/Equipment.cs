@@ -242,7 +242,7 @@ namespace Jatify.UI
         private readonly List<RectTransform> _modCells = new List<RectTransform>();
         internal RectTransform ModCell(int i)
         {
-            if (_page != 3) return null;
+            if (_page != 3 || !_root.gameObject.activeInHierarchy) return null;   // the column folded: they hide with it
             if (_mods == null) _mods = Kit.Node(_root, "ModSlots").At(0, 49, 240, 371);
             while (_modCells.Count <= i) { int n = _modCells.Count; _modCells.Add(Kit.Node(_mods, "Mod" + n).At(n % EsPerRow * EsPitch, 8 + n / EsPerRow * (EsPitch + 6), EsSize, EsSize)); }
             return _modCells[i];

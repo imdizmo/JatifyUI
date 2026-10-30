@@ -115,13 +115,10 @@ namespace Jatify.UI
             // the folds as tabs like the trash (user): the bars' under the trash on the right edge, the gear's off the left edge level
             // with the action bar
             _fold = EdgeTab("jatify-bars-tab", false, "Icon_Radial_WeaponsTools", "Tools, food and meads", "Shows or hides the Tools, Food and Meads rows. They keep working from the HUD.", () => { if (Cfg.BarsCollapsed != null) Cfg.BarsCollapsed.Value = !Cfg.BarsCollapsed.Value; }, t, g, down: true);
-            // other mods' slots: a tab under the gear's opening their own page of the column (user), shown when a mod adds any
-            _modsTab = EdgeTab("jatify-mods-tab", true, "box", "Mod slots", "Slots other mods add: backpacks, jewellery, tomes, lanterns...", () =>
-            {
-                if (_eq == null) return;
-                if (Narrow) { Cfg.GearCollapsed.Value = false; _eq.OnMods = true; } else _eq.OnMods = !_eq.OnMods;
-            }, t, g);
-            _gearTab = EdgeTab("jatify-gear-tab", true, "host_helmet_icon", "Character", "Shows or hides the character, gear, skills and stats column.", () => { if (Cfg.GearCollapsed != null) Cfg.GearCollapsed.Value = !Cfg.GearCollapsed.Value; }, t, g);
+            // the column's two tabs work as a switch (user): the open one's tab closes the column, the other's switches to it.
+            // Mod slots (other mods' slots on a page of their own) shows only when a mod adds any
+            _modsTab = EdgeTab("jatify-mods-tab", true, "box", "Mod slots", "Shows other mods' slots: backpacks, jewellery, tomes, lanterns...", () => Column(true), t, g);
+            _gearTab = EdgeTab("jatify-gear-tab", true, "host_helmet_icon", "Character", "Shows or hides the character, gear, skills and stats column.", () => Column(false), t, g);
             // the trash sits under the grid (design position); the item detail box beside it was removed (user)
             StyleInfo(g.m_info, t);
             _trash = new Trash(_frame, t);
@@ -322,7 +319,6 @@ namespace Jatify.UI
             foreach (var name in new[] { "jatify-equipment", "jatify-stats" }) { var c = _frame.Find(name); if (c != null) c.gameObject.SetActive(!n); }
             if (_panel != null) { _panel.offsetMin = new Vector2(Lx, 0f); _panel.offsetMax = Vector2.zero; }
             _head?.At(Lx, 0, 850 - Lx, 52); _headLine?.At(Lx, 52, 850 - Lx, 1);
-            Tint(_gearTab, n);
             float x = 105f;
             foreach (var (rt, tx, w) in _acts)
             {
@@ -331,7 +327,13 @@ namespace Jatify.UI
             }
             _beltsLaid = -1;
         }
-        private static RectTransform _fold, _keyTab, _gearTab, _modsTab; private static int _modsLit = -1; private static TMPro.TextMeshProUGUI _foldText;
+        private static RectTransform _fold, _keyTab, _gearTab, _modsTab; private static int _colLit = -1;
+        private static void Column(bool mods)
+        {
+            if (_eq == null || Cfg.GearCollapsed == null) return;
+            if (!Narrow && _eq.OnMods == mods) { Cfg.GearCollapsed.Value = true; return; }   // its page is open: close the column
+            _eq.OnMods = mods; Cfg.GearCollapsed.Value = false;
+        } private static TMPro.TextMeshProUGUI _foldText;
         // a tab off the panel's edge: square where it meets the panel (its box runs 12 px back under a clip), rounded outside, one icon;
         // on its own layer so the bag grid and Valheim's drop area under it don't take the click
         private static RectTransform EdgeTab(string name, bool left, string icon, string topic, string text, System.Action click, ThemeData t, InventoryGui g, bool down = false)
@@ -350,7 +352,7 @@ namespace Jatify.UI
             return tab;
         }
         private static void Tint(RectTransform tab, bool folded)
-        {   // folded: lit, so you can see something is put away
+        {   // lit: the bars folded away, or the column page this tab opens is showing
             var ic = tab != null ? tab.GetComponentsInChildren<Image>(true).FirstOrDefault(i => i.name == "Icon") : null; if (ic == null) return;
             ic.color = folded ? Color.white : new Color(1f, 1f, 1f, 0.75f);   // the sprites keep their colours: folded is full strength
             var line = tab.GetComponentsInChildren<Image>(true).FirstOrDefault(i => i.name == "Tab"); if (line != null) line.color = folded ? Theme.C(Plugin.Instance.ThemeData.accent) : Theme.C(Plugin.Instance.ThemeData.line2);   // and the tab's outline in the accent
@@ -366,7 +368,7 @@ namespace Jatify.UI
         // the left column's end: the Stats tab's card, or the character / skills page (with other mods' slots under it); nothing folded
         private const float StatsTabTop = 67f + 44f + 32f;
         private static float LeftBottom => Narrow ? 0f : _eq != null && _eq.OnStats ? StatsTabTop + StatsH : 67f + 420f + 32f + Equipment.ExtraRowsBelow(_azuExtras.Count) + EsBelow;
-        private static float PanelBottom => Folded ? Mathf.Max(TrashTop + 60f, LeftBottom)
+        private static float PanelBottom => Folded ? Mathf.Max(GridBottom, LeftBottom)   // folded: the panel ends under the bag (the trash is an edge tab now)
             : BeltRows ? Mathf.Max(BeltTop + BeltH - 7f, LeftBottom)
             : BeltBlocks ? Mathf.Max(BlocksBottom, LeftBottom) : Mathf.Max(943f, TrashTop + 60f);
         private static StatsCard _stats;
@@ -608,7 +610,8 @@ namespace Jatify.UI
             {
                 bool on = Equipment.ModsCount > 0; if (_modsTab.gameObject.activeSelf != on) _modsTab.gameObject.SetActive(on);
                 _modsTab.At(Lx - 52f + 1f, 123f - 32f + 66f, 52, 60);
-                int lit = !Narrow && _eq != null && _eq.OnMods ? 1 : 0; if (lit != _modsLit) { _modsLit = lit; Tint(_modsTab, lit == 1); }   // lit while its page shows
+                int lit = Narrow || _eq == null ? 0 : _eq.OnMods ? 2 : 1;   // the tab whose page shows is lit
+                if (lit != _colLit) { _colLit = lit; Tint(_gearTab, lit == 1); Tint(_modsTab, lit == 2); }
             }
             int key = SpecialRows.Start * 4 + (Folded ? 1 : 0) + (Narrow ? 2 : 0) + Mathf.RoundToInt(EsBelow) * 1000 + (UnderBag ? 1 << 24 : 0);   // ExtraSlots adding a row under the doll moves the strip
             if (_beltLine == null || _beltsLaid == key) return;
@@ -622,10 +625,10 @@ namespace Jatify.UI
             _keyTab?.At(850f - 1f, lastRow - 66f, 52, 60);   // the key pouch's tab right above the trash
             _gearTab?.At(Lx - 52f + 1f, 123f - 32f, 52, 60); // the gear's fold off the left edge, level with the action bar
             var pop = _frame.Find("KeyPouch") as RectTransform; if (pop != null) pop.At(850f - 208f - 10f, Mathf.Max(60f, lastRow - 66f - 140f), 208, 200);   // a lip on the panel's right edge, beside the bag's last row, however many rows (user)
+            bool lineOn = !Folded && !(BeltRows && UnderBag); if (_beltLine.gameObject.activeSelf != lineOn) _beltLine.gameObject.SetActive(lineOn);   // folded, or under the bag: no divider
             if (BeltRows)
             {
                 if (Strip) _beltLine.At(19, BeltTop - 32f - 15f, 795, 1); else _beltLine.At(285, BeltTop - 32f - 15f, 529, 1);
-                if (_beltLine.gameObject.activeSelf == UnderBag) _beltLine.gameObject.SetActive(!UnderBag);   // under the bag it needs no divider
                 ReplaceBelt();
 
                 for (int i = 0; i < _beltLabels.Count; i++) if (_beltLabels[i] != null)
@@ -898,7 +901,7 @@ namespace Jatify.UI
             ChestPanel.Restore();
             _eq?.Destroy(); _eq = null; _tabs.Clear(); _tabOn = null; _badge = null; _badgeShown = -1;
             _trash?.Destroy(); _trash = null; _stats?.Destroy(); _stats = null;
-            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _gearTab = null; _modsTab = null; _modsLit = -1; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _narrowLaid = -1; _acts.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
+            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _gearTab = null; _modsTab = null; _colLit = -1; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _narrowLaid = -1; _acts.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
         }
     }
 
