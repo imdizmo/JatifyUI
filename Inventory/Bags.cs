@@ -30,7 +30,7 @@ namespace Jatify.UI
             if (_bp != null && it.m_customData.Keys.Any(k => k.StartsWith("org.bepinex.plugins.backpacks#"))) return Kind.Backpacks;
             var n = it.m_dropPrefab != null ? it.m_dropPrefab.name : "";
             if (_bp != null && n.StartsWith("bp_")) return Kind.Backpacks;
-            if (_ab != null && (n.StartsWith("Backpack") || n.EndsWith("Backpack"))) return Kind.Adventure;
+            if (_ab != null && AbCall("IsBackpack", it) is bool ab && ab) return Kind.Adventure;   // its own check (Judes' "Simple backpack" shares the name pattern)
             return Kind.None;
         }
 
@@ -38,9 +38,22 @@ namespace Jatify.UI
         internal static List<ItemDrop.ItemData> Worn(Player p, List<ItemDrop.ItemData> into)
         {
             into.Clear(); if (p == null || !Any) return into;
-            foreach (var it in p.GetInventory().GetAllItems()) if (p.IsItemEquiped(it) && KindOf(it) != Kind.None) into.Add(it);
+            ItemDrop.ItemData abWorn = null;   // AdventureBackpacks: "exactly one backpack may ever be equipped"; with two worn (ExtraSlots' slots) it opens only that one
+            if (_ab != null && AbCall("GetEquippedBackpack", p) is object bp && bp != null) abWorn = AccessTools.Field(bp.GetType(), "ItemData")?.GetValue(bp) as ItemDrop.ItemData;
+            foreach (var it in p.GetInventory().GetAllItems())
+            {
+                if (!p.IsItemEquiped(it)) continue; var k = KindOf(it);
+                if (k == Kind.None || k == Kind.Adventure && it != abWorn) continue;
+                into.Add(it);
+            }
             into.Sort((a, b) => KindOf(a).CompareTo(KindOf(b)));
             return into;
+        }
+
+        private static object AbCall(string name, object arg)
+        {
+            try { var api = _ab.GetType("AdventureBackpacks.API.ABAPI"); var m = api != null ? AccessTools.Method(api, name, new[] { arg.GetType() == typeof(Player) ? typeof(Player) : typeof(ItemDrop.ItemData) }) : null; return m?.Invoke(null, new[] { arg }); }
+            catch (Exception e) { Warn(name, e); return null; }
         }
 
         // what it holds (null when not known)
