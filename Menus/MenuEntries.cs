@@ -16,6 +16,7 @@ namespace Jatify.UI
             var settings = entries?.Find("Settings");
             if (settings == null) return;
             int i = settings.GetSiblingIndex();
+            Clone(settings, "What's new", i + 1, l, () => { if (!WhatsNew.Open) WhatsNew.Show(false); });   // the update notes again, any time (user)
             Clone(settings, "Jatify UI", i + 1, l, () => ConfigPage.Show(Root.Canvas.transform, t, false));
             Clone(settings, "Mods", i + 1, l, () => ConfigPage.Show(Root.Canvas.transform, t, true));
         }

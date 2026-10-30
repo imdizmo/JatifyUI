@@ -19,13 +19,13 @@ namespace Jatify.UI
         {
             JatifyCursor = c.Bind("HUD", "JatifyCursor", true, "The Jatify mouse cursor instead of the system one.");
             CursorSize = c.Bind("HUD", "CursorSize", 96, new ConfigDescription("Cursor size in pixels.", new AcceptableValueList<int>(32, 48, 64, 96)));
-            FoodAsBuffs = c.Bind("HUD", "FoodTimersAsBuffs", true, "Eaten food's time left with the buffs by the minimap; off: in a row of its own over the tools bar, bottom left (#31).");
-            BuffFrames = c.Bind("HUD", "BuffFrames", false, "A framed panel behind each buff and food timer; off (the default, user): Valheim's bare icons.");
-            MinimapPanel = c.Bind("HUD", "MinimapPanel", false, "The glass panel behind the minimap and its lines; off (the default, user): the map and its text stand on their own.");
+            FoodAsBuffs = c.Bind("HUD", "FoodTimersAsBuffs", true, "Eaten food's time left with the buffs by the minimap; off: in a row of its own above the health bar.");
+            BuffFrames = c.Bind("HUD", "BuffFrames", false, "A framed panel behind each buff and food timer; off (the default): Valheim's plain icons.");
+            MinimapPanel = c.Bind("HUD", "MinimapPanel", false, "The glass panel behind the minimap and its lines; off (the default): the map and its text stand on their own.");
             CompassMinimal = c.Bind("HUD", "CompassMinimal", false, "The Minimal look's compass: one faint line and the letters, no band or ticks.");
-            PowerPanel = c.Bind("HUD", "PowerPanel", false, "The round glass panel behind the guardian power's icon; off (the default, user): the icon alone.");
+            PowerPanel = c.Bind("HUD", "PowerPanel", false, "The round glass panel behind the guardian power's icon; off (the default): the icon alone.");
             Hints = c.Bind("HUD", "KeyHints", true, "The key hints across the UI: the HUD corners, the inventory and chest key bars, the build menu's and the map's foot rows.");
-            SlotBackdrops = c.Bind("HUD", "ActionBarPanels", false, "The glass panel behind the 1-8 bar, the tools bar and the food and mead columns; off (the default, user): the slots stand on their own.");
+            SlotBackdrops = c.Bind("HUD", "ActionBarPanels", false, "The glass panel behind the 1-8 bar, the tools bar and the food and meads bar; off (the default): the slots stand on their own.");
             Tracker = c.Bind("HUD", "AchievementTracker", true, "Tracked achievements in the top left corner.");
             TrackerCollapsed = c.Bind("HUD", "TrackerCollapsed", false, "The tracker shows only its header (Y or a click on the header).");
             Banners = c.Bind("HUD", "AchievementBanners", true, "The banner under the compass when you earn an achievement.");
@@ -49,8 +49,8 @@ namespace Jatify.UI
             UnlockNotices = c.Bind("HUD", "UnlockNotices", Unlock.Grouped, "New recipes, pieces and materials: Grouped folds a burst into one card after the first two, Every shows a card each, Off shows none. The New Recipes page keeps them all.");
             PinRange = c.Bind("Compass", "PinRange", 400, new ConfigDescription("How far away a pin may be to show on the compass, in metres.", new AcceptableValueRange<int>(50, 2000)));
             StackRange = c.Bind("Inventory", "ChestRange", 10, new ConfigDescription("How far To chests and Restock reach, in metres.", new AcceptableValueRange<int>(3, 30)));
-            GearCollapsed = c.Bind("Inventory", "GearCollapsed", false, "The left column (character, gear, stats, resistances, effects) folded away and the inventory panel narrower (the button in its header).");
-            BarsCollapsed = c.Bind("Inventory", "BarsCollapsed", false, "The Tools, Food and Meads rows folded away in the inventory (the button on their line); they still work from the HUD.");
+            GearCollapsed = c.Bind("Inventory", "GearCollapsed", false, "The left column (character, gear, stats, resistances, effects) folded away and the inventory panel narrower (the helmet tab on the panel's left edge).");
+            BarsCollapsed = c.Bind("Inventory", "BarsCollapsed", false, "The Tools, Food and Meads rows folded away in the inventory (the axe and sword tab under the panel); they still work from the HUD.");
             CharacterView = c.Bind("Inventory", "CharacterView", true, "Your character, rendered in the equipment column.");
             CharacterIdle = c.Bind("Inventory", "CharacterIdle", true, "The character in the equipment column breathes and idles; off: a still pose.");
             ConfirmDelete = c.Bind("Inventory", "ConfirmDelete", true, "Ask before the trash or the Delete key destroys an item. Turned off by 'Don't ask again' in that prompt.");

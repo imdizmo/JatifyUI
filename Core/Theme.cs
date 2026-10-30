@@ -28,7 +28,7 @@ namespace Jatify.UI
         public float radius = 12f;              // panel corner radius, px at 1080p
         public float uiScale = 1f;              // on top of the 1080p reference scaling
         public float textSize = 15f;
-        public bool devBadge = true;
+        public bool devBadge = false;   // the dev build's "load #N" pill (user: off; theme.json devBadge true brings it back)
     }
 
     internal sealed class Theme : IDisposable

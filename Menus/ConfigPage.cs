@@ -43,6 +43,10 @@ namespace Jatify.UI
                 _title = fs.m_mainMenu; _title.SetActive(false);
                 var dim = Kit.Img(_root, "Dim", null, new Color(0.02f, 0.02f, 0.024f, 0.6f)); dim.rectTransform.Fill(); dim.raycastTarget = true;
             }
+            else if (Player.m_localPlayer != null && !Menu.IsVisible())
+            {   // opened from the inventory's gear in the world (no pause menu darkening it): a dim, or the rows sat unreadable on bright snow
+                var dim = Kit.Img(_root, "Dim", null, new Color(0.02f, 0.02f, 0.024f, 0.86f)); dim.rectTransform.Fill(); dim.raycastTarget = true; dim.transform.SetAsFirstSibling();
+            }
             // a submenu cascading right of the pause menu, in its style (user): no panel, the menu stays visible and clickable
             var head = Kit.Text(_root, "Head", (mods ? "Mods" : "Jatify UI").ToUpperInvariant(), Fonts.Mono, 12f, Theme.C(t.mute)); head.characterSpacing = 8f; head.rectTransform.At(420, 300, 260, 18);
             // the navigation scrolls: with many mods it ran off the screen (#21). Its view starts left of it, so the selection mark isn't clipped.
@@ -66,6 +70,7 @@ namespace Jatify.UI
 
         internal static void Show(Transform canvas, ThemeData t, bool mods) { Open?.Close(); PlayersPage.Close(); if (Settings.instance != null) Settings.instance.OnBack(); Open = new ConfigPage(canvas, t, mods); }
 
+        internal void DevSection(string name) { _sel = name; BuildNav(); }   // dev: open a section (What's new screenshots)
         private GameObject _title;
         internal void Close()
         {
@@ -145,7 +150,8 @@ namespace Jatify.UI
             var label = Kit.Text(_content, "Label", Nice(e.Definition.Key), Fonts.Medium, 16f, Color.white); label.rectTransform.At(0, y + 6, 470, 22);
             if (desc.Length > 0)
             {   // wraps beside the editor (sliders start at 470), the row grows with it
-                var d = Kit.Text(_content, "Desc", desc, Fonts.Medium, 12.5f, Theme.C(_t.mute)); d.textWrappingMode = TextWrappingModes.Normal;
+                var d = Kit.Text(_content, "Desc", desc, Fonts.Medium, 12.5f, Theme.C(_t.dim)); d.textWrappingMode = TextWrappingModes.Normal;
+                var em = Fonts.Edged(Fonts.Medium); if (em != null) d.fontSharedMaterial = em;   // a dark edge: the page has no panel, and mute grey vanished over snow (user)
                 float dh = Mathf.Ceil(d.GetPreferredValues(desc, 440f, 0f).y);
                 d.rectTransform.At(0, y + 28, 440, dh); h = 28f + dh + 12f;
             }
@@ -292,7 +298,7 @@ namespace Jatify.UI
         private static bool Prefix()
         {
             if (SmelterCard.Open && ZInput.GetKeyDown(KeyCode.Escape)) { SmelterCard.Close(); return false; }
-            if (WhatsNew.Open) return false;   // read to the end first: Esc doesn't close it, nor open the menu over it   // Esc closes the card, not opens the menu
+            if (WhatsNew.Open) { if (!WhatsNew.MustRead && (ZInput.GetKeyDown(KeyCode.Escape) || ZInput.GetButtonDown("JoyButtonB"))) WhatsNew.Close(); return false; }   // read to the end first; then (or from the menu) Esc closes it, without opening the menu over it   // Esc closes the card, not opens the menu
             var page = ConfigPage.Open; if (page == null && !PlayersPage.Open) return true;
             if (!ZInput.GetKeyDown(KeyCode.Escape) && !ZInput.GetButtonDown("JoyButtonB")) return true;
             if (page != null) page.Escape(); else PlayersPage.Close();
