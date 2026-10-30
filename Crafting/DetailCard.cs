@@ -59,6 +59,12 @@ namespace Jatify.UI
             _root = Kit.Node(_view, "Content");
             _root.anchorMin = new Vector2(0f, 1f); _root.anchorMax = new Vector2(1f, 1f); _root.pivot = new Vector2(0.5f, 1f); _root.anchoredPosition = Vector2.zero;
             var sr = _view.gameObject.AddComponent<ScrollRect>(); sr.content = _root; sr.horizontal = false; sr.scrollSensitivity = Kit.ScrollSpeed; sr.movementType = ScrollRect.MovementType.Clamped;
+            // the recipe list's thin thumb (#35), only when the card is taller than its room: the kinds row (#38) leaves less of it,
+            // and the last stats sat cut off under REQUIRES with nothing saying the card scrolls (user)
+            var bar = Kit.Node(_view, "Bar"); bar.anchorMin = new Vector2(1f, 0f); bar.anchorMax = Vector2.one; bar.pivot = new Vector2(1f, 0.5f); bar.sizeDelta = new Vector2(4f, -8f); bar.anchoredPosition = new Vector2(-2f, 0f);
+            var thumb = Kit.Panel(bar, "Handle", Theme.C(t.line2), 2); thumb.rectTransform.Fill();
+            var sb = bar.gameObject.AddComponent<Scrollbar>(); sb.direction = Scrollbar.Direction.BottomToTop; sb.handleRect = thumb.rectTransform; sb.targetGraphic = thumb;
+            sr.verticalScrollbar = sb; sr.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
             var req = _reqLabel = Kit.Text(desc, "jatify-requires", "REQUIRES", Fonts.Mono, 12.5f, Theme.C(t.mute));   // crafting text: +2 px (user) l.Own(req); req.characterSpacing = 8f;
             req.rectTransform.anchorMin = req.rectTransform.anchorMax = req.rectTransform.pivot = new Vector2(0f, 0f); req.rectTransform.anchoredPosition = new Vector2(14f, 244f); req.rectTransform.sizeDelta = new Vector2(200f, 16f);
             l.Rect(desc.Find("requirements") as RectTransform, r => r.localScale = Vector3.zero);   // replaced by our chips
@@ -279,6 +285,12 @@ namespace Jatify.UI
                 string main = p > 0 ? value.Substring(0, p) : value, extra = p > 0 ? value.Substring(p + 1) : "";
                 var v = Kit.Text(_root, "V", extra.Length > 0 ? $"{main} <size=13><color=#{ColorUtility.ToHtmlStringRGB(Theme.C(_t.mute))}>{extra}</color></size>" : main, Fonts.Mono, 15f, Color.white);
                 v.richText = true; v.alignment = TextAlignmentOptions.MidlineRight; v.rectTransform.At(168, y, 200, 22);
+                if (v.GetPreferredValues(v.text).x > 200f)
+                {   // a sentence, not a number (a trinket's effect): under its label, wrapped across the card, instead of running out left (user)
+                    v.font = Fonts.Medium; v.fontSize = 14f; v.color = Theme.C(_t.text); v.alignment = TextAlignmentOptions.TopLeft; v.textWrappingMode = TextWrappingModes.Normal;
+                    float h = v.GetPreferredValues(v.text, 350f, 0f).y; v.rectTransform.At(18, y + 22, 350, h);
+                    y += h + 2f;
+                }
                 var sep = Kit.Img(_root, "Line", null, new Color(1f, 1f, 1f, 0.05f)); sep.rectTransform.At(18, y + 23, 350, 1);
                 y += 26f;
             }
