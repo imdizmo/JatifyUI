@@ -73,8 +73,8 @@ namespace Jatify.UI
             // food and meads: stacked labelled columns on the right edge from y 290
             var side = _side = Kit.Node(_root, "Sidebars");
             side.anchorMin = side.anchorMax = side.pivot = new Vector2(1f, 1f); side.anchoredPosition = new Vector2(-28f, -290f); side.sizeDelta = new Vector2(58f, 700f);
-            Column(side, "FOOD", 0f, _food, null, t);
-            Column(side, "MEADS", 342f, _meads, null, t);   // key labels: KeyLabels, from the settings
+            _barPanels[2] = Column(side, "FOOD", 0f, _food, null, t);
+            _barPanels[3] = Column(side, "MEADS", 342f, _meads, null, t);   // key labels: KeyLabels, from the settings
             // guardian power: 52 px circle, 18 px right of the hotbar, 8 px up from its bottom
             _power = Kit.Node(dock, "Power").At(534 + 18, 168 - 8 - 52, 52, 52);
             Kit.Img(_power, "Line", Kit.Circle(), C(t.glassLine), false).rectTransform.Fill();
@@ -108,7 +108,7 @@ namespace Jatify.UI
         }
 
         // ActionBarPanels (user): the glass panel behind each bar on or off, the slots unchanged; read every tick so a change shows at once
-        private readonly (Image line, Image fill)[] _barPanels = new (Image, Image)[2];
+        private readonly (Image line, Image fill)[] _barPanels = new (Image, Image)[4];   // 1-8, tools, food, meads
         private bool _panelsShown = true;
         private void TickBarPanels()
         {
@@ -348,11 +348,12 @@ namespace Jatify.UI
             return rt;
         }
 
-        private static void Column(RectTransform side, string label, float y, Slot[] slots, string[] keys, ThemeData t)
+        private static (Image, Image) Column(RectTransform side, string label, float y, Slot[] slots, string[] keys, ThemeData t)
         {
             var l = Kit.Text(side, label, label, Fonts.Mono, 10f, C(t.dim)); l.characterSpacing = 8f; l.alignment = TextAlignmentOptions.Center; l.rectTransform.At(-20, y, 98, 14);
-            var (g, _) = Kit.Box(side, label + "Group", C(t.glass), C(t.glassLine), 12); g.rectTransform.At(0, y + 18, 58, 318);
+            var (g, gf) = Kit.Box(side, label + "Group", C(t.glass), C(t.glassLine), 12); g.rectTransform.At(0, y + 18, 58, 318);
             for (int i = 0; i < slots.Length; i++) slots[i] = new Slot(g.transform, keys != null && i < keys.Length ? keys[i] : "", 6, 6 + i * 52, 46f, t).Cap(2);
+            return (g, gf);
         }
 
         // the slot keys as set (SpecialRows.Keys: food, tools, meads), once a second so a rebind shows without a reload

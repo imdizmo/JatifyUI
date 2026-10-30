@@ -20,7 +20,7 @@ namespace Jatify.UI
             JatifyCursor = c.Bind("HUD", "JatifyCursor", true, "The Jatify mouse cursor instead of the system one.");
             CursorSize = c.Bind("HUD", "CursorSize", 96, new ConfigDescription("Cursor size in pixels.", new AcceptableValueList<int>(32, 48, 64, 96)));
             FoodAsBuffs = c.Bind("HUD", "FoodTimersAsBuffs", true, "Eaten food's time left with the buffs by the minimap; off: in a row of its own over the tools bar, bottom left (#31).");
-            SlotBackdrops = c.Bind("HUD", "ActionBarPanels", true, "The glass panel behind the 1-8 bar and the tools bar; off: the slots stand on their own.");
+            SlotBackdrops = c.Bind("HUD", "ActionBarPanels", false, "The glass panel behind the 1-8 bar, the tools bar and the food and mead columns; off (the default, user): the slots stand on their own.");
             Tracker = c.Bind("HUD", "AchievementTracker", true, "Tracked achievements in the top left corner.");
             TrackerCollapsed = c.Bind("HUD", "TrackerCollapsed", false, "The tracker shows only its header (Y or a click on the header).");
             Banners = c.Bind("HUD", "AchievementBanners", true, "The banner under the compass when you earn an achievement.");
