@@ -25,8 +25,7 @@ namespace Jatify.UI
         {
             _t = t;
             _root = Kit.Node(frame, "jatify-stats");
-            var line = Kit.Img(_root, "Line", null, Theme.C(t.glassLine)); line.rectTransform.At(0, 0, 240, 1);
-            Knots.Divider(line, true, Theme.C(t.accent));   // the inventory's dividers carry the shield knot
+            // no line or knot over it: on its own tab it sits right under the tabs (user)
             var l = Kit.Text(_root, "Label", "STATS", Fonts.Mono, 11f, Theme.C(t.mute)); l.characterSpacing = 8f; l.rectTransform.At(0, 15, 240, 14);
             // two columns of "Label  value" lines
             _left = Kit.Text(_root, "Left", "", Fonts.Medium, 12.5f, Theme.C(t.dim)); _left.richText = true; _left.lineSpacing = 18f; _left.rectTransform.At(0, 36, 116, 90);

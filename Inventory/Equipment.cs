@@ -30,21 +30,24 @@ namespace Jatify.UI
             return null;
         }
         internal float Block;                                  // for the stats card
-        internal bool OnSkills => _onSkills;
+        internal bool OnSkills => _page == 1;
+        internal bool OnStats => _page == 2;   // stats, resistances and effects on a tab of their own (user), the panel shorter for it
         private readonly RectTransform _root, _doll;
         private readonly SkillsList _skills;
-        private bool _onSkills;
+        private int _page; private bool _onSkills => _page == 1;
         internal static bool ForceSkills; // dev
-        private Image _tabChar, _tabSkills, _tabCharI, _tabSkillsI; private TextMeshProUGUI _tabCharT, _tabSkillsT;
+        private Image _tabChar, _tabSkills, _tabCharI, _tabSkillsI, _tabStats, _tabStatsI; private TextMeshProUGUI _tabCharT, _tabSkillsT, _tabStatsT; private RectTransform _pvp;
         private readonly ThemeData _t;
 
         private void Tabs(ThemeData t)
         {
             var line = Kit.Img(_root, "TabLine", null, Theme.C(t.glassLine)); line.rectTransform.At(0, 34, 240, 1);
-            (_tabChar, _tabCharT, _tabCharI) = Tab("Character", "host_helmet_icon", 0, 105, () => _onSkills = false, t);
-            (_tabSkills, _tabSkillsT, _tabSkillsI) = Tab("Skills", "walknut_bw", 109, 71, () => _onSkills = true, t);
-            // PvP at the end of the row (design): Valheim's pvp icon and a mini switch; flips vanilla's toggle, which applies it
-            var pvp = Kit.Node(_root, "PvP").At(187, 0, 53, 34);
+            (_tabChar, _tabCharT, _tabCharI) = Tab("Character", "host_helmet_icon", 0, 96, () => _page = 0, t);
+            (_tabSkills, _tabSkillsT, _tabSkillsI) = Tab("Skills", "walknut_bw", 98, 68, () => _page = 1, t);
+            (_tabStats, _tabStatsT, _tabStatsI) = Tab("Stats", "tab-book", 168, 68, () => _page = 2, t);
+            // PvP: Valheim's pvp icon and a mini switch; flips vanilla's toggle, which applies it. It sits in the top panel, left of the
+            // settings button (user; MovePvp), once that panel is built
+            var pvp = _pvp = Kit.Node(_root, "PvP").At(187, 50, 53, 34);
             _pvpIcon = Kit.Img(pvp, "Icon", Kit.Icon("pvp_off"), Color.white, false); _pvpIcon.rectTransform.At(2, 8, 18, 18); _pvpIcon.preserveAspect = true;
             var (sw, swf) = Kit.Box(pvp, "Switch", Theme.C(t.raised2), Theme.C(t.line2), 7); sw.rectTransform.At(25, 10, 26, 14); _pvpSw = swf; _pvpSwLine = sw;
             _pvpKnob = Kit.Img(sw.rectTransform, "Knob", Kit.Circle(), Theme.C(t.dim), false); _pvpKnob.rectTransform.At(3, 3, 8, 8);
@@ -56,6 +59,11 @@ namespace Jatify.UI
             });
         }
         private Image _pvpIcon, _pvpSw, _pvpSwLine, _pvpKnob; private int _pvpShown = -1;
+        internal RectTransform MovePvp(Transform to, Vector2 centre)
+        {
+            _pvp.SetParent(to, false); _pvp.anchorMin = _pvp.anchorMax = _pvp.pivot = new Vector2(0.5f, 0.5f); _pvp.anchoredPosition = centre;
+            return _pvp;
+        }
 
         private void PaintPvp()
         {
@@ -224,13 +232,14 @@ namespace Jatify.UI
         internal void Tick(Player p)
         {
             if (p != null && _name != null && _name.text.Length == 0) _name.text = p.GetPlayerName();   // once: a name can't change in the world
-            if (ForceSkills) { _onSkills = true; ForceSkills = false; }
-            if (_doll.gameObject.activeSelf == _onSkills) _doll.gameObject.SetActive(!_onSkills);
+            if (ForceSkills) { _page = 1; ForceSkills = false; }
+            if (_doll.gameObject.activeSelf != (_page == 0)) _doll.gameObject.SetActive(_page == 0);
             _skills.Show(_onSkills, p);
-            _tabChar.enabled = !_onSkills; _tabCharT.color = _onSkills ? Theme.C(_t.dim) : Color.white; _tabCharI.color = new Color(1f, 1f, 1f, _onSkills ? 0.55f : 1f);
+            _tabStats.enabled = _page == 2; _tabStatsT.color = _page == 2 ? Color.white : Theme.C(_t.dim); _tabStatsI.color = new Color(1f, 1f, 1f, _page == 2 ? 1f : 0.55f);
+            _tabChar.enabled = _page == 0; _tabCharT.color = _page == 0 ? Color.white : Theme.C(_t.dim); _tabCharI.color = new Color(1f, 1f, 1f, _page == 0 ? 1f : 0.55f);
             _tabSkills.enabled = _onSkills; _tabSkillsT.color = _onSkills ? Color.white : Theme.C(_t.dim); _tabSkillsI.color = new Color(1f, 1f, 1f, _onSkills ? 1f : 0.55f);
             PaintPvp();
-            if (_onSkills) return;
+            if (_page != 0) return;
             _render.Tick(p, InventoryGui.IsVisible());
             foreach (var s in _slots) s.Tick(p);
             _pouch.Tick(p);

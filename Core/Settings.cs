@@ -5,7 +5,7 @@ namespace Jatify.UI
     // Jatify UI's own options (shown on the Jatify UI page; saved by BepInEx in jatify.ui.cfg).
     internal static class Cfg
     {
-        internal static ConfigEntry<bool> BarsCollapsed, Hints, FoodAsBuffs, BuffFrames, MinimapPanel, CompassMinimal, SlotBackdrops, Tracker, TrackerCollapsed, Banners, CompassPins, CharacterView, InstantEquip, SkillBanner, PickupFloat, Messages, ConfirmDelete, CharacterIdle, CraftFromChests, BuildFromChests, JatifyCursor, Knotwork, CompUndiscovered, CompDevInfo, GraveReequip, GraveCompass, GraveTouch, UtilityTogether;
+        internal static ConfigEntry<bool> GearCollapsed, BarsCollapsed, Hints, FoodAsBuffs, BuffFrames, MinimapPanel, CompassMinimal, SlotBackdrops, Tracker, TrackerCollapsed, Banners, CompassPins, CharacterView, InstantEquip, SkillBanner, PickupFloat, Messages, ConfirmDelete, CharacterIdle, CraftFromChests, BuildFromChests, JatifyCursor, Knotwork, CompUndiscovered, CompDevInfo, GraveReequip, GraveCompass, GraveTouch, UtilityTogether;
         internal enum Regear { Everything, ArmourOnly, ArmourAndWeapons }
         internal static ConfigEntry<Regear> GraveReequipWhat;
         internal static ConfigEntry<int> PinRange, StackRange, CursorSize, MapPinSize, MapNameSize, MapZoomIn;
@@ -48,6 +48,7 @@ namespace Jatify.UI
             UnlockNotices = c.Bind("HUD", "UnlockNotices", Unlock.Grouped, "New recipes, pieces and materials: Grouped folds a burst into one card after the first two, Every shows a card each, Off shows none. The New Recipes page keeps them all.");
             PinRange = c.Bind("Compass", "PinRange", 400, new ConfigDescription("How far away a pin may be to show on the compass, in metres.", new AcceptableValueRange<int>(50, 2000)));
             StackRange = c.Bind("Inventory", "ChestRange", 10, new ConfigDescription("How far To chests and Restock reach, in metres.", new AcceptableValueRange<int>(3, 30)));
+            GearCollapsed = c.Bind("Inventory", "GearCollapsed", false, "The left column (character, gear, stats, resistances, effects) folded away and the inventory panel narrower (the button in its header).");
             BarsCollapsed = c.Bind("Inventory", "BarsCollapsed", false, "The Tools, Food and Meads rows folded away in the inventory (the button on their line); they still work from the HUD.");
             CharacterView = c.Bind("Inventory", "CharacterView", true, "Your character, rendered in the equipment column.");
             CharacterIdle = c.Bind("Inventory", "CharacterIdle", true, "The character in the equipment column breathes and idles; off: a still pose.");
