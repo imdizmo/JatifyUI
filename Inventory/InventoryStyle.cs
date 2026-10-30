@@ -269,7 +269,8 @@ namespace Jatify.UI
             if (y < SpecialRows.Start) return new Vector2(x * Pitch, 117f - BagLift + (y - 1) * Pitch);
             int band = y - SpecialRows.Start;
             if (!SpecialRows.On) return new Vector2(x * Pitch, BeltTop - 123f + band * Pitch);   // AzuEPI's equipment / quick cells: rows under the grid, lined up with it
-            if (BeltRows) return band == 1 ? new Vector2(x * Pitch, BeltTop - 123f + BeltLabel)             // Tools first, a row under the grid, its label over its first slot (user)
+            if (BeltRows && Strip) return new Vector2(19f - 285f + StripX(band, x), BeltTop - 123f + BeltLabel);   // one strip across the panel: Tools, Food, Meads (user)
+            if (BeltRows) return band == 1 ? new Vector2(x * Pitch, BeltTop - 123f + BeltLabel)             // narrow: Tools first, a row under the grid, its label over its first slot (user)
                 : new Vector2((band == 2 ? MeadsX : 0f) + x * Pitch, BeltTop - 123f + 2f * BeltLabel + Pitch);   // then Food and Meads side by side
             if (BeltBlocks) return new Vector2(band * BlockStep + (x % 2) * Pitch, BlockTop - 123f + (x / 2) * Pitch);   // 2 x 3 blocks under the grid
             return new Vector2(179f - 445f + band * 90f, 548f - 123f + x * Pitch);                   // a column under the equipment
@@ -279,10 +280,16 @@ namespace Jatify.UI
         // three columns under the equipment once more rows would make them overlap it.
         private static int InvRows => SpecialRows.Start - 1;                                             // rows under the action bar
         private const float BagLift = 30f;   // the bag closer under the action bar (user: the gap was too wide)
-        private static float BeltTop => 240f - BagLift + InvRows * Pitch - 7f + 30f;                              // screen y of the first belt row
+        private static float BeltTop => Mathf.Max(240f - BagLift + InvRows * Pitch - 7f, Strip ? CharBottom : 0f) + 30f;
+        // the strip (user: the bottom was mostly empty): all twelve under both columns, 64 apart, a 15 px gap between the groups; only
+        // with the gear column shown (narrow, it is too wide: the two rows under the grid instead)
+        private static bool Strip => !Narrow;
+        private const float StripPitch = 64f, StripGap = 15f;
+        private static float StripX(int band, int x) => (band == 1 ? 0f : band == 0 ? 6f * StripPitch + StripGap : 9f * StripPitch + 2f * StripGap) + x * StripPitch;
+        private static float CharBottom => 67f + 420f + 32f + Equipment.ExtraRowsBelow(_azuExtras.Count);   // the Character page's end (the Stats tab's card fits above it)                              // screen y of the first belt row
         internal static bool BeltRows => BeltTop + BeltH - 7f <= 852f - 10f;         // short inventories: Tools, then Food and Meads
         private const float BeltLabel = 30f;                                          // each row's label sits over it, above the key caps
-        private static float BeltH => 2f * (BeltLabel + Pitch);
+        private static float BeltH => Strip ? BeltLabel + Pitch : 2f * (BeltLabel + Pitch);
         private const float MeadsX = SpecialRows.ShortWidth * Pitch;                  // Meads' cells right after Food's 3: one bar (user)
         // more rows (user): Food / Tools / Meads as 2 x 3 blocks side by side under the grid, labels above; the
         // panel grows. Columns under the equipment only when even that would leave the screen.
@@ -492,10 +499,20 @@ namespace Jatify.UI
             }
         }
 
+        // the belt cells again, where CellDesign now puts them (strip or two rows), from the first cell's place
+        private static void ReplaceBelt()
+        {
+            if (_for == null || !SpecialRows.On) return;
+            RectTransform c00 = null; var cells = new List<InventoryElement>();
+            foreach (Transform c in _for.m_playerGrid.m_gridRoot) { var e = c.GetComponent<InventoryElement>(); if (e == null) continue; if (e.Position.x == 0 && e.Position.y == 0) c00 = (RectTransform)c; else if (e.Position.y >= SpecialRows.Start && e.Position.y < SpecialRows.EqRow) cells.Add(e); }
+            if (c00 == null) return;
+            foreach (var e in cells) { var d = CellDesign(e.Position.x, e.Position.y); ((RectTransform)e.transform).anchoredPosition = c00.anchoredPosition + new Vector2(d.x, -d.y); }
+        }
+
         private static void LayBelts()
         {
             Legible();
-            int key = SpecialRows.Start * 2 + (Folded ? 1 : 0);
+            int key = SpecialRows.Start * 4 + (Folded ? 1 : 0) + (Narrow ? 2 : 0);
             if (_beltLine == null || _beltsLaid == key) return;
             _beltsLaid = key;
             foreach (var l in _beltLabels) if (l != null && l.gameObject.activeSelf != (SpecialRows.On && !Folded)) l.gameObject.SetActive(SpecialRows.On && !Folded);   // AzuEPI: its cells carry their own names
@@ -509,9 +526,14 @@ namespace Jatify.UI
             var pop = _frame.Find("KeyPouch") as RectTransform; if (pop != null) pop.At(850f - 208f - 10f, Mathf.Max(60f, lastRow - 66f - 140f), 208, 200);   // a lip on the panel's right edge, beside the bag's last row, however many rows (user)
             if (BeltRows)
             {
-                _beltLine.At(285, BeltTop - 32f - 15f, 529, 1);
+                if (Strip) _beltLine.At(19, BeltTop - 32f - 15f, 795, 1); else _beltLine.At(285, BeltTop - 32f - 15f, 529, 1);
+                ReplaceBelt();
 
-                for (int i = 0; i < _beltLabels.Count; i++) if (_beltLabels[i] != null) _beltLabels[i].At(285 + (i == 2 ? MeadsX : 0f), BeltTop - 32f + (i == 1 ? 0f : BeltLabel + Pitch) + 2f, 120, 14);   // labels: Food 0, Tools 1, Meads 2
+                for (int i = 0; i < _beltLabels.Count; i++) if (_beltLabels[i] != null)
+                {   // labels: Food 0, Tools 1, Meads 2, over each group's first slot
+                    if (Strip) _beltLabels[i].At(19 + StripX(i, 0), BeltTop - 32f + 2f, 120, 14);
+                    else _beltLabels[i].At(285 + (i == 2 ? MeadsX : 0f), BeltTop - 32f + (i == 1 ? 0f : BeltLabel + Pitch) + 2f, 120, 14);
+                }
             }
             else if (BeltBlocks)
             {
