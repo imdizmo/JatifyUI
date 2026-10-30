@@ -37,13 +37,13 @@ namespace Jatify.UI
             {
                 var vlg = entries.GetComponent<VerticalLayoutGroup>();   // rows keep vanilla's ~46 px height whatever the font size: pull them together so Quit fits
                 if (vlg != null) { var s0 = vlg.spacing; _l.Do(() => vlg.spacing = -8f, () => { if (vlg != null) vlg.spacing = s0; }); }
-                MenuEntries.AddTo(entries, _l, t);   // Mods, Jatify UI: as in the pause menu
-                MenuEntries.AddDiscord(entries, _l);
+                MenuEntries.AddTo(entries, _l, t, whatsNew: false);   // Mods, Jatify UI: as in the pause menu (What's new sits bottom left here)
                 foreach (Transform e in entries) Entry(e, t);
             }
             // bottom left (Changelog, the licence, Player.log) and the merch panel stay Valheim's own (user), but the links line
             // up on the left: vanilla centres each in a 300 px row, so they stagger
             var links = menu.Find("BottomLeftButtons");
+            MenuEntries.AddLinks(links, _l);
             if (links != null) foreach (Transform b in links)
                 {
                     var h = b.GetComponent<HorizontalLayoutGroup>(); if (h == null) continue; var a0 = h.childAlignment;

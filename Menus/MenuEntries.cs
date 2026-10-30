@@ -11,20 +11,25 @@ namespace Jatify.UI
         internal static void Add(Menu m, Ledger l, ThemeData t) => AddTo(m.m_root.Find("Menu/MenuEntries"), l, t);
 
         // any menu list with a "Settings" entry (the pause menu, the title menu)
-        // the title menu: Jatify's Discord at its end too, as other mods sign theirs (user)
-        internal static void AddDiscord(Transform entries, Ledger l)
+        // the title screen's bottom-left links (Changelog, the licence, Player.log): What's new and Jatify Discord above them, in
+        // their look (user: not in the big menu). The group keeps its foot where it was and grows upwards.
+        internal static void AddLinks(Transform links, Ledger l)
         {
-            var settings = entries?.Find("Settings"); if (settings == null) return;
-            var quit = entries.Find("Exit") ?? entries.Find("Quit");
-            Clone(settings, "Jatify Discord", quit != null ? quit.GetSiblingIndex() : entries.childCount, l, () => Application.OpenURL(Links.Discord));
+            var from = links?.Find("showChangelog"); if (from == null) return;
+            Clone(from, "Jatify Discord", 0, l, () => Application.OpenURL(Links.Discord));
+            Clone(from, "What's new", 0, l, () => { if (!WhatsNew.Open) WhatsNew.Show(false); });
+            foreach (Transform c in links) if (c.name.StartsWith("jatify-")) { var n = c.Find("newsNotification"); if (n != null) n.gameObject.SetActive(false); }
+            var rt = (RectTransform)links; float grow = 2f * 26f;
+            var (s0, p0) = (rt.sizeDelta, rt.anchoredPosition);
+            l.Do(() => { rt.sizeDelta = s0 + new Vector2(0f, grow); rt.anchoredPosition = p0 + new Vector2(0f, grow * rt.pivot.y); }, () => { if (rt != null) { rt.sizeDelta = s0; rt.anchoredPosition = p0; } });
         }
 
-        internal static void AddTo(Transform entries, Ledger l, ThemeData t)
+        internal static void AddTo(Transform entries, Ledger l, ThemeData t, bool whatsNew = true)
         {
             var settings = entries?.Find("Settings");
             if (settings == null) return;
             int i = settings.GetSiblingIndex();
-            Clone(settings, "What's new", i + 1, l, () => { if (!WhatsNew.Open) WhatsNew.Show(false); });   // the update notes again, any time (user)
+            if (whatsNew) Clone(settings, "What's new", i + 1, l, () => { if (!WhatsNew.Open) WhatsNew.Show(false); });   // the update notes again, any time (user); the title screen has it bottom left
             Clone(settings, "Jatify UI", i + 1, l, () => ConfigPage.Show(Root.Canvas.transform, t, false));
             Clone(settings, "Mods", i + 1, l, () => ConfigPage.Show(Root.Canvas.transform, t, true));
         }
