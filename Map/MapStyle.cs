@@ -405,11 +405,20 @@ namespace Jatify.UI
             var f = _nameField = large.Find("NameField") as RectTransform; if (f == null) return;   // by name: its type lives in an assembly we don't reference
             // a raised box that reads as a field on the card, and a placeholder that says what it's for (#33: dark on the dark card,
             // it went unseen)
-            _l.Img(f.GetComponent<Image>(), Kit.Rounded(8), Theme.C(t.raised));
+            // user: still faint on the map, so it gets a lit outline like the crafting search box, and left-set, larger text
+            _l.Img(f.GetComponent<Image>(), Kit.Rounded(8), Color.clear);
+            var (fl, _) = Kit.Box(f, "jatify-field", Theme.C(t.raised), Theme.C(t.line2), 8); _l.Own(fl); fl.raycastTarget = false;
+            fl.rectTransform.Fill(); fl.transform.SetAsFirstSibling();
             foreach (var x in f.GetComponentsInChildren<TMP_Text>(true))
             {
-                _l.Txt(x, Fonts.Medium, 14f, x.name == "Placeholder" ? Theme.C(t.mute) : Color.white);
-                if (x.name == "Placeholder") { var tx = x; var was = tx.text; _l.Do(() => tx.text = "Name (optional)", () => { if (tx != null) tx.text = was; }); }
+                _l.Txt(x, Fonts.Medium, 15f, x.name == "Placeholder" ? Theme.C(t.dim) : Color.white);
+                var tx = x; var al = tx.alignment; _l.Do(() => tx.alignment = TextAlignmentOptions.MidlineLeft, () => { if (tx != null) tx.alignment = al; });
+                if (x.name == "Placeholder") { var was = tx.text; _l.Do(() => tx.text = "Name (optional)", () => { if (tx != null) tx.text = was; }); }
+            }
+            if (f.GetComponent<TMP_InputField>() is TMP_InputField inp)
+            {
+                var (cc, cust) = (inp.caretColor, inp.customCaretColor);
+                _l.Do(() => { inp.customCaretColor = true; inp.caretColor = Theme.C(t.accent); }, () => { if (inp != null) { inp.customCaretColor = cust; inp.caretColor = cc; } });
             }
             _l.Rect(f, r => r.sizeDelta = new Vector2(236f, 34f));
             // design "addpin": a card around vanilla's field with the pin's type and Cancel / Add pin
