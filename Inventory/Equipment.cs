@@ -213,9 +213,8 @@ namespace Jatify.UI
                     new EqSlot(_doll, "Ammo", Ammo, 0, 288, t, tooltipPrefab, 46f),
                 }
                 : new[]
-                {   // no rings in this game (vanilla): the hands, then ammo and the key pouch, as before rings came
-                    new EqSlot(_doll, "Main hand", Main, 2, 281, t, tooltipPrefab), new EqSlot(_doll, "Off hand", Off, 70, 281, t, tooltipPrefab),
-                    new EqSlot(_doll, "Ammo", Ammo, 138, 288, t, tooltipPrefab, 46f),
+                {   // no rings in this game (vanilla): no hands either (user: they only repeat the action bar and the figure); ammo centred
+                    new EqSlot(_doll, "Ammo", Ammo, 97, 288, t, tooltipPrefab, 46f),
                 }).ToArray();
             _pouch = new KeyPouch(_doll, t, tooltipPrefab);
             // middle: the numbers that matter for what you wear
