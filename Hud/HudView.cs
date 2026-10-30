@@ -25,7 +25,8 @@ namespace Jatify.UI
         private readonly Image _powerIcon, _powerCd;
         private readonly EpicAbilities _abilities;
         private readonly RectTransform _buffs;
-        private readonly List<Buff> _buffPool = new List<Buff>();
+        private readonly List<Buff> _buffPool = new List<Buff>(), _foodPool = new List<Buff>();
+        private readonly RectTransform _foodRow;
         private readonly List<StatusEffect> _effects = new List<StatusEffect>();
         private readonly Compass _compass;
         private readonly RaidBanner _raid;
@@ -67,6 +68,8 @@ namespace Jatify.UI
             var (tb, tbFill) = Kit.Box(dock, "ToolsBar", C(t.glass), C(t.glassLine), 12); _barPanels[1] = (tb, tbFill);
             tb.rectTransform.At(-14 - 318, 96 + 14, 318, 58);
             for (int i = 0; i < _tools.Length; i++) { _tools[i] = new Slot(tb.transform, "", 6 + i * 52, 6, 46f, t).Cap(1); _tools[i].Bar = true; _tools[i].Shown(i < 6); }
+            // FoodTimersAsBuffs off (#31): eaten food's timers in a centred row above the health bar (user), over the held item's name
+            _foodRow = Kit.Node(dock, "FoodTimers").At(0, -66, 534, 61);
             // food and meads: stacked labelled columns on the right edge from y 290
             var side = _side = Kit.Node(_root, "Sidebars");
             side.anchorMin = side.anchorMax = side.pivot = new Vector2(1f, 1f); side.anchoredPosition = new Vector2(-28f, -290f); side.sizeDelta = new Vector2(58f, 700f);
@@ -192,11 +195,13 @@ namespace Jatify.UI
             int n = 0, bad = 0;
             foreach (var se in _effects) { if (se.m_icon == null || !IsDebuff(se)) continue; Pool(n++).Set(se.m_icon, se.m_ttl > 0f ? se.GetRemaningTime() : -1f, false, true, -1f, se.m_ttl > 0f ? null : se.GetIconText()); bad++; }
             foreach (var se in _effects) { if (se.m_icon == null || IsDebuff(se)) continue; Pool(n++).Set(se.m_icon, se.m_ttl > 0f ? se.GetRemaningTime() : -1f, false, false, -1f, se.m_ttl > 0f ? null : se.GetIconText()); }
+            bool asBuffs = Cfg.FoodAsBuffs == null || Cfg.FoodAsBuffs.Value; int nf = 0;
             foreach (var f in foods)
             {
                 var burn = f.m_item.m_shared.m_foodBurnTime;
-                Pool(n++).Set(f.m_item.GetIcon(), f.m_time, burn > 0f && f.m_time / burn < 0.3f, false, burn > 0f ? f.m_time / burn : -1f);
+                (asBuffs ? Pool(n++) : FoodPool(nf++)).Set(f.m_item.GetIcon(), f.m_time, burn > 0f && f.m_time / burn < 0.3f, false, burn > 0f ? f.m_time / burn : -1f);
             }
+            for (int i = 0; i < _foodPool.Count; i++) { bool on = i < nf; if (_foodPool[i].Root.gameObject.activeSelf != on) _foodPool[i].Root.gameObject.SetActive(on); if (on) _foodPool[i].Root.At((534f - (nf * 46f - 6f)) / 2f + i * 46f, 0, 40, 61); }
             for (int i = 0; i < _buffPool.Count; i++) { bool on = i < n; if (_buffPool[i].Root.gameObject.activeSelf != on) _buffPool[i].Root.gameObject.SetActive(on); }
             // WoW style (user): buffs from the top, right to left, 46 px apart, a new row 64 px lower once 420 px is used;
             // debuffs on their own row, frames level with the bottom edge of the minimap (y 260 on screen, this block starts at 24)
@@ -425,6 +430,12 @@ namespace Jatify.UI
             tx.text = text; cap.sizeDelta = new Vector2(Kit.W(tx) + 10f, 16f); cap.anchoredPosition = new Vector2(0f, 8f);   // straddles the top edge
         }
 
+        private Buff FoodPool(int i)
+        {
+            while (_foodPool.Count <= i) _foodPool.Add(new Buff(_foodRow, _t, true));
+            return _foodPool[i];
+        }
+
         private Buff Pool(int i)
         {
             while (_buffPool.Count <= i) _buffPool.Add(new Buff(_buffs, _t));
@@ -591,17 +602,19 @@ namespace Jatify.UI
             private readonly ThemeData _t;
             private int _shown = int.MinValue, _leftPct = -2, _frame = -1; private bool _warn; private string _text;
 
-            internal Buff(Transform parent, ThemeData t)
+            // top: the timer over the icon instead of under it (the food row over the health bar, user)
+            private readonly float _py;
+            internal Buff(Transform parent, ThemeData t, bool top = false)
             {
-                _t = t;
+                _t = t; _py = top ? 0f : 45f;
                 Root = Kit.Node(parent, "Buff");
                 Image fill; (_line, fill) = Kit.Box(Root, "Frame", C(t.glass), C(t.line2), 8);
-                _line.rectTransform.At(-1, 0, 42, 42);
+                _line.rectTransform.At(-1, top ? 19 : 0, 42, 42);
                 fill.gameObject.AddComponent<Mask>().showMaskGraphic = true;   // the food fill keeps to the frame's round corners
                 _left = Kit.Img(fill.rectTransform, "Left", null, new Color(0.949f, 0.439f, 0.227f, 0.22f)).rectTransform;   // design: rgba(242,112,58,.22)
                 _left.anchorMin = Vector2.zero; _left.anchorMax = new Vector2(1f, 0f); _left.offsetMin = _left.offsetMax = Vector2.zero; _left.gameObject.SetActive(false);
                 _icon = Kit.Img(_line.rectTransform, "Icon", null, Color.white, false); _icon.rectTransform.At(4, 4, 34, 34); _icon.preserveAspect = true;
-                _pill = Kit.Panel(Root, "Pill", new Color(0.078f, 0.078f, 0.086f, 0.86f), 8f); _pill.rectTransform.At(0, 45, 40, 16); _pill.enabled = false;   // design .timer: 16 tall, rgba(20,20,22,.86)
+                _pill = Kit.Panel(Root, "Pill", new Color(0.078f, 0.078f, 0.086f, 0.86f), 8f); _pill.rectTransform.At(0, _py, 40, 16); _pill.enabled = false;   // design .timer: 16 tall, rgba(20,20,22,.86)
                 _time = Kit.Text(_pill.rectTransform, "Time", "", Fonts.Mono, 10.5f, Color.white); _time.alignment = TextAlignmentOptions.Center; _time.rectTransform.Fill();
             }
 
@@ -615,13 +628,13 @@ namespace Jatify.UI
                 int shownKey = s < 0 ? -1 : s >= 60 ? 100000 + Mathf.CeilToInt(s / 60f) : s; // minutes above a minute, seconds below
                 if (s < 0 && !string.IsNullOrEmpty(text))
                 {
-                    if (_shown != -2 || _text != text) { _shown = -2; _text = text; _time.text = text; _pill.enabled = true; float w = Mathf.Ceil(Kit.W(_time)) + 12f; _pill.rectTransform.At(20f - w / 2f, 45f, w, 16f); }
+                    if (_shown != -2 || _text != text) { _shown = -2; _text = text; _time.text = text; _pill.enabled = true; float w = Mathf.Ceil(Kit.W(_time)) + 12f; _pill.rectTransform.At(20f - w / 2f, _py, w, 16f); }
                 }
                 else if (shownKey != _shown)
                 {
                     _shown = shownKey; _time.text = s < 0 ? "" : s >= 60 ? Mathf.CeilToInt(s / 60f) + "m" : s + "s";
                     _pill.enabled = s >= 0;
-                    if (s >= 0) { float w = Mathf.Ceil(Kit.W(_time)) + 12f; _pill.rectTransform.At(20f - w / 2f, 45f, w, 16f); }   // centred under the 40 px icon
+                    if (s >= 0) { float w = Mathf.Ceil(Kit.W(_time)) + 12f; _pill.rectTransform.At(20f - w / 2f, _py, w, 16f); }   // centred under the 40 px icon
                 }
                 bool warn = s >= 0 && s <= 120;
                 if (warn != _warn) { _warn = warn; _time.color = warn ? C(_t.ember) : Color.white; }
