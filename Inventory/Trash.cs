@@ -46,8 +46,9 @@ namespace Jatify.UI
             // design .trash: 60 px tile beside the item detail, Valheim's trash can, ember on hover
             // a tab off the panel's right edge (user): its box runs 12 px back under a clip, so the side against the panel is square and
             // has no line, the outside rounded; the panel's own border shows where they meet
-            _tile = Kit.Node(panel, "jatify-trash").At(754, 820, 52, 60); _tile.gameObject.AddComponent<RectMask2D>();
-            var (line, fill) = Kit.Box(_tile, "Tab", Theme.C(t.glass), Theme.C(t.line2), 10); line.rectTransform.At(-12, 0, 64, 60);
+            _tile = Kit.Node(panel, "jatify-trash").At(754, 820, 52, 60);
+            var clip = Kit.Node(_tile, "Clip").Fill(); clip.gameObject.AddComponent<RectMask2D>();   // the clip one down from the tab's canvas: a tooltip opened on the canvas isn't cut by it
+            var (line, fill) = Kit.Box(clip, "Tab", Theme.C(t.glass), Theme.C(t.line2), 10); line.rectTransform.At(-12, 0, 64, 60);
             var ic = _icon = Kit.Img(line.rectTransform, "Icon", Kit.Icon("trash_icon"), new Color(1f, 1f, 1f, 0.7f), false); ic.rectTransform.At(17, 17, 26, 26); ic.preserveAspect = true;
             line.raycastTarget = true;
             // its own canvas one above the inventory's: the bag grid's root reaches under the tile and took every click and drop

@@ -151,14 +151,21 @@ namespace Jatify.UI
                 _pop.SetParent(popParent, false); _pop.At(popX, popY, 208, 200);
                 if (_pop.GetComponent<Canvas>() == null)
                 {   // over the bag grid it now opens beside: a layer above it, as the tabs have
-                    var cv = _pop.gameObject.AddComponent<Canvas>(); cv.overrideSorting = true; cv.sortingOrder = (popParent.GetComponentInParent<Canvas>()?.rootCanvas.sortingOrder ?? 600) + 2;
+                    var cv = _pop.gameObject.AddComponent<Canvas>(); cv.overrideSorting = true; cv.sortingOrder = (popParent.GetComponentInParent<Canvas>()?.rootCanvas.sortingOrder ?? 600) + 50;   // well over the bag: its cells carry layers of their own
                     _pop.gameObject.AddComponent<GraphicRaycaster>();
+                    // and solid: a see-through glass let the bag's cells show through, so it read as behind them (user)
+                    foreach (var i in _pop.GetComponents<Image>().Concat(_pop.Cast<Transform>().Take(1).SelectMany(c => c.GetComponents<Image>()))) { var c0 = i.color; if (c0.a > 0.3f && c0.a < 0.96f) i.color = new Color(c0.r, c0.g, c0.b, 0.96f); }
                 }
             }
 
             internal void Tick(Player p)
             {
-                if (_pop.gameObject.activeSelf) foreach (var c in _cells) c.Tick(p);
+                if (_pop.gameObject.activeSelf)
+                {
+                    // Unity drops overrideSorting set while the pop was hidden: back on once it shows, or it opens under the bag (user)
+                    var cv = _pop.GetComponent<Canvas>(); if (cv != null && !cv.overrideSorting) { cv.overrideSorting = true; cv.sortingOrder = cv.rootCanvas.sortingOrder + 50; }
+                    foreach (var c in _cells) c.Tick(p);
+                }
                 ItemDrop.ItemData first = null; int kinds = 0, total = 0;
                 for (int i = 0; i < 12; i++) { var it = ModSlots.At(p, i % 4, ModSlots.KeyRow + i / 4); if (it == null) continue; first = first ?? it; kinds++; total += it.m_stack; }
                 var key = (first != null ? first.m_shared.m_name : "") + kinds + "/" + total;

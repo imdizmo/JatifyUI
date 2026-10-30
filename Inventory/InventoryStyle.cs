@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Generic;
 using HarmonyLib;
 using TMPro;
@@ -66,11 +67,6 @@ namespace Jatify.UI
             Knots.Corners(line, pfill, 14, Theme.C(t.accent));
             var head = _head = Kit.Node(_frame, "jatify-header").At(0, 0, 850, 52);
             var hl = Kit.Img(_frame, "HeadLine", null, Theme.C(t.glassLine)); hl.rectTransform.At(0, 52, 850, 1); _headLine = hl.rectTransform;
-            // Hide gear / Show gear: the left column folds away and the panel narrows (user)
-            var (gb, _) = Kit.Box(head, "jatify-gear", Theme.C(t.raised), Theme.C(t.glassLine), 8); gb.raycastTarget = true;
-            var grt = gb.rectTransform; grt.anchorMin = grt.anchorMax = grt.pivot = new Vector2(0f, 0.5f); grt.anchoredPosition = new Vector2(105f, 0f); grt.sizeDelta = new Vector2(84f, 30f);
-            _gearText = Kit.Text(grt, "T", "", Fonts.Medium, 12.5f, Theme.C(t.dim)); _gearText.alignment = TextAlignmentOptions.Center; _gearText.rectTransform.Fill();
-            gb.gameObject.AddComponent<Button>().onClick.AddListener(() => { if (Cfg.GearCollapsed != null) Cfg.GearCollapsed.Value = !Cfg.GearCollapsed.Value; });
             var title = Kit.Text(head, "Title", "Inventory", Fonts.Norse, 22f, Theme.C(t.text)); title.alignment = TextAlignmentOptions.MidlineLeft; title.rectTransform.At(18, 0, 90, 52);
             // weight chip (with its mini bar) and armour chip, right-aligned (design: 668 / 791, 30 tall)
             // Weight stays in the header (user: clearer than Carry in the card); Armour lives in the stats card
@@ -80,7 +76,7 @@ namespace Jatify.UI
             _weightFill = Kit.Panel(bar.rectTransform, "Value", Theme.C(t.stamina), 2); var fr = _weightFill.rectTransform; fr.anchorMin = Vector2.zero; fr.anchorMax = new Vector2(0.5f, 1f); fr.offsetMin = fr.offsetMax = Vector2.zero;
             _wShown = _wMaxShown = -1;
             // actions (design: To chests / Restock / Merge / Sort from x 105, 4 apart)
-            float bx = 105f + 84f + 6f;
+            float bx = 105f;
             bx = Action(head, bx, "To chests", "to-chest", t, () => { var p = Player.m_localPlayer; if (p) InvActions.Say($"Put {InvActions.ToChests(p)} stack(s) into nearby chests"); });
             bx = Action(head, bx, "Restock", "from-chest", t, () => { var p = Player.m_localPlayer; if (p) InvActions.Say($"Took {InvActions.Restock(p)} stack(s) from nearby chests"); });
             bx = Action(head, bx, "Merge", "merge", t, () => { var p = Player.m_localPlayer; if (p) InvActions.Say(InvActions.Merge(p) ? "Merged stacks" : "Nothing to merge"); });
@@ -116,18 +112,18 @@ namespace Jatify.UI
                 _beltLabels.Add(bl.rectTransform);
             }
             _beltsLaid = -1;
-            var (fb, _) = Kit.Box(_frame, "jatify-fold", Theme.C(t.raised), Theme.C(t.line2), 6); fb.raycastTarget = true; _fold = fb.rectTransform;
-            // its own canvas one up, as the trash: Valheim's drop-item area and the bag grid lie over this spot and took the click (user)
-            var fc = fb.gameObject.AddComponent<Canvas>(); fc.overrideSorting = true; fc.sortingOrder = (_frame.GetComponentInParent<Canvas>()?.rootCanvas.sortingOrder ?? 600) + 1; fb.gameObject.AddComponent<GraphicRaycaster>();
-            _foldText = Kit.Text(_fold, "T", "", Fonts.Medium, 11.5f, Theme.C(t.dim)); _foldText.alignment = TMPro.TextAlignmentOptions.Center; _foldText.rectTransform.Fill();
-            fb.gameObject.AddComponent<Button>().onClick.AddListener(() => { if (Cfg.BarsCollapsed != null) Cfg.BarsCollapsed.Value = !Cfg.BarsCollapsed.Value; });
+            // the folds as tabs like the trash (user): the bars' under the trash on the right edge, the gear's off the left edge level
+            // with the action bar
+            _fold = EdgeTab("jatify-bars-tab", false, "hammer", "Tools, food and meads", "Shows or hides the Tools, Food and Meads rows. They keep working from the HUD.", () => { if (Cfg.BarsCollapsed != null) Cfg.BarsCollapsed.Value = !Cfg.BarsCollapsed.Value; }, t, g, down: true);
+            _gearTab = EdgeTab("jatify-gear-tab", true, "helm", "Character", "Shows or hides the character, gear, skills and stats column.", () => { if (Cfg.GearCollapsed != null) Cfg.GearCollapsed.Value = !Cfg.GearCollapsed.Value; }, t, g);
             // the trash sits under the grid (design position); the item detail box beside it was removed (user)
             StyleInfo(g.m_info, t);
             _trash = new Trash(_frame, t);
             // the key pouch: a tab like the trash's, just above it (user)
-            _keyTab = Kit.Node(_frame, "jatify-keys-tab").At(849, 0, 52, 60); _keyTab.gameObject.AddComponent<RectMask2D>();
+            _keyTab = Kit.Node(_frame, "jatify-keys-tab").At(849, 0, 52, 60);
+            var kclip = Kit.Node(_keyTab, "Clip").Fill(); kclip.gameObject.AddComponent<RectMask2D>();   // under the canvas, so the tooltip isn't clipped
             var kc = _keyTab.gameObject.AddComponent<Canvas>(); kc.overrideSorting = true; kc.sortingOrder = (_frame.GetComponentInParent<Canvas>()?.rootCanvas.sortingOrder ?? 600) + 1; _keyTab.gameObject.AddComponent<GraphicRaycaster>();
-            var (kb, _) = Kit.Box(_keyTab, "Tab", Theme.C(t.glass), Theme.C(t.line2), 10); kb.rectTransform.At(-12, 0, 64, 60);
+            var (kb, _) = Kit.Box(kclip, "Tab", Theme.C(t.glass), Theme.C(t.line2), 10); kb.rectTransform.At(-12, 0, 64, 60);
             _eq?.MovePouch(_keyTab, _frame, 850f - 208f - 10f, 0f);
             _stats = new StatsCard(_frame, t);
             LayBelts();
@@ -301,7 +297,7 @@ namespace Jatify.UI
         // actions show their icons only so the weight still fits
         private static bool Narrow => Cfg.GearCollapsed != null && Cfg.GearCollapsed.Value;
         private static float Lx => Narrow ? 266f : 0f;
-        private static RectTransform _panel, _head, _headLine; private static TMPro.TextMeshProUGUI _gearText; private static int _narrowLaid = -1;
+        private static RectTransform _panel, _head, _headLine; private static int _narrowLaid = -1;
         private static readonly List<(RectTransform rt, TMPro.TextMeshProUGUI tx, float w)> _acts = new List<(RectTransform, TMPro.TextMeshProUGUI, float)>();
         private static void LayNarrow()
         {
@@ -310,8 +306,8 @@ namespace Jatify.UI
             foreach (var name in new[] { "jatify-equipment", "jatify-stats" }) { var c = _frame.Find(name); if (c != null) c.gameObject.SetActive(!n); }
             if (_panel != null) { _panel.offsetMin = new Vector2(Lx, 0f); _panel.offsetMax = Vector2.zero; }
             _head?.At(Lx, 0, 850 - Lx, 52); _headLine?.At(Lx, 52, 850 - Lx, 1);
-            if (_gearText != null) _gearText.text = n ? "Show gear" : "Hide gear";
-            float x = 105f + 84f + 6f;
+            Tint(_gearTab, n);
+            float x = 105f;
             foreach (var (rt, tx, w) in _acts)
             {
                 if (rt == null) continue; float ww = n ? 32f : w;
@@ -319,7 +315,28 @@ namespace Jatify.UI
             }
             _beltsLaid = -1;
         }
-        private static RectTransform _fold, _keyTab; private static TMPro.TextMeshProUGUI _foldText;
+        private static RectTransform _fold, _keyTab, _gearTab; private static TMPro.TextMeshProUGUI _foldText;
+        // a tab off the panel's edge: square where it meets the panel (its box runs 12 px back under a clip), rounded outside, one icon;
+        // on its own layer so the bag grid and Valheim's drop area under it don't take the click
+        private static RectTransform EdgeTab(string name, bool left, string icon, string topic, string text, System.Action click, ThemeData t, InventoryGui g, bool down = false)
+        {
+            var tab = Kit.Node(_frame, name).At(0, 0, down ? 60 : 52, down ? 52 : 60);
+            var cv = tab.gameObject.AddComponent<Canvas>(); cv.overrideSorting = true; cv.sortingOrder = (_frame.GetComponentInParent<Canvas>()?.rootCanvas.sortingOrder ?? 600) + 1; tab.gameObject.AddComponent<GraphicRaycaster>();
+            var clip = Kit.Node(tab, "Clip").Fill(); clip.gameObject.AddComponent<RectMask2D>();   // under the canvas: tooltips opened on it aren't clipped
+            var (b, f) = Kit.Box(clip, "Tab", Theme.C(t.glass), Theme.C(t.line2), 10); b.raycastTarget = true;
+            if (down) b.rectTransform.At(0, -12, 60, 64); else b.rectTransform.At(left ? 0 : -12, 0, 64, 60);   // down: hangs from the panel's bottom edge
+            var ic = Kit.IconImg(b.rectTransform, icon, new Color(1f, 1f, 1f, 0.7f), 24f); ic.name = "Icon";
+            if (down) ic.rectTransform.At(18, 26, 24, 24); else ic.rectTransform.At(left ? 14 : 26, 18, 24, 24);
+            var btn = b.gameObject.AddComponent<Button>(); btn.targetGraphic = f; var cb = btn.colors; cb.highlightedColor = new Color(1.3f, 1.3f, 1.35f); btn.colors = cb;
+            btn.onClick.AddListener(() => click());
+            var tip = b.gameObject.AddComponent<UITooltip>(); var vt = g.m_playerGrid.m_elementPrefab.GetComponent<UITooltip>(); if (vt != null) { tip.m_tooltipPrefab = vt.m_tooltipPrefab; tip.Set(topic, text); }
+            return tab;
+        }
+        private static void Tint(RectTransform tab, bool folded)
+        {   // folded: the icon lit in the accent, so you can see something is put away
+            var ic = tab != null ? tab.GetComponentsInChildren<Image>(true).FirstOrDefault(i => i.name == "Icon") : null; if (ic == null) return;
+            ic.color = folded ? Theme.C(Plugin.Instance.ThemeData.accent) : new Color(1f, 1f, 1f, 0.7f);
+        }
 
         // the panel ends under its lowest part; the trash sits in the 8th column under the last inventory row
         private static float GridBottom => 240f - BagLift + InvRows * Pitch - 7f;
@@ -482,27 +499,28 @@ namespace Jatify.UI
             foreach (var l in _beltLabels) if (l != null && l.gameObject.activeSelf != (SpecialRows.On && !Folded)) l.gameObject.SetActive(SpecialRows.On && !Folded);   // AzuEPI: its cells carry their own names
             if (_for != null && SpecialRows.On)
                 foreach (Transform c in _for.m_playerGrid.m_gridRoot) { var e = c.GetComponent<InventoryElement>(); if (e != null && e.Position.y >= SpecialRows.Start && e.Position.y < SpecialRows.EqRow) e.gameObject.SetActive(!Folded && e.Position.x < SpecialRows.RowWidth(e.Position.y - SpecialRows.Start)); }
-            if (_fold != null) { _fold.gameObject.SetActive(SpecialRows.On); _foldText.text = Folded ? "Show bars" : "Hide bars"; }
+            if (_fold != null) { _fold.gameObject.SetActive(SpecialRows.On); Tint(_fold, Folded); }
             float lastRow = 240f - BagLift - 32f + (InvRows - 1) * Pitch;
             _trash?.MoveTo(850f - 1f, lastRow);
             _keyTab?.At(850f - 1f, lastRow - 66f, 52, 60);   // the key pouch's tab right above the trash
+            _gearTab?.At(Lx - 52f + 1f, 123f - 32f, 52, 60); // the gear's fold off the left edge, level with the action bar
             var pop = _frame.Find("KeyPouch") as RectTransform; if (pop != null) pop.At(850f - 208f - 10f, Mathf.Max(60f, lastRow - 66f - 140f), 208, 200);   // a lip on the panel's right edge, beside the bag's last row, however many rows (user)
             if (BeltRows)
             {
                 _beltLine.At(285, BeltTop - 32f - 15f, 529, 1);
-                _fold?.At(285, BeltTop - 32f - 15f - 11f, 84, 22);   // on the line, its left end (user)
+
                 for (int i = 0; i < _beltLabels.Count; i++) if (_beltLabels[i] != null) _beltLabels[i].At(285 + (i == 2 ? MeadsX : 0f), BeltTop - 32f + (i == 1 ? 0f : BeltLabel + Pitch) + 2f, 120, 14);   // labels: Food 0, Tools 1, Meads 2
             }
             else if (BeltBlocks)
             {
                 _beltLine.At(285, GridBottom + 16f - 32f, 529, 1);
-                _fold?.At(285, GridBottom + 16f - 32f - 11f, 84, 22);
+
                 for (int i = 0; i < _beltLabels.Count; i++) if (_beltLabels[i] != null) _beltLabels[i].At(285 + i * BlockStep, BlockTop - 20f - 32f, 127, 14);
             }
             else
             {
                 _beltLine.At(19, 479, 240, 1);
-                _fold?.At(19, 479 - 11f, 84, 22);
+
                 for (int i = 0; i < _beltLabels.Count; i++) if (_beltLabels[i] != null) _beltLabels[i].At(19 + i * 90, 494, 60, 14);
             }
         }
@@ -722,6 +740,7 @@ namespace Jatify.UI
             var canvas = (RectTransform)Root.Canvas.transform;
             _frame.anchorMin = _frame.anchorMax = new Vector2(0.5f, 0.5f); _frame.pivot = new Vector2(0f, 1f);
             _frame.sizeDelta = new Vector2(850f, FrameH);
+            _fold?.At(285f + 7f * Pitch, FrameH - 1f, 60, 52);   // the bars' fold hangs off the bottom edge under the last column (user); the height moves with the open tab
             float k = canvas.lossyScale.x / _frame.parent.lossyScale.x;
             if (Mathf.Abs(_frame.localScale.x - k) > 0.0001f) _frame.localScale = new Vector3(k, k, 1f);
             _frame.position = canvas.TransformPoint(new Vector3(160f - Lx - canvas.rect.width / 2f, canvas.rect.height / 2f - 32f, 0f));   // narrow: the folded column's width off the left
@@ -755,7 +774,7 @@ namespace Jatify.UI
             ChestPanel.Restore();
             _eq?.Destroy(); _eq = null; _tabs.Clear(); _tabOn = null; _badge = null; _badgeShown = -1;
             _trash?.Destroy(); _trash = null; _stats?.Destroy(); _stats = null;
-            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _gearText = null; _narrowLaid = -1; _acts.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
+            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _gearTab = null; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _narrowLaid = -1; _acts.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
         }
     }
 
