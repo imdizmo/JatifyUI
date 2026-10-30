@@ -4,7 +4,8 @@ using UnityEngine.UI;
 
 namespace Jatify.UI
 {
-    // Cheat and debug flags (detail pass, approved): a slim strip left of the compass while any is on (user: not hanging under it), so you can't forget
+    // Cheat and debug flags (detail pass, approved): a slim tab in the top left corner, flush with the screen's top edge like a tab's lip
+    // and growing to the right (user; it sat left of the compass before), while any is on, so you can't forget
     // god mode: each active flag in Norse capitals after a small ember rune, thin dividers between them, an ember line along the
     // strip's foot and a soft ember glow under it. Checked four times a second; laid out only when the set changes.
     internal sealed class CheatFlags
@@ -23,12 +24,12 @@ namespace Jatify.UI
             Color ember = Theme.C(t.ember);
             Box = Kit.Node(parent, "CheatFlags").Fill();   // the HUD hides this with the inventory open; the strip inside shows by the flags
             _root = Kit.Node(Box, "Strip");
-            _root.anchorMin = _root.anchorMax = new Vector2(0.5f, 1f); _root.pivot = new Vector2(1f, 0.5f); _root.anchoredPosition = new Vector2(-Right, -Mid);   // grows leftwards
+            _root.anchorMin = _root.anchorMax = _root.pivot = new Vector2(0f, 1f); _root.anchoredPosition = new Vector2(24f, 0f);   // top left, grows rightwards
             var glow = Kit.Img(_root, "Glow", Kit.Glow(), new Color(ember.r, ember.g, ember.b, 0.05f)).rectTransform;   // soft and mostly under the strip (user: the design's .12 all round was a red halo at night)
             glow.anchorMin = Vector2.zero; glow.anchorMax = Vector2.one; glow.offsetMin = new Vector2(-8f, -12f); glow.offsetMax = new Vector2(8f, 0f);
             _clip = Kit.Node(_root, "Clip").Fill();
             var bg = Kit.Panel(_clip, "Strip", new Color(0.067f, 0.067f, 0.075f, 0.86f), 6f).rectTransform;   // design: 14,14,16 .9 into 20,20,22 .78; ponytail: flat, the mean of the two
-            bg.anchorMin = Vector2.zero; bg.anchorMax = Vector2.one; bg.offsetMin = new Vector2(-2f, -2f); bg.offsetMax = new Vector2(2f, 2f);   // our rounded sprites keep a 2 px clear margin
+            bg.anchorMin = Vector2.zero; bg.anchorMax = Vector2.one; bg.offsetMin = new Vector2(-2f, -2f); bg.offsetMax = new Vector2(2f, 12f);   // our rounded sprites keep a 2 px clear margin; the top runs off the screen, so only the lower corners round
             _foot = Kit.Img(_clip, "Foot", null, new Color(ember.r, ember.g, ember.b, 0.85f)).rectTransform;   // 1.5 px ember along the foot, clear of the round corners
             _foot.anchorMin = new Vector2(0f, 0f); _foot.anchorMax = new Vector2(1f, 0f); _foot.pivot = new Vector2(0.5f, 0f); _foot.offsetMin = new Vector2(5f, 0f); _foot.offsetMax = new Vector2(-5f, 1.5f);
             for (int i = 0; i < Names.Length; i++)
@@ -58,17 +59,18 @@ namespace Jatify.UI
             if (mask == _mask) return;
             _mask = mask;
             if (_texts[0].font != Fonts.Norse || _w[0] <= 0f) Fit();
-            _root.gameObject.SetActive(mask != 0); if (mask == 0) return;
+            _root.gameObject.SetActive(mask != 0); Shown = 0f; if (mask == 0) return;
             float x = PadX; bool first = true;
             for (int i = 0; i < _flags.Length; i++)
             {
                 bool on = (mask & (1 << i)) != 0; _flags[i].gameObject.SetActive(on); if (!on) continue;
                 _flags[i].At(x, PadTop, _w[i], FlagH); _dividers[i].enabled = !first; first = false; x += _w[i];
             }
-            _root.sizeDelta = new Vector2(x + PadX, PadTop + FlagH + PadBot);
+            _root.sizeDelta = new Vector2(x + PadX, PadTop + FlagH + PadBot); Shown = _root.sizeDelta.y;
         }
 
         internal readonly RectTransform Box;
+        internal static float Shown;   // the tab's height while any flag is on: the achievement tracker sits under it
 
         // the flags' widths in Valheim's Norse (the HUD can be built at boot, before the game has loaded its fonts)
         private void Fit()

@@ -47,6 +47,8 @@ namespace Jatify.UI.Deeds
 
         internal void Tick()
         {
+            float ty = -22f - (CheatFlags.Shown > 0f ? CheatFlags.Shown + 6f : 0f);   // under the cheat flags' tab while it shows
+            if (_tracker != null && !Mathf.Approximately(_tracker.anchoredPosition.y, ty)) _tracker.anchoredPosition = new Vector2(_tracker.anchoredPosition.x, ty);
             // the Tracker key (U) folds the tracker to its header and back (hint in the bottom-left corner); not while typing or in a menu
             var tk = HotKeys.Tracker?.Value ?? new BepInEx.Configuration.KeyboardShortcut(KeyCode.U);
             if (tk.MainKey != KeyCode.None && tk.IsDown() && !Typing.Active && !InventoryGui.IsVisible() && !Menu.IsVisible() && !Console.IsVisible() && !TextInput.IsVisible() && !Minimap.IsOpen()
