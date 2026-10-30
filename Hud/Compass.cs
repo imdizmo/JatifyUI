@@ -13,7 +13,9 @@ namespace Jatify.UI
     // soft fade at both ends, the facing notch in the middle. Elements are created once and moved.
     internal sealed class Compass
     {
-        private const float W = 580f, PPD = 3.2f;
+        private const float PPD = 3.2f;
+        private readonly float W;   // 580, or 480 in the Minimal look
+        internal readonly bool MinimalBuilt;
         private readonly RectTransform _root;
         internal RectTransform Root => _root;
         private readonly RectTransform[] _ticks = new RectTransform[72];
@@ -32,24 +34,27 @@ namespace Jatify.UI
 
         internal Compass(Transform parent, ThemeData t)
         {
+            bool min = MinimalBuilt = Cfg.CompassMinimal != null && Cfg.CompassMinimal.Value;   // Minimal (setting): one faint line, letters only, no band or ticks, 480 wide
+            W = min ? 480f : 580f;
             _root = Kit.Node(parent, "Compass");
             _root.anchorMin = _root.anchorMax = _root.pivot = new Vector2(0.5f, 1f);
-            _root.anchoredPosition = new Vector2(0f, -12f); _root.sizeDelta = new Vector2(W, 62f);
-            var mask = _root.gameObject.AddComponent<RectMask2D>(); mask.softness = new Vector2Int(70, 0);
-            var band = Kit.Panel(_root, "Band", new Color(0.05f, 0.05f, 0.06f, 0.32f), 10); band.rectTransform.At(0, 14, W, 34); // contrast against bright sky
-            var line = Kit.Img(_root, "Line", null, new Color(1f, 1f, 1f, 0.75f)); line.rectTransform.At(0, 30, W, 1);
+            _root.anchoredPosition = new Vector2(0f, min ? -6f : -12f); _root.sizeDelta = new Vector2(W, 62f);
+            var mask = _root.gameObject.AddComponent<RectMask2D>(); mask.softness = new Vector2Int(min ? 86 : 70, 0);
+            if (!min) { var band = Kit.Panel(_root, "Band", new Color(0.05f, 0.05f, 0.06f, 0.32f), 10); band.rectTransform.At(0, 14, W, 34); } // contrast against bright sky
+            var line = Kit.Img(_root, "Line", null, new Color(1f, 1f, 1f, min ? 0.5f : 0.75f)); line.rectTransform.At(0, 30, W, 1);
             for (int d = 0; d < 360; d += 5)
             {
                 if (d % 45 == 0) continue;
                 bool major = d % 15 == 0;
-                var tk = Kit.Img(_root, "Tick" + d, null, new Color(1f, 1f, 1f, major ? 0.8f : 0.5f));
+                var tk = Kit.Img(_root, "Tick" + d, null, new Color(1f, 1f, 1f, min ? 0f : major ? 0.8f : 0.5f));
                 _ticks[d / 5] = tk.rectTransform.At(0, major ? 26 : 28, 1, major ? 9 : 5);
             }
             string[] names = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
             for (int i = 0; i < 8; i++)
             {
                 bool inter = names[i].Length > 1;
-                var c = Kit.Text(_root, names[i], names[i], Fonts.Bold, inter ? 12f : 15f, i == 0 ? Theme.C(t.ember) : inter ? Theme.C(t.dim) : Color.white);
+                var c = min ? Kit.Text(_root, names[i], names[i], Fonts.Medium, inter ? 11f : 13f, i == 0 ? new Color(0.965f, 0.69f, 0.541f) : inter ? new Color(0.847f, 0.855f, 0.839f) : Color.white)
+                            : Kit.Text(_root, names[i], names[i], Fonts.Bold, inter ? 12f : 15f, i == 0 ? Theme.C(t.ember) : inter ? Theme.C(t.dim) : Color.white);
                 c.alignment = TextAlignmentOptions.Center;
                 _cards[i] = c.rectTransform.At(0, 20, 40, 20);
             }
@@ -62,7 +67,8 @@ namespace Jatify.UI
                 _pins[i] = v;
             }
             var notch = Kit.Img(_root, "Notch", null, Theme.C(t.accent));
-            notch.rectTransform.At(W / 2f - 4f, 37f, 8f, 8f); notch.rectTransform.localEulerAngles = new Vector3(0, 0, 45f);
+            if (min) notch.rectTransform.At(W / 2f - 3f, 35f, 6f, 6f); else notch.rectTransform.At(W / 2f - 4f, 37f, 8f, 8f);
+            notch.rectTransform.localEulerAngles = new Vector3(0, 0, 45f);
         }
 
         internal void Tick()

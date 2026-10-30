@@ -28,7 +28,7 @@ namespace Jatify.UI
         private readonly List<Buff> _buffPool = new List<Buff>(), _foodPool = new List<Buff>();
         private readonly RectTransform _foodRow;
         private readonly List<StatusEffect> _effects = new List<StatusEffect>();
-        private readonly Compass _compass;
+        private Compass _compass;
         private readonly RaidBanner _raid;
         private readonly CheatFlags _flags;
         private readonly MountFrame _mount;
@@ -170,6 +170,10 @@ namespace Jatify.UI
 
             _abilities?.Tick();
             TickBuffs(p);
+            if (_compass.MinimalBuilt != (Cfg.CompassMinimal != null && Cfg.CompassMinimal.Value))
+            {   // CompassMinimal switched: built again in the other look, where it was
+                int at = _compass.Root.GetSiblingIndex(); Object.Destroy(_compass.Root.gameObject); _compass = new Compass(_root, _t); _compass.Root.SetSiblingIndex(at);
+            }
             _compass.Tick(); _raid.Tick(); _flags.Tick(); _mount.Tick(p); KeyLabels();
             _minimap.Tick(p);
             Ach.Tick();
