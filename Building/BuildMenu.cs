@@ -43,7 +43,7 @@ namespace Jatify.UI
             { "piece_preptable", "Stations" }, { "piece_chest_warderobe", "Storage" }, { "piece_cloth_hanging_door", "Decor" }, { "piece_cloth_hanging_door_blue2", "Decor" }, { "piece_FairylightGarland", "Decor" },
             { "piece_TrainingDummy", "Defense" }, { "piece_ArcheryTarget", "Defense" },
         };
-        private static readonly string[] TypeOrder = { "Stations", "Station upgrades", "Portals", "Stairs", "Doors & gates", "Defense", "Roofs", "Floors", "Walls", "Blocks", "Beams", "Arches", "Lights & fires", "Storage", "Seating & beds", "Tables", "Ships & carts", "Decor", "Other" };
+        private static readonly string[] TypeOrder = { "Stations", "Station upgrades", "Portals", "Stairs", "Doors & gates", "Defense", "Roofs", "Floors", "Walls", "Blocks", "Beams", "Arches", "Lights & fires", "Storage", "Seating & beds", "Tables", "Ships & carts", "Decor", "Crops", "Saplings", "Terrain", "Other" };
         internal static readonly (string name, Color color)[] Regions =
         {
             ("Meadows", Hex("7cc35d")), ("Black Forest", Hex("3f9a5a")), ("Swamp", Hex("a08b52")), ("Mountain", Hex("cfd8e3")),
@@ -82,6 +82,9 @@ namespace Jatify.UI
         private static string TypeOf(Piece p, string name)
         {
             if (p.GetComponent<StationExtension>() != null) return "Station upgrades";
+            // the cultivator's and hoe's pieces by what they are, not by name (user: the potato came up as a station, oats as decor)
+            if (p.GetComponent<Plant>() is Plant pl) return pl.m_grownPrefabs != null && pl.m_grownPrefabs.Any(g => g != null && g.GetComponent<Pickable>() != null) ? "Crops" : "Saplings";
+            if (p.GetComponent<TerrainOp>() != null) return "Terrain";
             if (TypeOverride.TryGetValue(Utils.GetPrefabName(p.gameObject), out var o)) return o;
             foreach (var (type, re) in Types) if (re.IsMatch(name)) return type;
             return "Other";
@@ -105,6 +108,9 @@ namespace Jatify.UI
         // ---- state ------------------------------------------------------------------------------------
         private sealed class P { internal Piece Piece; internal string Name, Type; internal int Region, Cat; }
         private static RectTransform _root, _grid, _cats, _regionChips, _detail, _picked_tile;
+        private static TMPro.TextMeshProUGUI _regionL;
+        // regions only for building: the hoe's and cultivator's pieces don't belong to one (user)
+        private static bool Regional(Player me) { var n = Table(me)?.name ?? ""; return n.IndexOf("Hoe", System.StringComparison.OrdinalIgnoreCase) < 0 && n.IndexOf("Cultivator", System.StringComparison.OrdinalIgnoreCase) < 0; }
         private static TMP_InputField _search;
         private static ThemeData _t;
         private static readonly List<P> _all = new List<P>();
@@ -229,7 +235,7 @@ namespace Jatify.UI
             }
             _cats.sizeDelta = new Vector2(ColW, y);
             // right: region strip, then the grid
-            var rl = Kit.Text(w, "RegionL", "REGION", Fonts.Mono, 10f, Theme.C(t.mute)); rl.characterSpacing = 8f; rl.rectTransform.At(RX, 62, 70, 28); rl.alignment = TextAlignmentOptions.MidlineLeft;
+            var rl = _regionL = Kit.Text(w, "RegionL", "REGION", Fonts.Mono, 10f, Theme.C(t.mute)); rl.characterSpacing = 8f; rl.rectTransform.At(RX, 62, 70, 28); rl.alignment = TextAlignmentOptions.MidlineLeft;
             _regionChips = Kit.Node(w, "Regions").At(RX + 70, 62, RW - 70, 28);
             var line = Kit.Img(w, "Line", null, Theme.C(t.line2)); line.rectTransform.At(RX, 102, RW, 1);
             Knots.Divider(line, false, Theme.C(t.accent));   // design .kdiv: between the region strip and the pieces
@@ -319,6 +325,8 @@ namespace Jatify.UI
             foreach (var p in inTab) { if (!types.Contains(p.Type)) types.Add(p.Type); if (!regions.Contains(p.Region)) regions.Add(p.Region); }
             types.Sort((a, b) => System.Array.IndexOf(TypeOrder, a).CompareTo(System.Array.IndexOf(TypeOrder, b))); regions.Sort();
             if (_type != null && !types.Contains(_type)) _type = null;
+            bool regional = Regional(me); if (!regional) regions.Clear();
+            if (_regionL) _regionL.gameObject.SetActive(regional);
             if (_region >= 0 && !regions.Contains(_region)) _region = -1;
             Chips(_regionChips, regions.ConvertAll(r => (Regions[r].name, inTab.FindAll(p => p.Region == r).Count, r == _region, (Color?)Regions[r].color)), i => { _region = _region == regions[i] ? -1 : regions[i]; Refresh(); });
             var list = inTab.FindAll(p => (!_avail || CanPlace(me, p.Piece)) && (_region < 0 || p.Region == _region));
