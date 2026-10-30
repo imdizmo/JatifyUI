@@ -31,12 +31,28 @@ namespace Jatify.UI
         {
             var e = EnemyHud.instance;
             if (e == null || !On.Value) { if (_for != null) Restore(); return; }
-            if (e == _for) return;
+            if (e == _for) { Cover(); return; }
             Restore(); _for = e;
+            if (e.m_hudRoot != null)
+            {
+                var root = e.m_hudRoot; var had = root.GetComponent<CanvasGroup>();
+                _cover = had ?? root.AddComponent<CanvasGroup>(); var added = had == null; var cg = _cover;
+                _l.Do(() => { }, () => { if (cg != null) { if (added) Object.Destroy(cg); else cg.alpha = 1f; } });
+            }
             var t = Plugin.Instance.ThemeData;
             Style(e.m_baseHud, t, false); Style(e.m_baseHudMount, t, false); Style(e.m_baseHudPlayer, t, false); Style(e.m_baseHudBoss, t, true);
             Creature(e.m_baseHud, t); Boss(e.m_baseHudBoss, t);
             Rebuild(e);
+        }
+
+        // nameplates under the windows: Valheim draws them after the inventory, so a horse's name sat on the bag, the rename box
+        // and the pause menu (user)
+        private static CanvasGroup _cover;
+        private static void Cover()
+        {
+            if (_cover == null) return;
+            bool covered = InventoryGui.IsVisible() || Menu.IsVisible() || TextInput.IsVisible() || Minimap.IsOpen() || StoreGui.IsVisible();
+            _cover.alpha = covered ? 0f : 1f;
         }
 
         // names of what we add to the templates (PlateFx finds them on each copy)
