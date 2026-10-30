@@ -45,10 +45,11 @@ namespace Jatify.UI
         {
             var p = Player.m_localPlayer; if (p == null || !Free()) return;
             if (Down(Ping) && !InventoryGui.IsVisible()) PingAhead();
-            if (Down(QuickStack)) { int n = InvActions.ToChests(p); ActionToast.Show(n > 0 ? $"Stacked {n} into nearby chests" : "Nothing to stack nearby", n > 0); }
-            if (Down(Restock)) { int n = InvActions.Restock(p); ActionToast.Show(n > 0 ? $"Restocked {n} from nearby chests" : "Nothing to restock nearby", n > 0); }
-            if (Down(Merge)) ActionToast.Show(InvActions.Merge(p) ? "Merged your stacks" : "Nothing to merge");
-            if (Down(Sort)) { InvActions.Sort(p); ActionToast.Show("Sorted your inventory"); }
+            // a key Quick Stack Store binds too is its key: one press, one action
+            if (Down(QuickStack) && !Qss.OwnsKey(QuickStack.Value)) { int n = InvActions.ToChests(p); ActionToast.Show(n > 0 ? $"Stacked {n} into nearby chests" : "Nothing to stack nearby", n > 0); }
+            if (Down(Restock) && !Qss.OwnsKey(Restock.Value)) { int n = InvActions.Restock(p); ActionToast.Show(n > 0 ? $"Restocked {n} from nearby chests" : "Nothing to restock nearby", n > 0); }
+            if (Down(Merge) && !Qss.OwnsKey(Merge.Value)) ActionToast.Show(InvActions.Merge(p) ? "Merged your stacks" : "Nothing to merge");
+            if (Down(Sort) && !Qss.OwnsKey(Sort.Value)) { InvActions.Sort(p); ActionToast.Show("Sorted your inventory"); }
             if (ChestPanel.Open == null) return;
             string said = null;
             if (Down(PutAll)) said = ChestPanel.Put(false);

@@ -94,7 +94,8 @@ namespace Jatify.UI
             var g = InventoryGui.instance; if (g == null) return;
             var item = DragItem(g); var inv = DragInv(g); int amount = DragAmount(g);
             if (item == null && _heldItem != null && _heldInv != null && _heldInv.ContainsItem(_heldItem)) { item = _heldItem; inv = _heldInv; amount = _heldAmount; }   // let go over the tile: Valheim may have dropped it from the cursor first
-            if (item == null) { Undo(); return; }   // nothing in hand: a click on the tab brings the last destroyed item back, while it can
+            if (item != null && Qss.FavouritingMode && Qss.Flag()) return;   // Quick Stack Store, Alt held: the held item is marked as trash (it does it next frame)
+            if (item == null) { if (CanUndo || !Qss.QuickTrash()) Undo(); return; }   // nothing in hand: the last destroyed item back while it can; else Quick Stack Store's quick trash
             _inv = inv; _item = item; _amount = Mathf.Clamp(amount, 1, item.m_stack);
             SetupDrag.Invoke(g, new object[] { null, null, 1 });                   // drop it from the cursor first
             _ask.text = $"Destroy {Localization.instance.Localize(item.m_shared.m_name)}{(_amount > 1 ? " ×" + _amount : "")}?";
@@ -108,6 +109,7 @@ namespace Jatify.UI
         {
             var g = InventoryGui.instance;
             if (g == null || !InventoryGui.IsVisible() || Typing.Active || (_dialog && _dialog.gameObject.activeSelf) || !ZInput.GetKeyDown(KeyCode.Delete, true)) return;
+            if (Qss.On && DragItem(g) != null) return;   // Delete with an item held is Quick Stack Store's trash key
             var el = Hovered.Invoke(g.m_playerGrid, null) as InventoryElement; if (el == null) return;
             var inv = g.m_playerGrid.GetInventory(); var item = inv.GetItemAt(el.Position.x, el.Position.y); if (item == null) return;
             _inv = inv; _item = item; _amount = item.m_stack;

@@ -93,6 +93,7 @@ namespace Jatify.UI
             if (Headless || _harmony == null) return;
             Epic.Started = true;   // every plugin has run its Awake: "not installed" is final now
             Safe("epicloot", () => Epic.Hook(_harmony));
+            Safe("quick-stack-store", () => Qss.Hook(_harmony));
             if (Campfire.Module.Standalone) { Log.Warn("the standalone Campfire plugin is installed: Jatify UI's built-in Campfire stays off (remove the standalone one to use the Start Screen switches)"); return; }
             Safe("campfire-init", () => Campfire.Module.Init(string.IsNullOrEmpty(Info.Location) ? null : System.IO.Path.GetDirectoryName(Info.Location)));
             if (Campfire.Module.On) Patch(campfire: true);
@@ -162,6 +163,7 @@ namespace Jatify.UI
             Safe("map-marks", () => MapMarks.Tick(Minimap.instance));
             Safe("mod-slot-lift", ModSlots.TickStaged);
             Safe("screen-check", ScreenCheck.Tick);
+            Safe("qss-hide", Qss.Tick);
 #if JATIFY_DEV
             if (Dev.Build) Safe("test-panel", TestPanel.Tick);   // F8 test kit and shot.request: dev builds only
             if (Dev.Build) Safe("devshot", DevShot.Tick);
@@ -243,6 +245,7 @@ namespace Jatify.UI
             ExtraRows.Unbind();
             try { ExtraRows.Remove(); } catch (Exception e) { Log.Error("extra rows: " + e); } // before unpatching: pack, shrink, nothing dropped
             try { _harmony?.UnpatchSelf(); } catch (Exception e) { Log.Warn("unpatch: " + e.Message); }
+            Safe("qss-unload", Qss.Unload);   // its trash can back: it never spawns it twice
             Safe("sync-unload", Sync.Unload);
             Safe("campfire-unload", Campfire.Module.Unload);   // after unpatching (its postfixes stay out of the hand-back), before Kit and Fonts go
             if (_theme != null) { _theme.Changed -= Root.Restyle; _theme.Dispose(); }

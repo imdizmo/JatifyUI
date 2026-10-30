@@ -77,13 +77,14 @@ namespace Jatify.UI
             _wShown = _wMaxShown = -1;
             // actions (design: To chests / Restock / Merge / Sort from x 105, 4 apart)
             float bx = 105f;
-            bx = Action(head, bx, "To chests", "to-chest", t, () => { var p = Player.m_localPlayer; if (p) InvActions.Say($"Put {InvActions.ToChests(p)} stack(s) into nearby chests"); });
-            bx = Action(head, bx, "Restock", "from-chest", t, () => { var p = Player.m_localPlayer; if (p) InvActions.Say($"Took {InvActions.Restock(p)} stack(s) from nearby chests"); });
+            bx = Action(head, bx, "To chests", "to-chest", t, () => { var p = Player.m_localPlayer; if (p && !Qss.QuickStack(p)) InvActions.Say($"Put {InvActions.ToChests(p)} stack(s) into nearby chests"); });   // Quick Stack Store: its quick stack (its own message)
+            bx = Action(head, bx, "Restock", "from-chest", t, () => { var p = Player.m_localPlayer; if (p && !Qss.Restock(p)) InvActions.Say($"Took {InvActions.Restock(p)} stack(s) from nearby chests"); });
             bx = Action(head, bx, "Merge", "merge", t, () => { var p = Player.m_localPlayer; if (p) InvActions.Say(InvActions.Merge(p) ? "Merged stacks" : "Nothing to merge"); });
             _sortText = null;
             Action(head, bx, "Sort · " + InvActions.SortModes[InvActions.SortMode], "sort", t, () =>
             {   // click sorts; click again within 2 s switches the order and sorts again
                 var p = Player.m_localPlayer; if (!p) return;
+                if (Qss.Sort(p)) return;   // Quick Stack Store: its sort, by its own settings
                 if (Time.unscaledTime - _lastSort < 2f) InvActions.SortMode = (InvActions.SortMode + 1) % InvActions.SortModes.Length;
                 _lastSort = Time.unscaledTime;
                 InvActions.Sort(p);
