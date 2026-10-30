@@ -24,6 +24,7 @@
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
     <EmbeddedResource Include="assets/fonts/*.ttf" LogicalName="fonts/%(Filename)%(Extension)" />
     <EmbeddedResource Include="assets/icons/*.png" LogicalName="icons/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="assets/whatsnew/*.jpg" LogicalName="whatsnew/%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="BepInEx"><HintPath>$(ProfileDir)/BepInEx/core/BepInEx.dll</HintPath><Private>false</Private></Reference>

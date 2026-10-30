@@ -56,6 +56,7 @@ namespace Jatify.UI
             TargetHealth.Bind(Config);
             DamageNumbers.Bind(Config);
             Timers.Bind(Config);
+            WhatsNew.Bind(Config);
             FindEmptySlotPatch.Pickup = Config.Bind("Inventory", "PickupOrder", FindEmptySlotPatch.Order.UnderHotbar, "Where picked-up items land: UnderHotbar (bag rows first, the hotbar last) or Vanilla.");
             TooltipKeys.On = Config.Bind("Inventory", "TooltipKeys", true, "Key hints (move, use, split, lock, delete) at the bottom of item tooltips.");
             _theme = new Theme(Paths.ConfigPath);
@@ -164,7 +165,8 @@ namespace Jatify.UI
             if (Dev.Build) Safe("test-panel", TestPanel.Tick);   // F8 test kit and shot.request: dev builds only
             if (Dev.Build) Safe("devshot", DevShot.Tick);
 #endif
-            Safe("config-page", () => ConfigPage.Open?.Tick());   // release builds too (key capture, closing with the menu)
+            Safe("config-page", () => ConfigPage.Open?.Tick());
+            Safe("whats-new", WhatsNew.Tick);   // release builds too (key capture, closing with the menu)
         }
 
         private void LateUpdate() { if (Headless) return; Safe("vanilla-hud", VanillaHud.Tick); Safe("minimap", () => VanillaMinimap.Tick(Root.MapHole)); Safe("layout", InventoryStyle.Layout); Safe("notices", Notices.Tick); Safe("save-badge", SaveBadge.Tick); Safe("chest-peek", ChestPeek.Tick); Safe("graves", Graves.Tick); Safe("cursor", CursorSkin.Tick); Safe("hover-card", HoverCard.Tick); Safe("item-tip", ItemTip.Tick); Safe("epic-skin", EpicSkin.Tick); Safe("azu-hold", AzuHold.Tick); } // after the game's own HUD update and animators
@@ -257,7 +259,7 @@ namespace Jatify.UI
             MenuStyle.Restore();
             Windows.Restore();
             StartMenu.Restore();
-            ConfigPage.Open?.Close();
+            ConfigPage.Open?.Close(); WhatsNew.Destroy();
             Root.Destroy();
             Fonts.Unload();
             Knots.Unload();

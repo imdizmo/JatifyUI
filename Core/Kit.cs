@@ -43,6 +43,19 @@ namespace Jatify.UI
             foreach (var v in Resources.FindObjectsOfTypeAll<Sprite>()) if (v.name == name) { _vanilla[name] = v; return v; }
             return null;
         }
+        // a picture shipped in the DLL (assets/whatsnew/<name>.jpg); not cached: the caller keeps it and frees it with its window
+        internal static Sprite Picture(string name)
+        {
+            using (var st = typeof(Kit).Assembly.GetManifestResourceStream("whatsnew/" + name + ".jpg"))
+            {
+                if (st == null) return null;
+                var bytes = new byte[st.Length]; st.Read(bytes, 0, bytes.Length);
+                var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false) { name = "jatify-picture-" + name, filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+                if (!LoadPng(tex, bytes)) { Object.Destroy(tex); return null; }
+                var s = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f); s.name = tex.name; return s;
+            }
+        }
+
         // ImageConversion.LoadImage by reflection: its assembly targets a newer netstandard than we can reference.
         private static System.Func<Texture2D, byte[], bool, bool> _load;
         private static bool LoadPng(Texture2D tex, byte[] bytes)

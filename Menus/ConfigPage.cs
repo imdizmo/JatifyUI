@@ -291,7 +291,8 @@ namespace Jatify.UI
         // Valheim reads Esc here and would close the whole pause menu; with our page open Esc is ours
         private static bool Prefix()
         {
-            if (SmelterCard.Open && ZInput.GetKeyDown(KeyCode.Escape)) { SmelterCard.Close(); return false; }   // Esc closes the card, not opens the menu
+            if (SmelterCard.Open && ZInput.GetKeyDown(KeyCode.Escape)) { SmelterCard.Close(); return false; }
+            if (WhatsNew.Open) return false;   // read to the end first: Esc doesn't close it, nor open the menu over it   // Esc closes the card, not opens the menu
             var page = ConfigPage.Open; if (page == null && !PlayersPage.Open) return true;
             if (!ZInput.GetKeyDown(KeyCode.Escape) && !ZInput.GetButtonDown("JoyButtonB")) return true;
             if (page != null) page.Escape(); else PlayersPage.Close();

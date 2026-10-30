@@ -34,9 +34,9 @@ namespace Jatify.UI
 #endif
 
         [HarmonyPostfix, HarmonyPatch(typeof(Chat), nameof(Chat.HasFocus))]
-        private static void ChatFocus(ref bool __result) { if (!__result && (Active || ConfigPage.Open != null || DevPanelOpen || SmelterCard.Open)) __result = true; }
+        private static void ChatFocus(ref bool __result) { if (!__result && (Active || ConfigPage.Open != null || WhatsNew.Open || DevPanelOpen || SmelterCard.Open)) __result = true; }
 
         [HarmonyPostfix, HarmonyPatch(typeof(TextInput), nameof(TextInput.IsVisible))]
-        private static void TextVisible(ref bool __result) { if (!__result && (Active || ConfigPage.Open != null || DevPanelOpen || SmelterCard.Open)) __result = true; }   // a settings page over the game: free cursor, no player input
+        private static void TextVisible(ref bool __result) { if (!__result && (Active || ConfigPage.Open != null || WhatsNew.Open || DevPanelOpen || SmelterCard.Open)) __result = true; }   // a settings page over the game: free cursor, no player input
     }
 }
