@@ -52,7 +52,7 @@ out*).
       **Manage saves** for backups, restoring and moving saves between your computer and the cloud.
     - Before Valheim deletes a save, a copy goes to a `campfire-backups` folder.
 
-![The character screen: Rayla at the fire, worlds on the left, characters on the right](https://raw.githubusercontent.com/imdizmo/JatifyUI/main/docs/img/charscreen.webp)
+![The character screen: Sigrid at the fire, worlds on the left, characters on the right](https://raw.githubusercontent.com/imdizmo/JatifyUI/main/docs/img/charscreen.webp)
 
 ![A world's modifiers](https://raw.githubusercontent.com/imdizmo/JatifyUI/main/docs/img/cs-modifiers.webp)
 
@@ -67,7 +67,7 @@ out*).
 
 ### 2. Out in the world
 
-![The HUD in the Meadows: a boss bar under the compass, nameplates, the achievement tracker and the action bars](https://raw.githubusercontent.com/imdizmo/JatifyUI/main/docs/img/hud.webp)
+![The HUD in the Meadows at dawn: the compass, the minimap, health, stamina, eitr and adrenaline, and the action bars](https://raw.githubusercontent.com/imdizmo/JatifyUI/main/docs/img/hud.webp)
 
 - **Health, stamina and eitr:** rounded bars with numbers.
     - The **1–8** bar sits on a glass panel with the **tools** bar to its left; the panels can be switched off.
@@ -84,7 +84,7 @@ out*).
 
 - **Riding:** you get a portrait frame for your mount (Fed or Hungry, its health and stamina) next to your own bars.
 
-![Riding: the mount frame next to Rayla's bars](https://raw.githubusercontent.com/imdizmo/JatifyUI/main/docs/img/mount.webp)
+![Riding: the mount frame next to Sigrid's bars](https://raw.githubusercontent.com/imdizmo/JatifyUI/main/docs/img/mount.webp)
 
 - **Damage numbers:**
     - In Norse lettering.
@@ -95,7 +95,7 @@ out*).
 - **The compass** shows map pins near you with their distance.
 - **Cheat flags:** while god mode, ghost, flying, no-cost or devcommands is on, a small strip left of the compass says so.
 
-![The cheat flags strip left of the compass, with god mode on](https://raw.githubusercontent.com/imdizmo/JatifyUI/main/docs/img/flags.webp)
+![The cheat flags strip in the top left, with god mode on](https://raw.githubusercontent.com/imdizmo/JatifyUI/main/docs/img/flags.webp)
 
 - **Messages:**
     - Valheim's messages are restyled, and saving shows a small "Saving world… / World saved" line under the compass.
@@ -278,7 +278,7 @@ Seven tabs beside your inventory:
 - **Players:** who is here, where they are if they share their position, and the invite code to copy. The host and
   admins can kick.
 
-![The Players page (Steam name and id blurred)](https://raw.githubusercontent.com/imdizmo/JatifyUI/main/docs/img/players.webp)
+![The pause menu: the world card, with What's new! on it](https://raw.githubusercontent.com/imdizmo/JatifyUI/main/docs/img/menu.webp)
 
 - **Jatify UI:** every setting on one searchable page. Changes apply at once.
 - **Mods:** the same page for every other mod's settings.
