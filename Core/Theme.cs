@@ -45,7 +45,7 @@ namespace Jatify.UI
             Directory.CreateDirectory(dir);
             _file = Path.Combine(dir, "theme.json");
             if (!File.Exists(_file)) File.WriteAllText(_file, JsonUtility.ToJson(D, true));
-            Read();
+            Read(); Migrate();
             _watch = new FileSystemWatcher(dir, "theme.json") { NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size };
             _watch.Changed += (_, __) => _dirty = true;  // watcher threads only flag; Unity work happens in Tick
             _watch.Created += (_, __) => _dirty = true;
@@ -58,6 +58,26 @@ namespace Jatify.UI
             if (!_dirty) return;
             _dirty = false;
             if (Read()) { Log.Info("theme.json applied"); Changed?.Invoke(D); }
+        }
+
+        // 0.3.0: orange replaced green as the default. Every install wrote the old defaults into its file, so a token still at its
+        // old default moves to the new one; a colour the player picked stays.
+        private static readonly (string token, string was)[] Old =
+        {
+            ("glass", "#141416EB"), ("line2", "#FFFFFF29"), ("accent", "#22D67E"), ("accentSoft", "#22D67E24"), ("warnText", "#F59B75"), ("eitr", "#5AA9FF"),
+        };
+        private void Migrate()
+        {
+            var fresh = new ThemeData(); bool moved = false;
+            foreach (var (token, was) in Old)
+            {
+                var f = typeof(ThemeData).GetField(token);
+                if (!string.Equals((string)f.GetValue(D), was, StringComparison.OrdinalIgnoreCase)) continue;
+                f.SetValue(D, f.GetValue(fresh)); moved = true;
+            }
+            if (!moved) return;
+            try { File.WriteAllText(_file, JsonUtility.ToJson(D, true)); Log.Info("theme.json: the old green defaults moved to the new orange ones"); }
+            catch (Exception e) { Log.Warn("theme.json not updated: " + e.Message); }
         }
 
         private bool Read()

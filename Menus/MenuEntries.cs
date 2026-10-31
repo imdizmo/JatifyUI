@@ -30,14 +30,21 @@ namespace Jatify.UI
             name.gameObject.AddComponent<Button>().onClick.AddListener(() => Application.OpenURL(Links.Discord));
             var accent = Theme.C(t.accent);   // the accent on hover, as the menu's entries (user): the icon and the name light together
             foreach (var go in new[] { b.gameObject, name.gameObject }) { var h = go.AddComponent<HoverTint>(); h.Lit = accent; h.Parts = new Graphic[] { ic, name }; }
-            // What's new: white, tilted, pulsing; a click opens the notes
-            var wn = Kit.Text(row, "WhatsNew", "What's new!", Fonts.Norse, 26f, Color.white); wn.alignment = TextAlignmentOptions.MidlineLeft; wn.raycastTarget = true;
+            Splash(row, new Vector2(0f, 0f), new Vector2(70f, 58f), false);   // resting on the icon's top edge, a splash on it (user)
+        }
+
+        // "What's new!": white, tilted, pulsing; a click opens the notes. Leaning left on the title screen (bottom left); mirrored,
+        // leaning right, on the pause menu's world card (bottom right, user)
+        internal static TMP_Text Splash(Transform parent, Vector2 anchor, Vector2 at, bool right)
+        {
+            var wn = Kit.Text(parent, "WhatsNew", "What's new!", Fonts.Norse, 26f, Color.white); wn.alignment = right ? TextAlignmentOptions.MidlineRight : TextAlignmentOptions.MidlineLeft; wn.raycastTarget = true;
             wn.fontSharedMaterial = Fonts.Shadowed(Fonts.Norse) ?? wn.fontSharedMaterial;
-            var wr = wn.rectTransform; wr.anchorMin = wr.anchorMax = new Vector2(0f, 0f); wr.pivot = new Vector2(0.5f, 0.5f); wr.sizeDelta = new Vector2(170f, 40f); wr.anchoredPosition = new Vector2(70f, 58f);   // resting on the icon's top edge, a splash on it (user)
-            wr.localEulerAngles = new Vector3(0f, 0f, 8f);
+            var wr = wn.rectTransform; wr.anchorMin = wr.anchorMax = anchor; wr.pivot = new Vector2(0.5f, 0.5f); wr.sizeDelta = new Vector2(170f, 40f); wr.anchoredPosition = at;
+            wr.localEulerAngles = new Vector3(0f, 0f, right ? -8f : 8f);
             wn.gameObject.AddComponent<Pulse>();
-            { var h = wn.gameObject.AddComponent<HoverTint>(); h.Lit = accent; h.Parts = new Graphic[] { wn }; }
+            { var h = wn.gameObject.AddComponent<HoverTint>(); h.Lit = Theme.C(Plugin.Instance.ThemeData.accent); h.Parts = new Graphic[] { wn }; }
             wn.gameObject.AddComponent<Button>().onClick.AddListener(() => { if (!WhatsNew.Open) WhatsNew.Show(false); });
+            return wn;
         }
 
         private sealed class HoverTint : MonoBehaviour, UnityEngine.EventSystems.IPointerEnterHandler, UnityEngine.EventSystems.IPointerExitHandler
@@ -54,12 +61,12 @@ namespace Jatify.UI
             private void Update() { float k = 1f + 0.08f * Mathf.Sin(Time.unscaledTime * 3.2f); transform.localScale = new Vector3(k, k, 1f); }
         }
 
-        internal static void AddTo(Transform entries, Ledger l, ThemeData t, bool whatsNew = true)
+        // What's new isn't a list entry: a splash on the title screen's links and on the pause menu's world card (user)
+        internal static void AddTo(Transform entries, Ledger l, ThemeData t)
         {
             var settings = entries?.Find("Settings");
             if (settings == null) return;
             int i = settings.GetSiblingIndex();
-            if (whatsNew) Clone(settings, "What's new", i + 1, l, () => { if (!WhatsNew.Open) WhatsNew.Show(false); });   // the update notes again, any time (user); the title screen has it bottom left
             Clone(settings, "Jatify UI", i + 1, l, () => ConfigPage.Show(Root.Canvas.transform, t, false));
             Clone(settings, "Mods", i + 1, l, () => ConfigPage.Show(Root.Canvas.transform, t, true));
         }

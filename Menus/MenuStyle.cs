@@ -71,6 +71,7 @@ namespace Jatify.UI
             var l = Kit.Text(rt, "Label", "WORLD", Fonts.Mono, 10.5f, Theme.C(t.mute)); l.characterSpacing = 8f; l.rectTransform.At(18, 16, 280, 14);
             _cardTitle = Kit.Text(rt, "Name", "", Fonts.Bold, 20f, Color.white); _cardTitle.rectTransform.At(18, 32, 284, 28); _cardTitle.overflowMode = TextOverflowModes.Ellipsis;
             _cardBody = Kit.Text(rt, "Rows", "", Fonts.Medium, 12.5f, Theme.C(t.mute)); _cardBody.richText = true; _cardBody.lineSpacing = 22f; _cardBody.rectTransform.At(18, 72, 284, 100);
+            MenuEntries.Splash(rt, new Vector2(1f, 1f), new Vector2(-70f, 20f), true);   // on the card's top edge, its right end (user); it hides with the card
         }
 
         // Valheim's quit / log out dialogs: a glass box, the question, when you last saved, Cancel | Quit (red)

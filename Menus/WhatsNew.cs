@@ -4,27 +4,33 @@ using UnityEngine.UI;
 
 namespace Jatify.UI
 {
-    // "What's new" (user): once a character is in the world after an update, a window with the changes. Close stays locked until
-    // the reader has scrolled to the end. Seen is kept per install as a hash of the notes, so editing the notes shows them again.
+    // "What's new" (user): after an update, a window with the changes at every world load until "Don't show again" is ticked. Close
+    // stays locked until the reader has scrolled to the end. Seen is kept per install as a hash of the notes, so editing the notes
+    // shows them again.
     internal static class WhatsNew
     {
         internal static bool Open => _root != null;
         private static RectTransform _root, _content;
         private static ScrollRect _scroll;
         private static Image _closeBg; private static TextMeshProUGUI _closeText;
-        private static bool _read, _checked;
+        private static bool _read, _checked, _dontShow;
         private static readonly System.Collections.Generic.List<Sprite> _pictures = new System.Collections.Generic.List<Sprite>();
         private static void FreePictures() { foreach (var sp in _pictures) if (sp != null) { Object.Destroy(sp.texture); Object.Destroy(sp); } _pictures.Clear(); }
 
         private const string Notes =
-@"<b>Inventory</b>
+@"<b>Look</b>
+- Orange is the new default colour. Colours you picked yourself in theme.json stay as they are.
+
+<b>Inventory</b>
 [inventory]
 - Tools, Food and Meads sit in one strip along the bottom of the panel.
 - Food and Meads now have 3 slots each. Anything that was in slots 4 to 6 moved into your bag, or was dropped at your feet if the bag was full.
-- Tabs on the panel's edges: the helmet hides the character column, the crossed axe and sword hides the Tools, Food and Meads rows, and the key pouch and the trash have tabs of their own.
+- Tabs on the panel's edges: the helmet shows or hides the character column, the crossed axe and sword folds the Tools, Food and Meads rows away, and the key pouch, the trash and each worn bag have tabs of their own.
+- With a short bag, Tools, Food and Meads sit under it beside the character column, and the panel is shorter.
+- The character column no longer has hand slots: what you hold is on the action bar and on the figure.
 - A new Stats tab, beside Character and Skills, holds your stats, resistances and effects.
 - PvP moved to the top panel, next to the settings button.
-- The trash works: drop an item on it, or click it while holding one.
+- The trash works: drop an item on it, or click it while holding one. Click it again within 15 seconds to bring the item back.
 
 <b>HUD</b>
 [dock]
@@ -33,6 +39,8 @@ namespace Jatify.UI
 [buffs]
 - Buffs are Valheim's plain icons, a little bigger. Ailments move under the buffs when there are many.
 - The minimap has no panel behind it, and its text has a dark edge so it reads over snow.
+- The compass is one faint line with the letters (Compass minimal, now on by default).
+- Nameplates and the boss bar are finer: the name with a small red knot each side, and a slim bar in the health bar's red.
 - Nameplates no longer show through the inventory, menus or text boxes.
 - Seasonality's time left shows under the season.
 
@@ -44,6 +52,13 @@ namespace Jatify.UI
 - The build menu has an Everything category, shows the piece's name by the cursor, and no longer stalls with every piece unlocked.
 - The cultivator and hoe sort their pieces into Crops, Saplings and Terrain.
 
+<b>Other mods</b>
+- ExtraSlots: its slots sit in Jatify's panel and bars in place of ours: armour and utilities on the doll, quick slots and food under Tools and Food, ammo in its own bar bottom left. Slots other mods add (backpacks, jewellery, tomes, lanterns) get a Mod slots tab on the left edge. Our three mead slots stay.
+- Bags from Backpacks, AdventureBackpacks and RustyBags: a tab for each one you wear, on the panel's right edge, opens it.
+- Quick Stack Store: To chests, Restock, Sort and the trash use its actions, its own buttons are hidden, and its sort and quick stack leave your locked slots, worn gear and slot rows alone.
+- Valheim Enchantment System: the Enchant button can be clicked again.
+- A mod made for an older Valheim that fails, or one that's known to be broken (Sleepover), now gets a warning. So does a screen size that makes clicks miss the cursor.
+
 <b>Elsewhere</b>
 - Map pins: the name box is easy to see.
 - Find servers opens the community server list in Jatify's look.
@@ -53,23 +68,24 @@ namespace Jatify.UI
 - With ExtraSlots installed, Jatify leaves its slots alone.
 
 <b>Where to change them</b>
-Press Esc, then Jatify UI. The HUD section has the new switches: Food timers as buffs, Buff frames, Minimap panel, Compass minimal, Power panel and Key hints. Action bar panels now covers every bar.
+Press Esc, then Jatify UI. The HUD section has the new switches: Food timers as buffs, Buff frames, Minimap panel, Compass minimal, Power panel and Key hints. Action bar panels now covers every bar. Nameplate ornaments, Nameplate numbers and Boss icon set the nameplates and boss bar (numbers and icon are off at first).
 [settings-hud]
 The Inventory section remembers whether the character column and the Tools, Food and Meads rows are folded away (the tabs on the panel's edges do the same).
 [settings-inv]
-These notes are always there under Esc, What's new.
+These notes are always there: press Esc, What's new! on the world card.
 
 Thanks for the reports and ideas!";
 
         internal static BepInEx.Configuration.ConfigEntry<string> Seen;
-        internal static void Bind(BepInEx.Configuration.ConfigFile c) => Seen = c.Bind("Panels", "WhatsNewSeen", "", "Which What's new notes you have read (set by the game; clear it to see them again).");
+        internal static void Bind(BepInEx.Configuration.ConfigFile c) => Seen = c.Bind("Panels", "WhatsNewSeen", "", "Which What's new notes you chose not to see again (set by the game; clear it to see them at each world load again).");
 
         private static string Key => Notes.GetStableHashCode().ToString();
 
         internal static void Tick()
         {
             if (_root != null) { TickOpen(); return; }
-            if (_checked || Seen == null || Player.m_localPlayer == null || Root.Canvas == null) return;
+            if (Player.m_localPlayer == null) { _checked = false; return; }   // each world load looks again
+            if (_checked || Seen == null || Root.Canvas == null) return;
             if (Hud.instance != null && Hud.IsUserHidden()) return;
             _checked = true;
             if (Seen.Value == Key) return;
@@ -127,6 +143,16 @@ Thanks for the reports and ideas!";
             _closeBg = Kit.Panel(b, "Close", Theme.C(t.raised2), 9); _closeBg.rectTransform.At(210, 578, 200, 42); _closeBg.raycastTarget = true;
             _closeText = Kit.Text(_closeBg.rectTransform, "T", "Close", Fonts.Bold, 15f, Theme.C(t.mute)); _closeText.alignment = TextAlignmentOptions.Center; _closeText.rectTransform.Fill();
             _closeBg.gameObject.AddComponent<Button>().onClick.AddListener(() => { if (_read) Close(); });
+            // Don't show again (user): unticked, the notes come back at the next world load
+            _dontShow = false;
+            if (Seen == null || Seen.Value != Key)
+            {
+                var (cb, cbFill) = Kit.Box(b, "DontShow", Theme.C(t.raised), Theme.C(t.line2), 5); cb.rectTransform.At(32, 590, 18, 18); cb.raycastTarget = true;
+                var tick = Kit.Panel(cb.rectTransform, "Tick", Theme.C(t.accent), 3); tick.rectTransform.Fill(4f); tick.enabled = false;
+                var lab = Kit.Text(b, "DontShowLabel", "Don't show again", Fonts.Medium, 13f, Theme.C(t.dim)); lab.alignment = TextAlignmentOptions.MidlineLeft; lab.rectTransform.At(58, 586, 140, 26); lab.raycastTarget = true;
+                void Flip() { _dontShow = !_dontShow; tick.enabled = _dontShow; }
+                cb.gameObject.AddComponent<Button>().onClick.AddListener(Flip); lab.gameObject.AddComponent<Button>().onClick.AddListener(Flip);
+            }
             _read = false; if (!mustRead) Unlock();
             Log.Info("what's new: shown");
         }
@@ -156,7 +182,7 @@ Thanks for the reports and ideas!";
 
         internal static void Close()
         {
-            if (Seen != null) Seen.Value = Key;
+            if (Seen != null && _dontShow) Seen.Value = Key;
             if (_closing < 0f) { _closing = Time.unscaledTime; if (_fade != null) _fade.blocksRaycasts = false; }
             Log.Info("what's new: read and closed");
         }

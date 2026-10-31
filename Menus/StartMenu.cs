@@ -37,7 +37,7 @@ namespace Jatify.UI
             {
                 var vlg = entries.GetComponent<VerticalLayoutGroup>();   // rows keep vanilla's ~46 px height whatever the font size: pull them together so Quit fits
                 if (vlg != null) { var s0 = vlg.spacing; _l.Do(() => vlg.spacing = -8f, () => { if (vlg != null) vlg.spacing = s0; }); }
-                MenuEntries.AddTo(entries, _l, t, whatsNew: false);   // Mods, Jatify UI: as in the pause menu (What's new sits bottom left here)
+                MenuEntries.AddTo(entries, _l, t);   // Mods, Jatify UI: as in the pause menu
                 foreach (Transform e in entries) Entry(e, t);
             }
             // bottom left (Changelog, the licence, Player.log) and the merch panel stay Valheim's own (user), but the links line
