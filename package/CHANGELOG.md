@@ -1,3 +1,58 @@
+## 0.3.0
+
+### Look
+
+- Orange is the new default colour. Colours you picked yourself in `theme.json` stay as they are; the old green defaults move to orange on their own.
+- A new icon: the knot in orange.
+- What's new: a window with the changes, shown at each world load after an update until you tick Don't show again. Close unlocks once you have scrolled to the end. It is always there afterwards: Esc, then What's new! on the world card (and on the title screen).
+- The title screen: Jatify's Discord and What's new! above the bottom-left links.
+
+### Inventory
+
+- Tools, Food and Meads sit in one strip along the bottom of the panel. With a short bag they sit under it beside the character column, and the panel is shorter.
+- Food and Meads have 3 slots each. Anything that was in slots 4 to 6 moves into your bag, or drops at your feet if the bag is full.
+- Tabs on the panel's edges: the helmet shows or hides the character column, the crossed axe and sword folds the Tools, Food and Meads rows away (both remembered), and the key pouch, the trash and each worn bag (Backpacks, AdventureBackpacks, RustyBags) have tabs of their own.
+- A new Stats tab beside Character and Skills: your stats, resistances and effects.
+- The character column no longer has hand slots: what you hold is on the action bar and on the figure.
+- PvP moved to the top panel, next to the settings button.
+- The trash works: drop an item on it, let go of it over it, or click it while holding one. Click it again within 15 seconds to bring the item back (#15).
+- Grey labels and values get a dark edge, so they read over the see-through panel.
+
+### HUD
+
+- Food and Meads have their own bar right of the action bar; the guardian power sits right of the health bars, bigger (#31).
+- Buffs and food timers are Valheim's plain icons, a little bigger. Ailments move under the buffs when there are many.
+- The minimap has no panel behind it; its text and wind arrow have a dark edge so they read over snow. Its clock no longer runs under the wind (#22).
+- The compass is one faint line with the letters (Compass minimal, on by default).
+- Nameplates and the boss bar are finer: the name between two small red knots and a slim bar in the health bar's red. Nameplate numbers and the boss icon are settings, off at first. Nameplates no longer show through the inventory, menus, the map or text boxes.
+- The cheat flags sit in a tab at the top left.
+- An effect with no timer shows its own text (#25). Seasonality's time left shows under the season.
+
+### Crafting and building
+
+- Weapons and Armour get a second row of kinds (Swords, Axes, Helmets...) (#38).
+- Recipes you can't craft yet are as readable as the rest, and the list has a scroll bar (#16, #35).
+- The recipe search starts empty at each station. Long stat lines wrap, and the details scroll when they run long.
+- The build menu has an Everything category, shows the piece's name by the cursor, fits its region filters and no longer stalls with every piece unlocked (#17, #18, #34).
+- The cultivator and hoe sort their pieces into Crops, Saplings and Terrain.
+
+### Mod support
+
+- ExtraSlots: its slots sit in Jatify's panel and HUD in place of ours (armour and utilities on the doll, quick slots and food under Tools and Food, ammo in a bar of its own bottom left). Slots other mods add (backpacks, jewellery, tomes, lanterns) get a Mod slots tab on the left edge (#29).
+- Backpacks, AdventureBackpacks, RustyBags: a tab for each bag you wear opens it.
+- Quick Stack Store: To chests, Restock, Sort and the trash use its actions, its own buttons are hidden, and its sort and quick stack leave locked slots, worn gear and slot rows alone.
+- Valheim Enchantment System: the Enchant button can be clicked again.
+- RustyBags: its chest buttons in Jatify's look.
+- Warnings: a mod made for an older Valheim that fails is named once, in the log and on screen; a known broken mod (Sleepover) gets a warning to remove it; so does a screen shape that makes clicks miss the cursor.
+
+### Elsewhere
+
+- Map: the Add pin name box is easy to see (#33).
+- Find servers opens the community server list in Jatify's look (#20).
+- Deleting a cloud character or world works (#19). The Mods settings list scrolls (#21). A mod's page in Texts keeps its Back button working.
+- A horse's saddlebag no longer offers Rename (#26). Take all and Put all have the right icons.
+- No missing-character font warnings (#23).
+
 ## 0.2.1
 
 Tested with Valheim Enchantment System 1.9.18 (sighsorry) and on a Valheim dedicated server.

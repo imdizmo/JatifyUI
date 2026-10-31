@@ -19,7 +19,7 @@ namespace Jatify.UI
     [BepInDependency(Azu.Guid, BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
-        public const string Guid = "jatify.ui", Version = "0.2.1";
+        public const string Guid = "jatify.ui", Version = "0.3.0";
         internal static Plugin Instance;
         private Harmony _harmony;
         private Theme _theme;
