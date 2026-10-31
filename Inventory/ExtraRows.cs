@@ -195,6 +195,23 @@ namespace Jatify.UI
         internal static int InOurRows(Inventory inv) { int n = 0; foreach (var it in Items(inv)) if (it.m_gridPos.y >= Base) n++; return n; }
     }
 
+    // A brand-new character: Valheim never resizes its inventory at login, so it played its whole first session without the
+    // extra rows and the Tools, Food and Meads rows (found in the 0.3.0 release tests). On spawn, a grid shorter than vanilla
+    // + ours gets them, as a reload would; one that has them is left alone.
+    [HarmonyPatch(typeof(Player), "OnSpawned")]
+    internal static class SpawnRowsPatch
+    {
+        private static void Postfix(Player __instance)
+        {
+            if (__instance != Player.m_localPlayer || SlotHost.Other) return;   // AzuEPI sizes the grid
+            int rows = __instance.TryGetUniqueKeyValue("invrows", out var v) && int.TryParse(v, out var r) ? Mathf.Clamp(r, 1, 9) : 4;
+            if (__instance.GetInventory().GetHeight() >= rows + ExtraRows.Extra.Value + SpecialRows.Rows) return;
+            __instance.AddUniqueKeyValue("invrows", rows.ToString());
+            ExtraRows.Apply();
+            Log.Info($"extra rows: a new character's inventory grown to {__instance.GetInventory().GetHeight()} rows");
+        }
+    }
+
     // Vanilla's resize (login, console "inventorysize"): keep its row count in the save, give the
     // inventory vanilla + extra rows, then put tagged items back.
     [HarmonyPatch(typeof(Player), nameof(Player.SetInventorySize))]
