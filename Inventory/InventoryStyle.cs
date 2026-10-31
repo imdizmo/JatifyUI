@@ -645,6 +645,20 @@ namespace Jatify.UI
             foreach (var e in cells) { var d = CellDesign(e.Position.x, e.Position.y); var rt = (RectTransform)e.transform; rt.anchoredPosition = c00.anchoredPosition + new Vector2(d.x, -d.y); rt.sizeDelta = new Vector2(BeltSlot, BeltSlot); }
         }
 
+        // the Tools, Food and Meads cells: shown only while the rows are unfolded (and only as wide as each row). Every tick, not just
+        // when the layout changes: the game re-enables its cells when it redraws the grid, and a hidden cell left active took the
+        // clicks meant for the fold tab hanging over it (user: the folded rows wouldn't open)
+        private static void HideRowCells()
+        {
+            if (_for == null || !SpecialRows.On) return;
+            foreach (Transform c in _for.m_playerGrid.m_gridRoot)
+            {
+                var e = c.GetComponent<InventoryElement>(); if (e == null || e.Position.y < SpecialRows.Start || e.Position.y >= SpecialRows.EqRow) continue;
+                bool on = !Folded && e.Position.x < SpecialRows.RowWidth(e.Position.y - SpecialRows.Start);
+                if (e.gameObject.activeSelf != on) e.gameObject.SetActive(on);
+            }
+        }
+
         private static void LayBelts()
         {
             Legible();
@@ -657,11 +671,10 @@ namespace Jatify.UI
                 if (lit != _colLit) { _colLit = lit; Tint(_gearTab, lit == 1); Tint(_modsTab, lit == 2); }
             }
             int key = SpecialRows.Start * 4 + (Folded ? 1 : 0) + (Narrow ? 2 : 0) + Mathf.RoundToInt(EsBelow) * 1000 + (UnderBag ? 1 << 24 : 0);   // ExtraSlots adding a row under the doll moves the strip
+            HideRowCells();
             if (_beltLine == null || _beltsLaid == key) return;
             _beltsLaid = key;
             for (int i = 0; i < _beltLabels.Count; i++) { var l = _beltLabels[i]; bool on = (SpecialRows.On || Es.Drives) && !Folded; if (l != null && l.gameObject.activeSelf != on) l.gameObject.SetActive(on); }   // ExtraSlots: its quick and food slots under Tools and Food, our meads beside them   // AzuEPI: its cells carry their own names
-            if (_for != null && SpecialRows.On)
-                foreach (Transform c in _for.m_playerGrid.m_gridRoot) { var e = c.GetComponent<InventoryElement>(); if (e != null && e.Position.y >= SpecialRows.Start && e.Position.y < SpecialRows.EqRow) e.gameObject.SetActive(!Folded && e.Position.x < SpecialRows.RowWidth(e.Position.y - SpecialRows.Start)); }
             if (_fold != null) { _fold.gameObject.SetActive(SpecialRows.On || Es.Drives); Tint(_fold, Folded); }
             float lastRow = 240f - BagLift - 32f + (InvRows - 1) * Pitch;
             _trash?.MoveTo(850f - 1f, lastRow);
