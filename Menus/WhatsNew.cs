@@ -180,6 +180,8 @@ Thanks for the reports and ideas!";
             _closeBg.color = Theme.C(t.accent); _closeText.color = new Color(0.03f, 0.1f, 0.06f);
         }
 
+        internal static void Dismiss() { if (Seen != null) Seen.Value = Key; if (Open) { _dontShow = true; Close(); } }   // as Don't show again + Close (dev: screenshot runs)
+
         internal static void Close()
         {
             if (Seen != null && _dontShow) Seen.Value = Key;
