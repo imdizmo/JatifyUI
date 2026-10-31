@@ -621,7 +621,8 @@ namespace Jatify.UI
         {
             if (_frame == null || Time.unscaledTime < _legibleNext) return;
             _legibleNext = Time.unscaledTime + 0.5f;   // texts made later (tabs, tooltips' rows) are caught within half a second
-            var texts = _for != null ? _for.GetComponentsInChildren<TMP_Text>(true) : _frame.parent.GetComponentsInChildren<TMP_Text>(true);   // the whole screen: the crafting side too (user) if (texts.Length == _legibleCount) return; _legibleCount = texts.Length;
+            var texts = _for != null ? _for.GetComponentsInChildren<TMP_Text>(true) : _frame.parent.GetComponentsInChildren<TMP_Text>(true);   // the whole screen: the crafting side too (user)
+            if (texts.Length == _legibleCount) return; _legibleCount = texts.Length;
             var dim = Theme.C(Plugin.Instance.ThemeData.dim);
             foreach (var x in texts)
             {
