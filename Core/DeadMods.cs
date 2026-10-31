@@ -62,7 +62,8 @@ namespace Jatify.UI
                 var l = line.Trim(); if (!l.StartsWith("at ")) continue;
                 int paren = l.IndexOf(" ("); if (paren < 0) paren = l.IndexOf('('); if (paren < 4) continue;
                 var full = l.Substring(3, paren - 3).Trim(); int dot = full.LastIndexOf('.'); if (dot <= 0) continue;
-                var typeName = full.Substring(0, dot); int gen = typeName.IndexOf('['); if (gen > 0) typeName = typeName.Substring(0, gen);   // "CustomSyncedValue`1[T]" if (typeName.EndsWith(".")) typeName = typeName.TrimEnd('.');   // ".cctor" / ".ctor"
+                var typeName = full.Substring(0, dot); int gen = typeName.IndexOf('['); if (gen > 0) typeName = typeName.Substring(0, gen);   // "CustomSyncedValue`1[T]"
+                if (typeName.EndsWith(".")) typeName = typeName.TrimEnd('.');   // ".cctor" / ".ctor"
                 if (typeName.StartsWith("(wrapper") || typeName.StartsWith("System.") || typeName.StartsWith("UnityEngine.") || typeName.StartsWith("HarmonyLib.")) continue;
                 foreach (var kv in _byAsm)
                 {
