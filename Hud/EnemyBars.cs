@@ -15,7 +15,7 @@ namespace Jatify.UI
     // they are made again).
     internal static class EnemyBars
     {
-        internal static ConfigEntry<bool> On, PvpColors;
+        internal static ConfigEntry<bool> On, PvpColors, Knots, Numbers, BossIcon;
         internal static ConfigEntry<float> NameScale;
         private static readonly Ledger _l = new Ledger();
         private static EnemyHud _for;
@@ -25,6 +25,10 @@ namespace Jatify.UI
             On = c.Bind("HUD", "Nameplates", true, "Creature, boss and player nameplates in Jatify's style.");
             PvpColors = c.Bind("HUD", "PlayerPvpColors", true, "Other players' names: red with PvP on, blue with it off.");
             NameScale = c.Bind("HUD", "NameplateScale", 1f, new ConfigDescription("Size of the names above creatures.", new AcceptableValueRange<float>(0.6f, 2f)));
+            Knots = c.Bind("HUD", "NameplateOrnaments", true, "The small knots either side of creature and boss names.");
+            Numbers = c.Bind("HUD", "NameplateNumbers", false, "Health as numbers (now / most) under creature and boss bars; off (the default): the bar alone.");
+            BossIcon = c.Bind("HUD", "BossIcon", false, "The boss's trophy in a ring at its bar's left end; off (the default): the bar alone.");
+            foreach (var e in new ConfigEntryBase[] { Knots, Numbers, BossIcon, NameScale }) e.GetType().GetEvent("SettingChanged")?.AddEventHandler(e, (System.EventHandler)((_, __) => { if (_for != null) Restore(); }));   // made again with the new look next frame
         }
 
         internal static void Tick()
@@ -58,11 +62,11 @@ namespace Jatify.UI
         // names of what we add to the templates (PlateFx finds them on each copy)
         internal const string KnotL = "jatify-knot-l", KnotR = "jatify-knot-r", HpName = "jatify-hp", HpBack = "jatify-hpback", IconName = "jatify-icon", GlowName = "jatify-glow";
 
-        // Creature nameplates (detail pass, approved): the name in Valheim's Norse between green trinity knots, a 110 x 6 bar, the level
+        // Creature nameplates (detail pass, approved): the name in Valheim's Norse between light-red trinity knots (user: as the boss's), a 110 x 6 bar, the level
         // stars (Valheim's own sprites) right-aligned in the corner under it, "cur / max" under its left corner in combat or hovered.
         // Valheim's own Aware / Alerted icons stay where they are (it switches them), Aware at the design's 26 px.
-        // User: the design's sizes x1.4 (a 24 px name, a 150 x 8 bar, 16 px stars, 12 px numbers).
-        // Coordinates are the template's (centre origin, y up): bar 2..10, name centred at 27, icons at 56.
+        // User: first the design's sizes x1.4, then finer, closer to the original (an 18 px name, a 110 x 5 bar, 12 px stars, 10.5 px numbers).
+        // Coordinates are the template's (centre origin, y up): name centred at 21, icons at 44.
         private static void Creature(GameObject tpl, ThemeData t)
         {
             if (tpl == null) return;
@@ -70,25 +74,28 @@ namespace Jatify.UI
             var name = tr.Find("Name")?.GetComponent<TMP_Text>();
             if (name != null)
             {
-                _l.Txt(name, Fonts.Norse, 24f * s, Color.white); Spacing(name, 4f); Mat(name, Fonts.Shadowed(Fonts.Norse));
-                _l.Rect(name.rectTransform, r => r.anchoredPosition = new Vector2(r.anchoredPosition.x, 27f));
-                var c = Theme.C(t.accent);
-                _l.Own(Kit.Ornament(name.transform, KnotL, c, 112f * s, 33f * s, false)); _l.Own(Kit.Ornament(name.transform, KnotR, c, 112f * s, 33f * s, true));
+                _l.Txt(name, Fonts.Norse, 18f * s, Color.white); Spacing(name, 4f); Mat(name, Fonts.Shadowed(Fonts.Norse));
+                _l.Rect(name.rectTransform, r => r.anchoredPosition = new Vector2(r.anchoredPosition.x, 21f));
+                Color c = new Color32(0xFF, 0x8A, 0x6B, 0xFF);   // the boss knots' light red (user: both red)
+                if (Knots.Value) _l.Own(Kit.Ornament(name.transform, KnotL, c, 9f * s, 11f * s, false, false, false)); if (Knots.Value) _l.Own(Kit.Ornament(name.transform, KnotR, c, 9f * s, 11f * s, true, false, false));   // the knot alone (user)   // tiny and fine (user)
             }
-            Bars(tr, 150f, 8f);
-            Rim(tr, new Color(0f, 0f, 0f, 0.45f));   // design: box-shadow 0 0 0 1px rgba(0,0,0,.45)
-            Stars(tr, "level_2", 1, 75f, -9f); Stars(tr, "level_3", 2, 75f, -9f);
-            _l.Rect(tr.Find("Aware") as RectTransform, r => { r.sizeDelta = new Vector2(36f, 36f * 138f / 191f); r.anchoredPosition = new Vector2(r.anchoredPosition.x, 56f); });   // the sprite is 191 x 138; Valheim squeezes it into 60 x 60
+            Bars(tr, 110f, 5f);
+            Rim(tr, Theme.C(t.glassLine));   // like our HUD bars (user): a thin light outline round a dark pill
+            Stars(tr, "level_2", 1, 55f, -7f, 12f); Stars(tr, "level_3", 2, 55f, -7f, 12f);
+            _l.Rect(tr.Find("Aware") as RectTransform, r => { r.sizeDelta = new Vector2(28f, 28f * 138f / 191f); r.anchoredPosition = new Vector2(r.anchoredPosition.x, 44f); });   // the sprite is 191 x 138; Valheim squeezes it into 60 x 60
             var alert = tr.Find("Alerted")?.GetComponent<TMP_Text>();
-            if (alert != null) { var f0 = alert.fontSize; _l.Do(() => alert.fontSize = 42f, () => { if (alert != null) alert.fontSize = f0; }); _l.Rect(alert.rectTransform, r => r.anchoredPosition = new Vector2(r.anchoredPosition.x, 58f)); }
-            HpBackdrop(tr);
-            var hp = _l.Own(Kit.Text(tr, HpName, "", Fonts.Mono, 12f, new Color(1f, 1f, 1f, 0.9f))); hp.alignment = TextAlignmentOptions.MidlineLeft; Mat(hp, Fonts.Edged(Fonts.Mono));
-            var hr = hp.rectTransform; hr.anchorMin = hr.anchorMax = new Vector2(0.5f, 0.5f); hr.pivot = new Vector2(0f, 0.5f); hr.anchoredPosition = new Vector2(-75f, -9f); hr.sizeDelta = new Vector2(110f, 14f);
+            if (alert != null) { var f0 = alert.fontSize; _l.Do(() => alert.fontSize = 32f, () => { if (alert != null) alert.fontSize = f0; }); _l.Rect(alert.rectTransform, r => r.anchoredPosition = new Vector2(r.anchoredPosition.x, 46f)); }
+            if (Numbers.Value)
+            {
+                HpBackdrop(tr);
+                var hp = _l.Own(Kit.Text(tr, HpName, "", Fonts.Mono, 10.5f, new Color(1f, 1f, 1f, 0.9f))); hp.alignment = TextAlignmentOptions.MidlineLeft; Mat(hp, Fonts.Edged(Fonts.Mono));
+                var hr = hp.rectTransform; hr.anchorMin = hr.anchorMax = new Vector2(0.5f, 0.5f); hr.pivot = new Vector2(0f, 0.5f); hr.anchoredPosition = new Vector2(-55f, -7f); hr.sizeDelta = new Vector2(90f, 12f);
+            }
             _l.Added(tpl.AddComponent<PlateFx>());
         }
 
-        // The boss bar (detail pass, approved; user: bigger, 640 x 20, a 38 px name, a 64 px badge): a blood-red bar (bright red into deep crimson) in a dark frame with a 1 px red
-        // rim, quarter ticks, a slow red pulse behind it; the name in Norse with a red glow between red knots; the boss's trophy in a
+        // The boss bar (user: first bigger, then finer, closer to the original): 480 x 10, drawn like our HUD bars (a dark pill with a thin
+        // light outline, our health red flat inside), no ticks or glow; a 28 px name in Norse between small light-red knots (no lines); the boss's trophy in a 44 px
         // red ring centred on the bar's left end (the bar stays centred); "Forsaken" under its left end, "cur / max" under its right.
         // Valheim's slow (yellow) health bar stays as it is: our own ghost chunk isn't approved.
         private static void Boss(GameObject tpl, ThemeData t)
@@ -98,40 +105,36 @@ namespace Jatify.UI
             var name = tr.Find("Name")?.GetComponent<TMP_Text>();
             if (name != null)
             {
-                _l.Txt(name, Fonts.Norse, 38f, new Color32(0xFF, 0xE2, 0xD6, 0xFF)); Spacing(name, 5f);
-                Mat(name, Fonts.Mat(Fonts.Norse, "boss-glow", m =>
-                {   // design: 0 0 14px red .75 (TMP has one underlay: the glow, no offset)
-                    m.EnableKeyword("UNDERLAY_ON"); m.SetColor("_UnderlayColor", new Color(0.55f, 0.04f, 0.07f, 0.9f));   // a darker red than the design's: it reads on a bright sky too
-                    m.SetFloat("_UnderlayOffsetX", 0f); m.SetFloat("_UnderlayOffsetY", -0.3f); m.SetFloat("_UnderlayDilate", 0.3f); m.SetFloat("_UnderlaySoftness", 0.7f);
-                }));
-                _l.Rect(name.rectTransform, r => r.anchoredPosition = new Vector2(r.anchoredPosition.x, 30f));   // the bar runs -18..2
-                _l.Own(Kit.Ornament(name.transform, KnotL, red, 160f, 36f, false)); _l.Own(Kit.Ornament(name.transform, KnotR, red, 160f, 36f, true));   // the design's 124 x 30 beside a 32 px name, scaled with it
+                _l.Txt(name, Fonts.Norse, 28f, new Color32(0xFF, 0xE2, 0xD6, 0xFF)); Spacing(name, 5f);
+                Mat(name, Fonts.Shadowed(Fonts.Norse));   // no red glow (user): the creatures' plain shadow
+                _l.Rect(name.rectTransform, r => r.anchoredPosition = new Vector2(r.anchoredPosition.x, 22f));
+                var kc = new Color32(0xFF, 0x8A, 0x6B, 0xFF);   // the Forsaken tag's lighter red: the deep red vanished on a bright sky (user)
+                if (Knots.Value) { _l.Own(Kit.Ornament(name.transform, KnotL, kc, 15f, 18f, false, false, false)); _l.Own(Kit.Ornament(name.transform, KnotR, kc, 15f, 18f, true, false, false)); }   // the knot alone (user)   // small and fine (user), still seen
             }
-            Bars(tr, 640f, 20f);
+            Bars(tr, 480f, 10f);
             var health = tr.Find("Health") as RectTransform; if (health == null) return;
-            _l.Img(health.Find("bkg")?.GetComponent<Image>(), Kit.Rounded(2), new Color32(0x1A, 0x08, 0x09, 0xFF));
-            Rim(tr, new Color(red.r, red.g, red.b, 0.55f));
+            _l.Img(health.Find("bkg")?.GetComponent<Image>(), Kit.Rounded(5), new Color(0f, 0f, 0f, 0.45f));   // like our HUD bars (user): a dark pill, a thin light outline
+            Rim(tr, Theme.C(t.glassLine), 5);
             var fast = health.Find("health_fast")?.GetComponent<GuiBar>();
-            if (fast != null && fast.m_bar != null) _l.Img(fast.m_bar.GetComponent<Image>(), Kit.VGradient(new Color32(0xFF, 0x6A, 0x63, 0xFF), new Color32(0xD0, 0x24, 0x2C, 0xFF), new Color32(0x7D, 0x0D, 0x14, 0xFF)), Color.white, Image.Type.Simple);
-            var glow = _l.Own(Kit.Img(health, GlowName, Kit.Glow(), new Color(red.r, red.g, red.b, 0.45f))); glow.rectTransform.Fill(-16f); glow.transform.SetAsFirstSibling();
-            var cv = tpl.GetComponentInParent<Canvas>(true); if (cv != null) glow.pixelsPerUnitMultiplier = cv.referencePixelsPerUnit / 100f;   // Valheim's HUD canvas isn't at 100 px per unit: the 16 px fade drew 5 px wide (a pink box)
-            foreach (var f in new[] { 0.25f, 0.5f, 0.75f })
-            {
-                var tk = _l.Own(Kit.Img(health, "jatify-tick", null, new Color(10f / 255f, 0f, 0f, 0.85f), false)).rectTransform;
-                tk.anchorMin = new Vector2(f, 0f); tk.anchorMax = new Vector2(f, 1f); tk.pivot = new Vector2(0.5f, 0.5f); tk.anchoredPosition = Vector2.zero; tk.sizeDelta = new Vector2(2f, 0f);
+            if (fast != null && fast.m_bar != null) _l.Img(fast.m_bar.GetComponent<Image>(), Kit.Rounded(5), red, Image.Type.Sliced);   // our health bar's own red, flat (user); no glow behind it
+            if (BossIcon.Value)
+            {   // the trophy badge (a setting, off by default)
+                var icon = _l.Own(Kit.Node(health, IconName)); icon.anchorMin = icon.anchorMax = new Vector2(0f, 0.5f); icon.pivot = new Vector2(0.5f, 0.5f);   // centred on the bar's left end, over it (user: touching the bar)
+                icon.anchoredPosition = Vector2.zero; icon.sizeDelta = new Vector2(44f, 44f);   // user: 52, then bigger, then finer
+                Kit.Img(icon, "Ring", Kit.Circle(), red, false).rectTransform.Fill();
+                Kit.Img(icon, "Fill", Kit.Circle(), new Color32(0x1C, 0x0A, 0x0B, 0xFF), false).rectTransform.Fill(2f);
+                var pic = Kit.Img(icon, "Pic", null, Color.white, false); pic.preserveAspect = true; pic.rectTransform.Fill(7f); pic.enabled = false;
+                var letter = Kit.Text(icon, "Letter", "", Fonts.Norse, 22f, Color.white); letter.alignment = TextAlignmentOptions.Center; letter.rectTransform.Fill();
             }
-            var icon = _l.Own(Kit.Node(health, IconName)); icon.anchorMin = icon.anchorMax = new Vector2(0f, 0.5f); icon.pivot = new Vector2(0.5f, 0.5f);   // centred on the bar's left end, over it (user: touching the bar)
-            icon.anchoredPosition = Vector2.zero; icon.sizeDelta = new Vector2(64f, 64f);   // user: 52, then a bit bigger
-            Kit.Img(icon, "Ring", Kit.Circle(), red, false).rectTransform.Fill();
-            Kit.Img(icon, "Fill", Kit.Circle(), new Color32(0x1C, 0x0A, 0x0B, 0xFF), false).rectTransform.Fill(2f);
-            var pic = Kit.Img(icon, "Pic", null, Color.white, false); pic.preserveAspect = true; pic.rectTransform.Fill(11f); pic.enabled = false;
-            var letter = Kit.Text(icon, "Letter", "", Fonts.Norse, 32f, Color.white); letter.alignment = TextAlignmentOptions.Center; letter.rectTransform.Fill();
-            var tag = _l.Own(Kit.Text(health, "jatify-forsaken", "FORSAKEN", Fonts.Norse, 13f, new Color32(0xFF, 0x8A, 0x6B, 0xFF))); tag.characterSpacing = 12f; tag.alignment = TextAlignmentOptions.MidlineLeft;
+            var tag = _l.Own(Kit.Text(health, "jatify-forsaken", "FORSAKEN", Fonts.Norse, 11f, new Color32(0xFF, 0x8A, 0x6B, 0xFF))); tag.characterSpacing = 12f; tag.alignment = TextAlignmentOptions.MidlineLeft;
             Mat(tag, Fonts.Shadowed(Fonts.Norse));
-            var gr = tag.rectTransform; gr.anchorMin = gr.anchorMax = Vector2.zero; gr.pivot = new Vector2(0f, 1f); gr.anchoredPosition = new Vector2(38f, -7f); gr.sizeDelta = new Vector2(200f, 16f);   // clear of the badge's lower half
-            HpBackdrop(health);
-            var hp = _l.Own(Kit.Text(health, HpName, "", Fonts.Mono, 13f, new Color(1f, 1f, 1f, 0.9f))); hp.alignment = TextAlignmentOptions.MidlineRight; Mat(hp, Fonts.Edged(Fonts.Mono));
-            var hr = hp.rectTransform; hr.anchorMin = hr.anchorMax = new Vector2(1f, 0f); hr.pivot = new Vector2(1f, 1f); hr.anchoredPosition = new Vector2(0f, -7f); hr.sizeDelta = new Vector2(200f, 16f);
+            var gr = tag.rectTransform; gr.anchorMin = gr.anchorMax = Vector2.zero; gr.pivot = new Vector2(0f, 1f); gr.anchoredPosition = new Vector2(BossIcon.Value ? 26f : 0f, -5f); gr.sizeDelta = new Vector2(200f, 14f);   // clear of the badge's lower half, when it shows
+            if (Numbers.Value)
+            {
+                HpBackdrop(health);
+                var hp = _l.Own(Kit.Text(health, HpName, "", Fonts.Mono, 11f, new Color(1f, 1f, 1f, 0.9f))); hp.alignment = TextAlignmentOptions.MidlineRight; Mat(hp, Fonts.Edged(Fonts.Mono));
+                var hr = hp.rectTransform; hr.anchorMin = hr.anchorMax = new Vector2(1f, 0f); hr.pivot = new Vector2(1f, 1f); hr.anchoredPosition = new Vector2(0f, -5f); hr.sizeDelta = new Vector2(200f, 14f);
+            }
             _l.Added(tpl.AddComponent<PlateFx>());
         }
 
@@ -157,17 +160,17 @@ namespace Jatify.UI
         }
 
         // Valheim's "darken" behind the bar as a 1 px rim
-        private static void Rim(Transform tr, Color c)
+        private static void Rim(Transform tr, Color c, int r = 3)
         {
             var dk = tr.Find("Health/darken")?.GetComponent<Image>(); if (dk == null) return;
-            _l.Img(dk, Kit.Rounded(2), c); _l.Rect(dk.rectTransform, r => { r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one; r.offsetMin = new Vector2(-1f, -1f); r.offsetMax = new Vector2(1f, 1f); });
+            _l.Img(dk, Kit.Rounded(r), c); _l.Rect(dk.rectTransform, r => { r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one; r.offsetMin = new Vector2(-1f, -1f); r.offsetMax = new Vector2(1f, 1f); });
         }
 
-        // Valheim's stars (craft_icon_32 with craft_icon inside), 16 px, 1 px apart, their right edge at right, centred at y
-        private static void Stars(Transform tr, string lv, int n, float right, float y)
+        // Valheim's stars (craft_icon_32 with craft_icon inside), S px, 1 px apart, their right edge at right, centred at y
+        private static void Stars(Transform tr, string lv, int n, float right, float y, float S)
         {
             var c = tr.Find(lv) as RectTransform; if (c == null) return;
-            const float S = 16f; float w = n * S + (n - 1);
+            float w = n * S + (n - 1);
             _l.Rect(c, r => { r.sizeDelta = new Vector2(w, S); r.anchoredPosition = new Vector2(right - w / 2f, y); });
             int i = 0;
             foreach (Transform st in c)
@@ -261,7 +264,7 @@ namespace Jatify.UI
             _name = transform.Find("Name")?.GetComponent<TMP_Text>();
             if (_name != null) { _kl = _name.transform.Find(EnemyBars.KnotL) as RectTransform; _kr = _name.transform.Find(EnemyBars.KnotR) as RectTransform; }
             var health = transform.Find("Health");
-            _boss = health != null && health.Find(EnemyBars.IconName) != null;
+            _boss = health != null && health.Find("jatify-forsaken") != null;   // the badge is a setting: the tag marks a boss
             _hp = (transform.Find(EnemyBars.HpName) ?? health?.Find(EnemyBars.HpName))?.GetComponent<TMP_Text>();
             _hpBack = (transform.Find(EnemyBars.HpBack) ?? health?.Find(EnemyBars.HpBack))?.GetComponent<Image>();
             _glow = health?.Find(EnemyBars.GlowName)?.GetComponent<Image>();

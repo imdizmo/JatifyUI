@@ -200,15 +200,22 @@ namespace Jatify.UI
         // The approved name ornament (assets/ornaments: a trinity knot, its tip pointing away from the name, a line out of the tip
         // fading to nothing): w wide, h tall (24 in the design), the knot at the right end, so it sits left of a name; mirror: the
         // right-hand copy. Anchored to its parent's centre; Flank puts a pair either side of a text.
-        internal static RectTransform Ornament(Transform parent, string name, Color c, float w, float h, bool mirror)
+        internal static RectTransform Ornament(Transform parent, string name, Color c, float w, float h, bool mirror, bool fade = true, bool line = true)
         {
             var rt = Node(parent, name); rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f); rt.sizeDelta = new Vector2(w, h);
             if (mirror) rt.localScale = new Vector3(-1f, 1f, 1f);
             float k = h / 24f;
-            var line = Img(rt, "Line", FadeLine(), new Color(c.r, c.g, c.b, c.a * 0.8f), false).rectTransform;   // design: transparent into 80 % green
-            line.anchorMin = line.anchorMax = line.pivot = new Vector2(0f, 0.5f); line.anchoredPosition = Vector2.zero; line.sizeDelta = new Vector2(Mathf.Max(0f, w - 45f * k), 1.1f * k);
-            var knot = Img(rt, "Knot", Icon("knot"), c, false).rectTransform;   // 46 x 24 view box, its own 1.1 stub out of the tip meets the line
+            if (line)
+            {   // design: transparent into 80 % green; fade off: a solid line; line off: the knot alone (nameplates, user)
+                var ln = Img(rt, "Line", fade ? FadeLine() : null, new Color(c.r, c.g, c.b, c.a * 0.8f), false).rectTransform;
+                ln.anchorMin = ln.anchorMax = ln.pivot = new Vector2(0f, 0.5f); ln.anchoredPosition = Vector2.zero; ln.sizeDelta = new Vector2(Mathf.Max(0f, w - 45f * k), 1.1f * k);
+            }
+            var knotImg = Img(rt, "Knot", Icon("knot"), c, false); var knot = knotImg.rectTransform;   // 46 x 24 view box, its own 1.1 stub out of the tip meets the line
             knot.anchorMin = knot.anchorMax = knot.pivot = new Vector2(1f, 0.5f); knot.anchoredPosition = Vector2.zero; knot.sizeDelta = new Vector2(46f * k, h);
+            if (!line)
+            {   // the knot alone: the picture's left 57.6 % is the line's start drawn in (from x 106 of 184): only its right part shows
+                knotImg.type = Image.Type.Filled; knotImg.fillMethod = Image.FillMethod.Horizontal; knotImg.fillOrigin = (int)Image.OriginHorizontal.Right; knotImg.fillAmount = 0.43f;
+            }
             foreach (var g in rt.GetComponentsInChildren<Image>()) { var sh = g.gameObject.AddComponent<Shadow>(); sh.effectColor = new Color(0f, 0f, 0f, 0.6f); sh.effectDistance = new Vector2(0f, -1f); }   // a dark edge under knot and line: they read over bright sky and grass (user)
             return rt;
         }
