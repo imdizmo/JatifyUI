@@ -12,9 +12,13 @@ a lot of small conveniences you stop noticing after an hour.
   more in Jatify UI's look), [AzuExtendedPlayerInventory](https://thunderstore.io/c/valheim/p/Azumatt/AzuExtendedPlayerInventory/)
   [2.6.4] (its slots, quick slots, vanity, loadouts and stats drawn by Jatify UI) and
   [AzuCraftyBoxes](https://thunderstore.io/c/valheim/p/Azumatt/AzuCraftyBoxes/) [1.8.28] (it pays for crafting from chests; Jatify UI counts
-  through it).
+  through it), [ExtraSlots](https://thunderstore.io/c/valheim/p/shudnal/ExtraSlots/) [1.2.21] (its slots in Jatify's panel and HUD in place of ours),
+  [Backpacks](https://thunderstore.io/c/valheim/p/Smoothbrain/Backpacks/) [1.3.10], [AdventureBackpacks](https://thunderstore.io/c/valheim/p/Vapok/AdventureBackpacks/) [2.4.6] and
+  [RustyBags](https://thunderstore.io/c/valheim/p/RustyMods/RustyBags/) [1.3.5] (a tab for each bag you wear),
+  [Quick Stack Store](https://thunderstore.io/c/valheim/p/Goldenrevolver/Quick_Stack_Store_Sort_Trash_Restock/) [1.4.16] (Jatify's chest buttons use its
+  actions) and Valheim Enchantment System [1.9.18].
 - **Language:** English only for now.
-- **Version:** 0.2.1, made for Valheim 1.0.20.
+- **Version:** 0.3.0, made for Valheim 1.0.21.
 - **Controls:** mouse and keyboard; there's no gamepad support yet.
 
 Most parts can be switched off on their own, and taking the mod out keeps your character and items (see *Taking it
@@ -70,13 +74,13 @@ out*).
 ![The HUD in the Meadows at dawn: the compass, the minimap, health, stamina, eitr and adrenaline, and the action bars](https://raw.githubusercontent.com/imdizmo/JatifyUI/main/docs/img/hud.webp)
 
 - **Health, stamina and eitr:** rounded bars with numbers.
-    - The **1–8** bar sits on a glass panel with the **tools** bar to its left; the panels can be switched off.
-    - **Food** and **meads** each have a labelled column on the right edge, with their keys.
-- **Minimap card:** biome, coordinates, day and time, and the wind; it can also show your computer's clock.
+    - The **1–8** bar with the **tools** bar to its left; `ActionBarPanels` puts glass panels behind them.
+    - **Food** and **meads** have a bar of their own right of the 1–8 bar, with their keys.
+- **Minimap:** biome, coordinates, day and time, and the wind; it can also show your computer's clock.
 - **Nameplates** over creatures and players:
-    - Larger and easier to read, with the creature's stars underneath and a knot at each end.
+    - A fine line with the name between two small knots and the creature's stars underneath.
     - Other players' names are red when their PvP is on and blue when it's off.
-- **Bosses** get a long bar under the compass with their portrait touching its end.
+- **Bosses** get a long bar under the compass, with their portrait at its end if you turn on `BossIcon`.
 - **Sailing:** the ship's controls and the wind are restyled while you steer.
 - **Raids:** a banner under the compass names the raid, with the time left as a thin bar.
 
@@ -93,7 +97,7 @@ out*).
 ![A sword hit on a training dummy: the damage number, its nameplate and a skill-up banner](https://raw.githubusercontent.com/imdizmo/JatifyUI/main/docs/img/damage.webp)
 
 - **The compass** shows map pins near you with their distance.
-- **Cheat flags:** while god mode, ghost, flying, no-cost or devcommands is on, a small strip left of the compass says so.
+- **Cheat flags:** while god mode, ghost, flying, no-cost or devcommands is on, a tab in the top left says so.
 
 ![The cheat flags strip in the top left, with god mode on](https://raw.githubusercontent.com/imdizmo/JatifyUI/main/docs/img/flags.webp)
 
@@ -133,11 +137,11 @@ out*).
     - Pickups never land there by accident.
 - **Where pickups land:** the bag rows first, the hotbar last, never a locked slot.
 - **Worn gear** leaves the grid for an equipment column around a live view of your character, with durability on each
-  slot and the PvP switch above it.
+  slot; the PvP switch sits in the top panel.
     - The **Wishbone** and **Wisplight** have slots of their own, and keys you pick up go into a key pouch; doors still
       take them from there.
-    - Underneath are your stats and resistances, counting meads and set bonuses.
-    - A **Skills** tab beside it lists every skill with its level and progress, sorted as you choose.
+    - A **Stats** tab lists your stats and resistances, counting meads and set bonuses.
+    - A **Skills** tab lists every skill with its level and progress, sorted as you choose.
 
 ![The skills tab](https://raw.githubusercontent.com/imdizmo/JatifyUI/main/docs/img/skills.webp)
 
@@ -313,8 +317,7 @@ Seven tabs beside your inventory:
 | Open a station's Auto card | hold Left Shift while using it |
 | Fold the achievement tracker | U |
 
-Most of these can be changed under `Keys`; Ctrl + Q, Ctrl + E, Ctrl + F and Alt + click are fixed. Food and mead
-slots 4–6, `Merge`, `Sort` and the chest buttons are free to bind.
+Most of these can be changed under `Keys`; Ctrl + Q, Ctrl + E, Ctrl + F and Alt + click are fixed. `Merge`, `Sort` and the chest buttons are free to bind.
 
 ---
 
@@ -390,19 +393,22 @@ Without the mod:
 - Stations on Auto have no per-item limits yet.
 - Ore detection doesn't check line of sight.
 - No gamepad support.
-- Other mods' extra equipment slots (backpacks, quivers and the like) are untested and may not show in Jatify's windows.
+- Extra slots from mods not listed under *Works with* are untested; they may only show on the Mod slots tab, or not at all.
 
 ---
 
 ## Good to know
 
-- Jatify makes no web requests. The only thing it opens outside the game is your saves folder, from *Manage saves*.
+- Jatify makes no web requests. Outside the game it only opens your saves folder (from *Manage saves*), and the Discord and Buy me a coffee pages when
+  you click them.
 - Problems and ideas: [GitHub issues](https://github.com/imdizmo/JatifyUI/issues).
 
 ---
 
 ## Changes
 
+- **0.3.0:** orange look and new icon, a reworked inventory and HUD, ExtraSlots, backpack and Quick Stack Store support,
+  a What's new window.
 - **0.2.1:** Valheim Enchantment System support, server settings for everyone on a server, an A to Z skill order.
 - **0.2.0:** EpicLoot, AzuExtendedPlayerInventory and AzuCraftyBoxes support, a faster build menu, fixes.
 - **0.1.0:** first release.

@@ -23,11 +23,11 @@ Working record for this release, following `~/projects/docs/release-checklist.md
 |---|---|
 | 1. Decisions recorded | ✅ this file |
 | 2. Code hygiene | ✅ release DLL has no dev tools, home paths or other UI mod names; MapTeleport gained PathMap (it had a .pdb home path) |
-| 3. What's new pictures | ❌ `servers.jpg` shows real community server names (blur or retake); `inventory.jpg` shows the old layout (retake) |
-| 4. What's new notes, README, CHANGELOG | to do: add the newer changes (ExtraSlots, Quick Stack Store, bag tabs, mod slots tab, warnings, minimal compass default) |
-| 5. Testing | all-mods profile: automated `ct-*` suite passes (2026-10-31). To do: standalone (Jatify UI alone, then with MapTeleport), data safety (death, grave, load without the mod) |
-| 6. Screenshots | to do: list for OK, then the standalone profile |
-| 7. Versions | to do: manifest, thunderstore.toml and CHANGELOG at 0.3.0 / 1.2.0 |
-| 8. mod-compatibility.md | to do |
-| 9. Merge, gitleaks, push, tags | to do, after the user's OK |
+| 3. What's new pictures | ✅ `inventory.jpg` retaken; `servers.jpg` kept as it is (user, 2026-10-31) |
+| 4. What's new notes, README, CHANGELOG | ✅ CHANGELOG 0.3.0 / 1.2.0; README checked against the code by a review agent and fixed (2026-10-31) |
+| 5. Testing | ✅ all-mods `ct-*` suite; data safety on a new character (rows, fill, no-mod load, save, death, grave); release zips smoke-tested in standalone: Jatify UI alone, with MapTeleport, MapTeleport alone, no exceptions (2026-10-31) |
+| 6. Screenshots | ✅ README and What's new retaken in standalone, orange; Players page dropped (user) |
+| 7. Versions | ✅ 0.3.0 / 1.2.0 in manifest, thunderstore.toml, Plugin.cs and CHANGELOG |
+| 8. mod-compatibility.md | ✅ |
+| 9. Merge, gitleaks, push, tags | gitleaks clean; merge, push and tags wait for the user's OK |
 | 10. Thunderstore, GitHub release, Discord changelog and compat pin | to do, on the user's explicit go |

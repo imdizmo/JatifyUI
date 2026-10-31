@@ -252,11 +252,13 @@ namespace Jatify.UI
     [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.UnequipItem))]
     internal static class EqRowUnequipPatch
     {
+#if JATIFY_DEV
         private static void Prefix(Humanoid __instance, ItemDrop.ItemData item)
         {   // ponytail: temporary, dev only (user: the wisp comes off now and then on opening/closing the inventory) - who took it off
             if (Dev.Build && item != null && __instance == Player.m_localPlayer && __instance.IsItemEquiped(item))
                 Log.Info($"unequip {item.m_shared.m_name} (inventory {(InventoryGui.IsVisible() ? "open" : "closed")}) from:\n{string.Join("\n", new System.Diagnostics.StackTrace(1).GetFrames().Take(8).Select(f => "  " + f.GetMethod()?.DeclaringType?.Name + "." + f.GetMethod()?.Name))}");
         }
+#endif
         private static void Postfix(Humanoid __instance) { if (__instance == Player.m_localPlayer) EqRow.Park((Player)__instance); }
     }
 

@@ -27,7 +27,7 @@ namespace Jatify.UI
             Hints = c.Bind("HUD", "KeyHints", true, "The key hints across the UI: the HUD corners, the inventory and chest key bars, the build menu's and the map's foot rows.");
             SlotBackdrops = c.Bind("HUD", "ActionBarPanels", false, "The glass panel behind the 1-8 bar, the tools bar and the food and meads bar; off (the default): the slots stand on their own.");
             Tracker = c.Bind("HUD", "AchievementTracker", true, "Tracked achievements in the top left corner.");
-            TrackerCollapsed = c.Bind("HUD", "TrackerCollapsed", false, "The tracker shows only its header (Y or a click on the header).");
+            TrackerCollapsed = c.Bind("HUD", "TrackerCollapsed", false, "The tracker shows only its header (U or a click on the header).");
             Banners = c.Bind("HUD", "AchievementBanners", true, "The banner under the compass when you earn an achievement.");
             SkillBanner = c.Bind("HUD", "SkillBanner", true, "Skill level-ups as a banner in the middle of the screen, and new recipes / materials as Jatify cards, instead of Valheim's pop-ups.");
             Messages = c.Bind("HUD", "Messages", true, "Valheim's top-left and centre messages in Jatify's style.");

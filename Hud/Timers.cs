@@ -20,7 +20,7 @@ namespace Jatify.UI
         private static readonly AccessTools.FieldRef<Smelter, ZNetView> SView = AccessTools.FieldRefAccess<Smelter, ZNetView>("m_nview");
         private static readonly AccessTools.FieldRef<Fermenter, ZNetView> FView = AccessTools.FieldRefAccess<Fermenter, ZNetView>("m_nview");
 
-        internal static void Bind(ConfigFile c) => On = c.Bind("HUD", "Timers", true, "Time left for plants, fermenters, beehives and smelters, in their hover card.");
+        internal static void Bind(ConfigFile c) => On = c.Bind("HUD", "Timers", true, "Time left for plants, fermenters, beehives, smelters, cooking stations and ovens, in their hover card.");
 
         private static string Span(double s)
         {

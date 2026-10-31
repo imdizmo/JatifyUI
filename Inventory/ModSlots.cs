@@ -361,6 +361,7 @@ namespace Jatify.UI
     }
 }
 
+#if JATIFY_DEV
 namespace Jatify.UI
 {
     // ponytail: temporary, dev only (user: the wisp is released now and then on opening/closing the inventory) - who removes its effect
@@ -389,3 +390,4 @@ namespace Jatify.UI
         }
     }
 }
+#endif

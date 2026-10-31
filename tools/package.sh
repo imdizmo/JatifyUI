@@ -15,6 +15,7 @@ if strings -e l "$R/build/JatifyUI.dll" | grep -q -E "Give test kit|shot\.reques
 fi
 cp "$R/build/JatifyUI.dll" "$S/plugins/"
 cp "$R/LICENSE" "$S/"
+mkdir -p "$S/licenses" && cp "$R/assets/icons/PHOSPHOR-LICENSE" "$R"/assets/fonts/OFL-*.txt "$S/licenses/"   # notices for the icons and fonts built into the DLL
 cp -r "$R/package/loading" "$S/plugins/campfire-loading"   # the loading screen art (Campfire/LoadingArt looks beside the DLL)
 rm -f "$R/dist/Jatify-JatifyUI-$V.zip"
 (cd "$S" && zip -qr -X "$R/dist/Jatify-JatifyUI-$V.zip" .)
