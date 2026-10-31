@@ -60,7 +60,7 @@ namespace Jatify.UI
         }
 
         // names of what we add to the templates (PlateFx finds them on each copy)
-        internal const string KnotL = "jatify-knot-l", KnotR = "jatify-knot-r", HpName = "jatify-hp", HpBack = "jatify-hpback", IconName = "jatify-icon", GlowName = "jatify-glow";
+        internal const string KnotL = "jatify-knot-l", KnotR = "jatify-knot-r", HpName = "jatify-hp", HpBack = "jatify-hpback", IconName = "jatify-icon", GlowName = "jatify-glow", BossMark = "jatify-boss";
 
         // Creature nameplates (detail pass, approved): the name in Valheim's Norse between light-red trinity knots (user: as the boss's), a 110 x 6 bar, the level
         // stars (Valheim's own sprites) right-aligned in the corner under it, "cur / max" under its left corner in combat or hovered.
@@ -96,7 +96,7 @@ namespace Jatify.UI
 
         // The boss bar (user: first bigger, then finer, closer to the original): 480 x 10, drawn like our HUD bars (a dark pill with a thin
         // light outline, our health red flat inside), no ticks or glow; a 28 px name in Norse between small light-red knots (no lines); the boss's trophy in a 44 px
-        // red ring centred on the bar's left end (the bar stays centred); "Forsaken" under its left end, "cur / max" under its right.
+        // red ring centred on the bar's left end (a setting, the bar stays centred); "cur / max" under its right end (a setting).
         // Valheim's slow (yellow) health bar stays as it is: our own ghost chunk isn't approved.
         private static void Boss(GameObject tpl, ThemeData t)
         {
@@ -108,7 +108,7 @@ namespace Jatify.UI
                 _l.Txt(name, Fonts.Norse, 28f, new Color32(0xFF, 0xE2, 0xD6, 0xFF)); Spacing(name, 5f);
                 Mat(name, Fonts.Shadowed(Fonts.Norse));   // no red glow (user): the creatures' plain shadow
                 _l.Rect(name.rectTransform, r => r.anchoredPosition = new Vector2(r.anchoredPosition.x, 22f));
-                var kc = new Color32(0xFF, 0x8A, 0x6B, 0xFF);   // the Forsaken tag's lighter red: the deep red vanished on a bright sky (user)
+                var kc = new Color32(0xFF, 0x8A, 0x6B, 0xFF);   // a light red: the deep red vanished on a bright sky (user)
                 if (Knots.Value) { _l.Own(Kit.Ornament(name.transform, KnotL, kc, 15f, 18f, false, false, false)); _l.Own(Kit.Ornament(name.transform, KnotR, kc, 15f, 18f, true, false, false)); }   // the knot alone (user)   // small and fine (user), still seen
             }
             Bars(tr, 480f, 10f);
@@ -126,9 +126,7 @@ namespace Jatify.UI
                 var pic = Kit.Img(icon, "Pic", null, Color.white, false); pic.preserveAspect = true; pic.rectTransform.Fill(7f); pic.enabled = false;
                 var letter = Kit.Text(icon, "Letter", "", Fonts.Norse, 22f, Color.white); letter.alignment = TextAlignmentOptions.Center; letter.rectTransform.Fill();
             }
-            var tag = _l.Own(Kit.Text(health, "jatify-forsaken", "FORSAKEN", Fonts.Norse, 11f, new Color32(0xFF, 0x8A, 0x6B, 0xFF))); tag.characterSpacing = 12f; tag.alignment = TextAlignmentOptions.MidlineLeft;
-            Mat(tag, Fonts.Shadowed(Fonts.Norse));
-            var gr = tag.rectTransform; gr.anchorMin = gr.anchorMax = Vector2.zero; gr.pivot = new Vector2(0f, 1f); gr.anchoredPosition = new Vector2(BossIcon.Value ? 26f : 0f, -5f); gr.sizeDelta = new Vector2(200f, 14f);   // clear of the badge's lower half, when it shows
+            _l.Own(Kit.Node(health, BossMark));   // marks a boss plate for PlateFx (the "Forsaken" label is gone, user; the badge is a setting)
             if (Numbers.Value)
             {
                 HpBackdrop(health);
@@ -264,7 +262,7 @@ namespace Jatify.UI
             _name = transform.Find("Name")?.GetComponent<TMP_Text>();
             if (_name != null) { _kl = _name.transform.Find(EnemyBars.KnotL) as RectTransform; _kr = _name.transform.Find(EnemyBars.KnotR) as RectTransform; }
             var health = transform.Find("Health");
-            _boss = health != null && health.Find("jatify-forsaken") != null;   // the badge is a setting: the tag marks a boss
+            _boss = health != null && health.Find(EnemyBars.BossMark) != null;   // the badge is a setting: an empty marker says boss
             _hp = (transform.Find(EnemyBars.HpName) ?? health?.Find(EnemyBars.HpName))?.GetComponent<TMP_Text>();
             _hpBack = (transform.Find(EnemyBars.HpBack) ?? health?.Find(EnemyBars.HpBack))?.GetComponent<Image>();
             _glow = health?.Find(EnemyBars.GlowName)?.GetComponent<Image>();
