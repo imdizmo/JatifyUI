@@ -16,9 +16,9 @@ namespace Jatify
         // the design's tokens (:root), used before Jatify's theme is loaded
         private static readonly Dictionary<string, string> Plain = new Dictionary<string, string>
         {
-            ["glass"] = "#141416EB", ["glassLine"] = "#FFFFFF26", ["line2"] = "#FFFFFF29", ["raised"] = "#2A2B30F2", ["raised2"] = "#2C2C32E6",
-            ["text"] = "#ECEEED", ["dim"] = "#B4B4BA", ["mute"] = "#80808A", ["accent"] = "#22D67E", ["accentSoft"] = "#22D67E24",
-            ["ember"] = "#F2703A", ["emberSoft"] = "#F2703A29", ["health"] = "#E5484D", ["stamina"] = "#F5B942", ["eitr"] = "#5AA9FF",
+            ["glass"] = "#262323C5", ["glassLine"] = "#FFFFFF26", ["line2"] = "#FFFFFF33", ["raised"] = "#2A2B30F2", ["raised2"] = "#2C2C32E6",
+            ["text"] = "#ECEEED", ["dim"] = "#B4B4BA", ["mute"] = "#80808A", ["accent"] = "#EC8219", ["accentSoft"] = "#EC821924",
+            ["ember"] = "#F2703A", ["emberSoft"] = "#F2703A29", ["health"] = "#E5484D", ["stamina"] = "#F5B942", ["eitr"] = "#740DFF",
         };
         internal static Color C(string token)
         {

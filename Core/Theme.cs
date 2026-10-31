@@ -9,22 +9,22 @@ namespace Jatify.UI
     [Serializable]
     internal class ThemeData
     {
-        public string glass = "#141416EB";     // panel fill
+        public string glass = "#262323C5";     // panel fill
         public string glassLine = "#FFFFFF26";  // panel outline
-        public string line2 = "#FFFFFF29";      // stronger outline
+        public string line2 = "#FFFFFF33";      // stronger outline
         public string raised = "#2A2B30F2";     // slots, rows
         public string raised2 = "#2C2C32E6";    // switches, disabled buttons
         public string text = "#ECEEED";
         public string dim = "#B4B4BA";
         public string mute = "#80808A";
-        public string accent = "#22D67E";
-        public string accentSoft = "#22D67E24";
+        public string accent = "#EC8219";
+        public string accentSoft = "#EC821924";
         public string ember = "#F2703A";
-        public string warnText = "#F59B75";     // softer orange for warning text in the crafting panel (user)
+        public string warnText = "#E4892D";     // softer orange for warning text in the crafting panel (user)
         public string emberSoft = "#F2703A29";
         public string health = "#E5484D";
         public string stamina = "#F5B942";
-        public string eitr = "#5AA9FF";
+        public string eitr = "#740DFF";
         public float radius = 12f;              // panel corner radius, px at 1080p
         public float uiScale = 1f;              // on top of the 1080p reference scaling
         public float textSize = 15f;

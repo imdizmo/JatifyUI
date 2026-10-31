@@ -252,7 +252,7 @@ namespace Jatify.UI
         internal static float Height { get { if (_live.Count == 0 || InventoryGui.IsVisible()) return 0f; float h = 0f; foreach (var c in _live) h += c.H + Gap; return h + (Deeds.AchHud.Bottom > 0f ? 0f : 22f); } }
 
         // Valheim's top-left messages: a slim card, icon, text and the amount
-        internal static void ShowLine(Sprite icon, string text, int amount) { if (_queue.Count < 30) _queue.Enqueue((icon, null, amount > 1 ? $"{text}  <color=#22D67E>×{amount}</color>" : text)); }
+        internal static void ShowLine(Sprite icon, string text, int amount) { if (_queue.Count < 30) _queue.Enqueue((icon, null, amount > 1 ? $"{text}  <color=#{ColorUtility.ToHtmlStringRGB(Theme.C(Plugin.Instance.ThemeData.accent))}>×{amount}</color>" : text)); }
 
         // unlocks arrive in bursts (one pickup can unlock several recipes): collected until 0.6 s pass without a new one
         internal static void Show(Sprite icon, string topic, string name) { if (_burst.Count < 200) _burst.Add((icon, topic, name)); _burstAt = Time.unscaledTime; }
