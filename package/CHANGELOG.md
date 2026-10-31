@@ -15,6 +15,7 @@
 - A new Stats tab beside Character and Skills: your stats, resistances and effects.
 - The character column no longer has hand slots: what you hold is on the action bar and on the figure.
 - PvP moved to the top panel, next to the settings button.
+- A new character has the extra rows and the Tools, Food and Meads rows from its first spawn (they only appeared after a relog).
 - The trash works: drop an item on it, let go of it over it, or click it while holding one. Click it again within 15 seconds to bring the item back (#15).
 - Grey labels and values get a dark edge, so they read over the see-through panel.
 
