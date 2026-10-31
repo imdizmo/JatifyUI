@@ -29,5 +29,5 @@ Working record for this release, following `~/projects/docs/release-checklist.md
 | 6. Screenshots | ✅ README and What's new retaken in standalone, orange; Players page dropped (user) |
 | 7. Versions | ✅ 0.3.0 / 1.2.0 in manifest, thunderstore.toml, Plugin.cs and CHANGELOG |
 | 8. mod-compatibility.md | ✅ |
-| 9. Merge, gitleaks, push, tags | gitleaks clean; merge, push and tags wait for the user's OK |
-| 10. Thunderstore, GitHub release, Discord changelog and compat pin | to do, on the user's explicit go |
+| 9. Merge, gitleaks, push, tags | ✅ gitleaks clean; merged without squash, pushed, tagged v0.3.0 / v1.2.0 (2026-10-31) |
+| 10. Thunderstore, GitHub release, Discord changelog and compat pin | ✅ Thunderstore, Hexium, Nexus, GitHub releases, #changelog, #mod-compatibility pin; jatify.com deployed by CI (2026-10-31) |
