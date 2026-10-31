@@ -105,10 +105,10 @@ Thanks for the reports and ideas!";
             fill.color = new Color(fill.color.r, fill.color.g, fill.color.b, Mathf.Max(fill.color.a, 0.96f));   // solid: a long read over the world
             var b = _box = box.rectTransform; b.anchorMin = b.anchorMax = b.pivot = new Vector2(0.5f, 0.5f); b.sizeDelta = new Vector2(620f, 640f);
             Knots.DialogTop(b, 16f, Theme.C(t.accent));
-            var title = Kit.Text(b, "Title", "What's new in Jatify UI", Fonts.Norse, 24f, Color.white); title.alignment = TextAlignmentOptions.Center; title.rectTransform.At(0, 22, 620, 34);
-            var sub = Kit.Text(b, "Sub", mustRead ? "Scroll to the end to close" : "The changes in this version", Fonts.Medium, 13f, Theme.C(t.dim)); sub.alignment = TextAlignmentOptions.Center; sub.rectTransform.At(0, 56, 620, 20);
+            var title = Kit.Text(b, "Title", "What's new in Jatify UI", Fonts.Norse, 24f, Color.white); title.alignment = TextAlignmentOptions.Center; title.rectTransform.At(0, 38, 620, 34);   // under the knot
+            var sub = Kit.Text(b, "Sub", mustRead ? "Scroll to the end to close" : "The changes in this version", Fonts.Medium, 13f, Theme.C(t.dim)); sub.alignment = TextAlignmentOptions.Center; sub.rectTransform.At(0, 72, 620, 20);
             // the notes in a scrolling well
-            var view = Kit.Node(b, "View").At(28, 88, 564, 470); view.gameObject.AddComponent<RectMask2D>();
+            var view = Kit.Node(b, "View").At(28, 104, 564, 454); view.gameObject.AddComponent<RectMask2D>();
             var hit = view.gameObject.AddComponent<Image>(); hit.color = new Color(0, 0, 0, 0);
             _content = Kit.Node(view, "Content"); _content.anchorMin = new Vector2(0f, 1f); _content.anchorMax = new Vector2(1f, 1f); _content.pivot = new Vector2(0.5f, 1f);
             // the notes in pieces: text, and a picture where a line reads [name] (assets/whatsnew/<name>.jpg)
@@ -135,7 +135,7 @@ Thanks for the reports and ideas!";
             Links.Row(_content, (548f - 484f) / 2f, h + 6f, t); h += 6f + 44f + 8f;   // Discord and Buy me a coffee at the end of the notes (user)
             _content.sizeDelta = new Vector2(0f, h + 4f);
             _scroll = view.gameObject.AddComponent<ScrollRect>(); _scroll.content = _content; _scroll.horizontal = false; _scroll.scrollSensitivity = Kit.ScrollSpeed; _scroll.movementType = ScrollRect.MovementType.Clamped;
-            var bar = Kit.Node(b, "Bar").At(598, 88, 4, 470);
+            var bar = Kit.Node(b, "Bar").At(598, 104, 4, 454);
             var thumb = Kit.Panel(bar, "Handle", Theme.C(t.line2), 2); thumb.rectTransform.Fill();
             var sb = bar.gameObject.AddComponent<Scrollbar>(); sb.direction = Scrollbar.Direction.BottomToTop; sb.handleRect = thumb.rectTransform; sb.targetGraphic = thumb;
             _scroll.verticalScrollbar = sb; _scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
@@ -147,8 +147,8 @@ Thanks for the reports and ideas!";
             _dontShow = false;
             if (Seen == null || Seen.Value != Key)
             {
-                var (cb, cbFill) = Kit.Box(b, "DontShow", Theme.C(t.raised), Theme.C(t.line2), 5); cb.rectTransform.At(32, 590, 18, 18); cb.raycastTarget = true;
-                var tick = Kit.Panel(cb.rectTransform, "Tick", Theme.C(t.accent), 3); tick.rectTransform.Fill(4f); tick.enabled = false;
+                var (cb, _) = Kit.Box(b, "DontShow", Theme.C(t.raised), Theme.C(t.line2), 5); cb.rectTransform.At(32, 590, 18, 18); cb.raycastTarget = true;
+                var tick = Kit.IconImg(cb.rectTransform, "check", Theme.C(t.accent), 14f); tick.rectTransform.At(2, 2, 14, 14); tick.enabled = false;   // as the trash's Don't ask again
                 var lab = Kit.Text(b, "DontShowLabel", "Don't show again", Fonts.Medium, 13f, Theme.C(t.dim)); lab.alignment = TextAlignmentOptions.MidlineLeft; lab.rectTransform.At(58, 586, 140, 26); lab.raycastTarget = true;
                 void Flip() { _dontShow = !_dontShow; tick.enabled = _dontShow; }
                 cb.gameObject.AddComponent<Button>().onClick.AddListener(Flip); lab.gameObject.AddComponent<Button>().onClick.AddListener(Flip);

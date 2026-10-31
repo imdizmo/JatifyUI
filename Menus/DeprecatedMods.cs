@@ -35,12 +35,12 @@ namespace Jatify.UI
             fill.color = new Color(fill.color.r, fill.color.g, fill.color.b, Mathf.Max(fill.color.a, 0.97f));
             var b = box.rectTransform; b.anchorMin = b.anchorMax = b.pivot = new Vector2(0.5f, 0.5f);
             Knots.DialogTop(b, 16f, Theme.C(t.ember));
-            var title = Kit.Text(b, "Title", "Remove before playing", Fonts.Norse, 26f, Theme.C(t.ember)); title.alignment = TextAlignmentOptions.Center; title.rectTransform.At(0, 24, 600, 36);
+            var title = Kit.Text(b, "Title", "Remove before playing", Fonts.Norse, 26f, Theme.C(t.ember)); title.alignment = TextAlignmentOptions.Center; title.rectTransform.At(0, 40, 600, 36);   // under the knot
             var body = string.Join("\n\n", hits.Select(h => $"<b>{h.name}</b> is deprecated. {h.why}"))
                 + $"\n\nRemove {(hits.Count == 1 ? "it" : "them")} before playing with Jatify UI. If you keep playing with {(hits.Count == 1 ? "it" : "them")} installed, you do so at your own risk: problems {(hits.Count == 1 ? "it causes" : "they cause")} (lost saves, missing items, errors) are not caused by Jatify UI, and we can't help with them.";
             var tx = Kit.Text(b, "Body", body, Fonts.Medium, 15f, Theme.C(t.text)); tx.richText = true; tx.textWrappingMode = TextWrappingModes.Normal; tx.alignment = TextAlignmentOptions.TopLeft; tx.lineSpacing = 6f;
-            float th = tx.GetPreferredValues(body, 536f, 0f).y; tx.rectTransform.At(32, 76, 536, th);
-            float bh = 76f + th + 28f;
+            float th = tx.GetPreferredValues(body, 536f, 0f).y; tx.rectTransform.At(32, 92, 536, th);
+            float bh = 92f + th + 28f;
             var ok = Kit.Panel(b, "Ok", Theme.C(t.raised2), 9); ok.rectTransform.At(200, bh, 200, 42); ok.raycastTarget = true;
             var ot = Kit.Text(ok.rectTransform, "T", "I understand", Fonts.Bold, 15f, Color.white); ot.alignment = TextAlignmentOptions.Center; ot.rectTransform.Fill();
             ok.gameObject.AddComponent<Button>().onClick.AddListener(Close);
