@@ -325,7 +325,7 @@ Most of these can be changed under `Keys`; Ctrl + Q, Ctrl + E, Ctrl + F and Alt 
 
 - **Settings** are saved in `BepInEx/config/jatify.ui.cfg`. Change them on the *Jatify UI* page in the pause menu,
   in a BepInEx configuration manager, or in the file.
-- **Colours and size:** every colour, the corner radius, the text size and the interface scale live in `BepInEx/config/jatify.ui/theme.json`.
+- **Colours and size:** the accent, panel, text and bar colours can be picked under *Colours* on the *Jatify UI* settings page. Every colour, the corner radius, the text size and the interface scale live in `BepInEx/config/jatify.ui/theme.json`.
     - Save the file and the game restyles itself while you play.
 - **Ornaments:** the knotwork can be switched off for plain panels (`Panels` → `Knotwork`).
 - **Cursor:** Jatify's cursor comes in four sizes, or you can keep your system's (`HUD` → `JatifyCursor`, `CursorSize`).
