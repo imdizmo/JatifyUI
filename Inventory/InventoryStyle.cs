@@ -787,7 +787,7 @@ namespace Jatify.UI
                 var b0 = mb;
                 var (b, f) = Kit.Box(_head, "jatify-mod-" + b0.Id, Theme.C(t.raised), Theme.C(t.glassLine), 8);
                 var rt = b.rectTransform; rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0f, 0.5f); rt.sizeDelta = new Vector2(30f, 30f);
-                var ic = Kit.Img(rt, "Icon", b0.Icon, new Color(1f, 1f, 1f, 0.8f), false); ic.preserveAspect = true; ic.raycastTarget = false; ic.rectTransform.At(6, 6, 18, 18);
+                var ic = Kit.Img(rt, "Icon", b0.Icon, new Color(1f, 1f, 1f, 0.8f), false); ic.preserveAspect = true; ic.raycastTarget = false; ic.rectTransform.At(3, 3, 24, 24);   // bigger than our 16 px line icons: mod art is busier (user)
                 if (b0.Icon == null) ic.enabled = false;
                 b.raycastTarget = true; var btn = b.gameObject.AddComponent<Button>(); btn.targetGraphic = f;
                 var cb = btn.colors; cb.highlightedColor = new Color(1.3f, 1.3f, 1.35f); btn.colors = cb;
