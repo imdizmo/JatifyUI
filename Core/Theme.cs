@@ -80,6 +80,18 @@ namespace Jatify.UI
             catch (Exception e) { Log.Warn("theme.json not updated: " + e.Message); }
         }
 
+        // the settings page's Colours section: one token to a new value, written to the file and applied at once (the
+        // watcher's own reload after it is harmless). The accent's soft tint follows the accent.
+        internal void Set(string token, string hex)
+        {
+            var f = typeof(ThemeData).GetField(token); if (f == null || f.FieldType != typeof(string)) return;
+            f.SetValue(D, hex);
+            if (token == "accent") D.accentSoft = hex.Substring(0, 7) + "24";
+            try { File.WriteAllText(_file, JsonUtility.ToJson(D, true)); }
+            catch (Exception e) { Log.Warn("theme.json not saved: " + e.Message); }
+            Changed?.Invoke(D);
+        }
+
         private bool Read()
         {
             try

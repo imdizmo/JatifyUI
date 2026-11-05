@@ -24,6 +24,7 @@ namespace Jatify.UI
         private Harmony _harmony;
         private Theme _theme;
         internal ThemeData ThemeData => _theme.D;
+        internal void SetColour(string token, string hex) => _theme.Set(token, hex);
         private bool _dumped, _invStyled, _buildStyled;
 
         private void Awake()
