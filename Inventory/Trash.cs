@@ -96,6 +96,7 @@ namespace Jatify.UI
             if (item == null && _heldItem != null && _heldInv != null && _heldInv.ContainsItem(_heldItem)) { item = _heldItem; inv = _heldInv; amount = _heldAmount; }   // let go over the tile: Valheim may have dropped it from the cursor first
             if (item != null && Qss.FavouritingMode && Qss.Flag()) return;   // Quick Stack Store, Alt held: the held item is marked as trash (it does it next frame)
             if (item == null) { if (CanUndo || !Qss.QuickTrash()) Undo(); return; }   // nothing in hand: the last destroyed item back while it can; else Quick Stack Store's quick trash
+            if (Holds(item)) return;   // stays in hand
             _inv = inv; _item = item; _amount = Mathf.Clamp(amount, 1, item.m_stack);
             SetupDrag.Invoke(g, new object[] { null, null, 1 });                   // drop it from the cursor first
             _ask.text = $"Destroy {Localization.instance.Localize(item.m_shared.m_name)}{(_amount > 1 ? " ×" + _amount : "")}?";
@@ -105,13 +106,21 @@ namespace Jatify.UI
         private static readonly System.Reflection.MethodInfo Hovered = AccessTools.Method(typeof(InventoryGrid), "GetHoveredElement");
 
         // Del over an item: the same confirm as dropping it on the trash.
+        // a backpack that still holds items is never destroyed: what's inside lives in the item and would go with it
+        private static bool Holds(ItemDrop.ItemData item)
+        {
+            int n = AdvPacks.Held(item); if (n == 0) return false;
+            Player.m_localPlayer?.Message(MessageHud.MessageType.Center, $"Empty the backpack first ({n} item{(n == 1 ? "" : "s")} inside)");
+            return true;
+        }
+
         internal void TickDelete()
         {
             var g = InventoryGui.instance;
             if (g == null || !InventoryGui.IsVisible() || Typing.Active || (_dialog && _dialog.gameObject.activeSelf) || !ZInput.GetKeyDown(KeyCode.Delete, true)) return;
             if (Qss.On && DragItem(g) != null) return;   // Delete with an item held is Quick Stack Store's trash key
             var el = Hovered.Invoke(g.m_playerGrid, null) as InventoryElement; if (el == null) return;
-            var inv = g.m_playerGrid.GetInventory(); var item = inv.GetItemAt(el.Position.x, el.Position.y); if (item == null) return;
+            var inv = g.m_playerGrid.GetInventory(); var item = inv.GetItemAt(el.Position.x, el.Position.y); if (item == null || Holds(item)) return;
             _inv = inv; _item = item; _amount = item.m_stack;
             _ask.text = $"Destroy {Localization.instance.Localize(item.m_shared.m_name)}{(_amount > 1 ? " ×" + _amount : "")}?";
             Ask();
@@ -124,7 +133,7 @@ namespace Jatify.UI
         {
             if (_tick != null && _tick.enabled && _dialog.gameObject.activeSelf) Cfg.ConfirmDelete.Value = false;   // "Don't ask again" ticked
             var p = Player.m_localPlayer;
-            if (p != null && _inv != null && _item != null && _inv.ContainsItem(_item))
+            if (p != null && _inv != null && _item != null && _inv.ContainsItem(_item) && !Holds(_item))
             {
                 if (_inv == p.GetInventory() && p.IsItemEquiped(_item)) p.UnequipItem(_item, false);
                 int n = Mathf.Min(_amount, _item.m_stack);

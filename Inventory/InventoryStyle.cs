@@ -895,7 +895,7 @@ namespace Jatify.UI
             if (_for == null || !InventoryGui.IsVisible() || Root.Canvas == null) return;
             PlaceGrid();
             PlaceFrame();
-            bool chest = _for.m_container != null && _for.m_container.gameObject.activeInHierarchy;
+            bool chest = _for.m_container != null && _for.m_container.gameObject.activeInHierarchy && !ChestPanel.Docked;   // Advanced_Backpacks' dock: crafting stays
             float rx = RightLeft - 1030f;   // the design's right-hand column moved so its gap to the right edge matches the inventory's 160 to the left (user)
             Place(_for.m_crafting, 1044f + rx, 204f);
             ChestPanel.Layout();
