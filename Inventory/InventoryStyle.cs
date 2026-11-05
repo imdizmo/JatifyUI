@@ -30,6 +30,8 @@ namespace Jatify.UI
         private static Equipment _eq;
         private static Trash _trash;
         internal static Trash TrashSlot => _trash;
+        internal static RectTransform Frame => _frame;
+        internal static RectTransform InfoPanel => _for != null && _for.m_info != null ? _for.m_info.Find("jatify-panel") as RectTransform : null;
         private static int _rowsShown = -1;
         private static Image _weightFill;
         private static int _armorShown = -1, _wShown = -1, _wMaxShown = -1;
@@ -97,6 +99,8 @@ namespace Jatify.UI
                 ax = IconAction(head, ax, "shield-knot", "Loadouts", "Save sets of gear and put one on at once (AzuEPI)", "AzuEPI_LoadoutsToggleButton", tipPrefab, t);
                 IconAction(head, ax, "tab-book", "Stats", "Your full character sheet (AzuEPI)", "AzuEPI_StatsToggleButton", tipPrefab, t);
             }
+            _tipPrefab = grid.m_elementPrefab.GetComponent<UITooltip>()?.m_tooltipPrefab;
+            BuildModButtons();
             _armorShown = _wShown = _wMaxShown = -1;
             _eq = new Equipment(_frame, t, grid.m_elementPrefab.GetComponent<UITooltip>()?.m_tooltipPrefab);
             var mask = grid.GetComponent<RectMask2D>();                    // our rows sit outside vanilla's grid rect: do not clip them
@@ -320,17 +324,31 @@ namespace Jatify.UI
         private static readonly List<(RectTransform rt, TMPro.TextMeshProUGUI tx, float w)> _acts = new List<(RectTransform, TMPro.TextMeshProUGUI, float)>();
         private static void LayNarrow()
         {
-            int key = Narrow ? 1 : 0; if (_frame == null || key == _narrowLaid) return; _narrowLaid = key;
+            int key = (Narrow ? 1 : 0) + _icons.Count * 2; if (_frame == null || key == _narrowLaid) return; _narrowLaid = key;
             bool n = Narrow;
             foreach (var name in new[] { "jatify-equipment", "jatify-stats" }) { var c = _frame.Find(name); if (c != null) c.gameObject.SetActive(!n); }
             if (_panel != null) { _panel.offsetMin = new Vector2(Lx, 0f); _panel.offsetMax = Vector2.zero; }
             _head?.At(Lx, 0, 850 - Lx, 52); _headLine?.At(Lx, 52, 850 - Lx, 1);
+            // the actions with their labels, then the icon buttons (AzuEPI's, other mods'), left of the weight chip; when that
+            // doesn't fit, the actions show their icons only (as narrow); icons that still don't fit are hidden
+            float limit = 850f - Lx - 17f - 202f - 6f, full = 105f;
+            foreach (var (_, _, w) in _acts) full += w + 6f;
+            bool icon = n || full + 15f + _icons.Count * 36f - 6f > limit;
             float x = 105f;
             foreach (var (rt, tx, w) in _acts)
             {
-                if (rt == null) continue; float ww = n ? 32f : w;
-                rt.anchoredPosition = new Vector2(x, 0f); rt.sizeDelta = new Vector2(ww, 30f); if (tx != null) tx.gameObject.SetActive(!n); x += ww + 6f;
+                if (rt == null) continue; float ww = icon ? 32f : w;
+                rt.anchoredPosition = new Vector2(x, 0f); rt.sizeDelta = new Vector2(ww, 30f); if (tx != null) tx.gameObject.SetActive(!icon); x += ww + 6f;
             }
+            x += 15f;   // a gap between the actions and the icon buttons
+            int hidden = 0;
+            foreach (var rt in _icons)
+            {
+                if (rt == null) continue; bool fits = x + 30f <= limit;
+                if (rt.gameObject.activeSelf != fits) rt.gameObject.SetActive(fits); if (!fits) { hidden++; continue; }
+                rt.anchoredPosition = new Vector2(x, 0f); x += 36f;
+            }
+            if (hidden > 0) Log.Warn($"inventory header: {hidden} mod button(s) don't fit and are hidden");
             _beltsLaid = -1;
         }
         private static RectTransform _fold, _keyTab, _gearTab, _modsTab; private static int _colLit = -1;
@@ -749,7 +767,49 @@ namespace Jatify.UI
                 Log.Warn("AzuEPI: no " + azuButton + " (its option may be off)");
             });
             if (tipPrefab != null) { var tip = b.gameObject.AddComponent<UITooltip>(); tip.m_tooltipPrefab = tipPrefab; tip.Set(title, text); }
+            _icons.Add(rt);
             return x + 36f;
+        }
+
+        // ---- other mods' header buttons (Look.AddHeaderButton): square icon buttons after ours, their sprite in its own colours
+        private static readonly List<RectTransform> _icons = new List<RectTransform>();   // AzuEPI's, then the mods'
+        private static readonly List<(RectTransform rt, Image line, Image icon, Look.HeadButton b)> _modBtns = new List<(RectTransform, Image, Image, Look.HeadButton)>();
+        private static GameObject _tipPrefab; private static float _litAt;
+        internal static void ModButtonsChanged() { if (_head != null) { BuildModButtons(); _narrowLaid = -1; } }
+        private static void BuildModButtons()
+        {
+            foreach (var m in _modBtns) { _icons.Remove(m.rt); if (m.rt != null) Object.Destroy(m.rt.gameObject); }
+            _modBtns.Clear();
+            if (_head == null) return;
+            var t = _t ?? Plugin.Instance.ThemeData;
+            foreach (var mb in Look.Buttons)
+            {
+                var b0 = mb;
+                var (b, f) = Kit.Box(_head, "jatify-mod-" + b0.Id, Theme.C(t.raised), Theme.C(t.glassLine), 8);
+                var rt = b.rectTransform; rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0f, 0.5f); rt.sizeDelta = new Vector2(30f, 30f);
+                var ic = Kit.Img(rt, "Icon", b0.Icon, new Color(1f, 1f, 1f, 0.8f), false); ic.preserveAspect = true; ic.raycastTarget = false; ic.rectTransform.At(6, 6, 18, 18);
+                if (b0.Icon == null) ic.enabled = false;
+                b.raycastTarget = true; var btn = b.gameObject.AddComponent<Button>(); btn.targetGraphic = f;
+                var cb = btn.colors; cb.highlightedColor = new Color(1.3f, 1.3f, 1.35f); btn.colors = cb;
+                btn.onClick.AddListener(() => Look.Try(b0.Id, b0.Click, () => Look.RemoveHeaderButton(b0.Id)));
+                if (_tipPrefab != null) { var tip = b.gameObject.AddComponent<UITooltip>(); tip.m_tooltipPrefab = _tipPrefab; tip.Set(b0.Title, b0.Tip); }
+                _modBtns.Add((rt, b, ic, b0)); _icons.Add(rt);
+            }
+        }
+        // lit while the mod says its window is open: the outline in the accent, the icon at full strength
+        private static void TickModButtons()
+        {
+            if (_modBtns.Count == 0 || Time.unscaledTime < _litAt) return;
+            _litAt = Time.unscaledTime + 0.2f;
+            Look.HeadButton dead = null;
+            foreach (var (rt, line, icon, b) in _modBtns)
+            {
+                if (b.Lit == null || line == null) continue;
+                bool on = false; if (!Look.Try(b.Id, () => on = b.Lit(), null)) { dead = b; continue; }
+                var lc = Theme.C(on ? _t.accent : _t.glassLine); if (line.color != lc) line.color = lc;
+                var icc = new Color(1f, 1f, 1f, on ? 1f : 0.8f); if (icon.color != icc) icon.color = icc;
+            }
+            if (dead != null) Look.RemoveHeaderButton(dead.Id);
         }
 
         private static RectTransform Chip(Transform head, float right, float w, string label, ThemeData t, out TextMeshProUGUI value)
@@ -870,7 +930,7 @@ namespace Jatify.UI
             }
             var counts = $"{slots} SLOTS · USED {used} · LOCKED {locked}";
             if (_invLabel != null && counts != _countsShown) { _countsShown = counts; _invLabel.text = counts; }
-            LayNarrow(); LayBelts();   // the row count can change (settings, Valheim's own rows)
+            LayNarrow(); LayBelts(); TickModButtons();   // the row count can change (settings, Valheim's own rows)
             int w = Mathf.RoundToInt(p.GetInventory().GetTotalWeight()), m = Mathf.RoundToInt(p.GetMaxCarryWeight());
             if (_weight != null && (w != _wShown || m != _wMaxShown))
             {
@@ -959,7 +1019,7 @@ namespace Jatify.UI
             ChestPanel.Restore();
             _eq?.Destroy(); _eq = null; _tabs.Clear(); _tabOn = null; _badge = null; _badgeShown = -1;
             _trash?.Destroy(); _trash = null; _stats?.Destroy(); _stats = null;
-            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _gearTab = null; _modsTab = null; _colLit = -1; _bagTabs.Clear(); _bagFor.Clear(); _bagLit.Clear(); _bagsAt = 0f; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _narrowLaid = -1; _acts.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
+            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _gearTab = null; _modsTab = null; _colLit = -1; _bagTabs.Clear(); _bagFor.Clear(); _bagLit.Clear(); _bagsAt = 0f; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _narrowLaid = -1; _acts.Clear(); _icons.Clear(); _modBtns.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
         }
     }
 

@@ -67,6 +67,7 @@ namespace Jatify.UI
             Root.Create(_theme);
             _theme.Changed += Root.Restyle;
             _theme.Changed += d => { if (InventoryGui.instance != null) { InventoryStyle.Apply(d); CraftingStyle.Apply(d); } if (Hud.instance != null) BuildStyle.Apply(d); if (Minimap.instance != null) MapStyle.Apply(d); if (Menu.instance != null) MenuStyle.Apply(d); StartMenu.Restore(); };
+            _theme.Changed += _ => Look.FireTheme();   // after Jatify's own restyle
             Deeds.Model.Earned += OnEarned;
             _harmony = new Harmony(Guid);
             Patch(campfire: false);   // Campfire's in Start, once we know no standalone Campfire runs
@@ -175,7 +176,7 @@ namespace Jatify.UI
             Safe("whats-new", WhatsNew.Tick);   // release builds too (key capture, closing with the menu)
         }
 
-        private void LateUpdate() { if (Headless) return; Safe("vanilla-hud", VanillaHud.Tick); Safe("minimap", () => VanillaMinimap.Tick(Root.MapHole)); Safe("layout", InventoryStyle.Layout); Safe("notices", Notices.Tick); Safe("save-badge", SaveBadge.Tick); Safe("chest-peek", ChestPeek.Tick); Safe("graves", Graves.Tick); Safe("cursor", CursorSkin.Tick); Safe("hover-card", HoverCard.Tick); Safe("item-tip", ItemTip.Tick); Safe("epic-skin", EpicSkin.Tick); Safe("azu-hold", AzuHold.Tick); } // after the game's own HUD update and animators
+        private void LateUpdate() { if (Headless) return; Safe("vanilla-hud", VanillaHud.Tick); Safe("minimap", () => VanillaMinimap.Tick(Root.MapHole)); Safe("layout", InventoryStyle.Layout); Safe("mod-layout", Look.TickLayout); Safe("notices", Notices.Tick); Safe("save-badge", SaveBadge.Tick); Safe("chest-peek", ChestPeek.Tick); Safe("graves", Graves.Tick); Safe("cursor", CursorSkin.Tick); Safe("hover-card", HoverCard.Tick); Safe("item-tip", ItemTip.Tick); Safe("epic-skin", EpicSkin.Tick); Safe("azu-hold", AzuHold.Tick); } // after the game's own HUD update and animators
 
         private static void DevTeardown()
         {

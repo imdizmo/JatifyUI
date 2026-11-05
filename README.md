@@ -366,6 +366,34 @@ Most of these can be changed under `Keys`; Ctrl + Q, Ctrl + E, Ctrl + F and Alt 
 
 ---
 
+## For mod authors
+
+Jatify has a small public class, `Jatify.UI.Look`, for mods that want to fit in. Find it at runtime, so your mod never
+needs Jatify to load. Please use it rather than hooking into Jatify's panels or reading `theme.json`: both change
+between versions, and this class only ever gains methods. Each method has one signature, so a lookup by name works.
+
+```csharp
+// BepInEx plugin GUID "jatify.ui"; returns null without Jatify
+var look = BepInEx.Bootstrap.Chainloader.PluginInfos.TryGetValue("jatify.ui", out var p) && p.Instance != null
+    ? p.Instance.GetType().Assembly.GetType("Jatify.UI.Look") : null;
+look?.GetMethod("AddHeaderButton").Invoke(null, new object[] { "MyMod.Runes", runesIcon, "Runes", "Opens your runes", (Action)OpenRunes, 0, null });
+```
+
+| Member | What it does |
+|---|---|
+| `Version` (const int) | 2 here. Check it before using something newer than 1. |
+| `Color(token)`, `Font(kind)`, `Rounded(r)`, `Ring(r)`, `Icon(name)` | Jatify's theme colours, fonts, panel sprites and icons. |
+| `ThemeChanged` (event) | The player changed the theme; read the colours again. |
+| `AddHeaderButton(id, icon, title, tooltip, onClick, order, lit)`, `RemoveHeaderButton(id)` | A square button in the inventory header, after Jatify's own. `lit` (optional, `Func<bool>`) shows it lit while your window is open. |
+| `WindowRect(name)`, `LayoutChanged` (event) | Where Jatify draws `inventory`, `crafting`, `character`, `chest`, `health` and `hotbar`, in screen pixels (origin bottom left); `Rect.zero` while hidden. |
+| `AddStatusBar(id, label, colour, value, max, order)`, `RemoveStatusBar(id)` | A bar in the HUD's health column, in the row under stamina, while `max` is above 0. |
+| `SetReserve(bar, amount)` | A darker reserved part at the end of `health`, `stamina` or `eitr`. `null` clears it. |
+| `Keys()` | Jatify's set keys by setting name, to warn about clashes. |
+
+A callback that throws is logged with its id and switched off; it never breaks the UI.
+
+---
+
 ## Taking it out
 
 You can remove Jatify at any time. Before you do:

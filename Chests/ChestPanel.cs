@@ -35,6 +35,7 @@ namespace Jatify.UI
         internal static int Sort = 0; private static float _lastSort = -9f;
         private static readonly HashSet<int> _locks = new HashSet<int>(); private static string _locksRaw;
 
+        internal static RectTransform Frame => _frame;
         internal static Container Open => _g != null && _g.m_container != null && _g.m_container.gameObject.activeInHierarchy ? Current(_g) : null;
 
         // an inventory another mod shows in the container panel that is no chest (EpicLoot's socket grid): our frame and

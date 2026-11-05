@@ -27,6 +27,7 @@ namespace Jatify.UI
         // then) and the marker removed, so the next load styles them again. Dead rows are pruned.
         private static readonly List<(TMP_Text name, TMP_FontAsset font, float size, GameObject marker)> _rows = new List<(TMP_Text, TMP_FontAsset, float, GameObject)>();
 
+        internal static RectTransform Panel => _for != null && _for.m_crafting != null ? _for.m_crafting.Find("jatify-panel") as RectTransform : null;
         internal static void Apply(ThemeData t)
         {
             var g = InventoryGui.instance;

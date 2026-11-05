@@ -71,6 +71,7 @@ namespace Jatify.UI
             if (_badge != null && _t != null) { bool show = _t.devBadge && Dev.Build && !_badgeOff && !InventoryGui.IsVisible() && !Menu.IsVisible() && !(_hud != null && _hud.RaidShown) /* the raid banner sits where the badge is */; if (_badge.gameObject.activeSelf != show) _badge.gameObject.SetActive(show); }
         }
         internal static RectTransform MapHole => _hud?.MapHole;
+        internal static HudView Hud => _hud;
         internal static Deeds.AchHud Ach => _hud?.Ach;
 
         internal static void Destroy()
