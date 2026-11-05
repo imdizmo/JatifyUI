@@ -121,7 +121,7 @@ namespace Jatify.UI
             }
             int wl = Game.m_worldLevel;
             foreach (var c in _near) foreach (var it in c.GetInventory().GetAllItems())
-                if (it.m_worldLevel >= wl) { _totals.TryGetValue(it.m_shared.m_name, out var n); _totals[it.m_shared.m_name] = n + it.m_stack; }
+                if (it.m_worldLevel >= wl && !AdvPacks.IsPack(it)) { _totals.TryGetValue(it.m_shared.m_name, out var n); _totals[it.m_shared.m_name] = n + it.m_stack; }   // a backpack in a chest isn't stock: taking it would lose what it holds (#28)
             return _near;
         }
 
@@ -185,7 +185,7 @@ namespace Jatify.UI
             var bag = p.GetInventory();
             int mine = Mathf.Min(bag.CountItems(name, quality, true), amount);
             if (mine > 0) { bag.RemoveItem(name, mine, quality, true); amount -= mine; }
-            if (amount <= 0 || !On) return;
+            if (amount <= 0 || !On || AdvPacks.IsPackName(name)) return;   // never a backpack out of a chest (its contents would go with it)
             foreach (var c in Near(p))
             {
                 if (amount <= 0) break;

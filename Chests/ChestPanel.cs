@@ -36,7 +36,10 @@ namespace Jatify.UI
         private static readonly HashSet<int> _locks = new HashSet<int>(); private static string _locksRaw;
 
         internal static RectTransform Frame => _frame;
-        internal static Container Open => _g != null && _g.m_container != null && _g.m_container.gameObject.activeInHierarchy ? Current(_g) : null;
+        internal static Container Open => _g != null && _g.m_container != null && _g.m_container.gameObject.activeInHierarchy && !AdvPacks.IsDock(Current(_g)) ? Current(_g) : null;
+        // Advanced_Backpacks' portal and ship slots shown as a chest (#28): no chest for us. Crafting and the character panel stay,
+        // and the grid is left to it (it moves it into its own panel)
+        internal static bool Docked => _g != null && AdvPacks.IsDock(Current(_g));
 
         // an inventory another mod shows in the container panel that is no chest (EpicLoot's socket grid): our frame and
         // grid layout, its own title, none of the chest tools (they act on a Container)
