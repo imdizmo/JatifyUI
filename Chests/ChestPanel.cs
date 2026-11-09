@@ -92,6 +92,13 @@ namespace Jatify.UI
             _renameW = x - rx;
             x = Icon("x", "Close", "Closes the chest and your inventory.", () => "Esc", () => InventoryGui.instance?.Hide(), x);
             _toolsW = x - 4f; _close = (RectTransform)_tools.GetChild(_tools.childCount - 1); _closeX = rx + _renameW;
+            // another mod's bag: the tools are off, this closes just the bag (Backpacks' own wooden X tab is hidden, ForeignButtons)
+            var (bc, bcf) = Kit.Box(_frame, "jatify-bag-close", new Color(0.173f, 0.173f, 0.196f, 0.85f), new Color(1f, 1f, 1f, 0.1f), 8);
+            _bagClose = bc.rectTransform; _bagClose.anchorMin = _bagClose.anchorMax = _bagClose.pivot = new Vector2(1f, 1f); _bagClose.anchoredPosition = new Vector2(-Pad, -12f); _bagClose.sizeDelta = new Vector2(Btn, Btn);
+            var bci = Kit.IconImg(_bagClose, "x", new Color(0.91f, 0.91f, 0.925f), 17f); bci.rectTransform.At(7.5f, 7.5f, 17, 17);
+            bc.raycastTarget = true; var bcb = bc.gameObject.AddComponent<Button>(); bcb.targetGraphic = bcf; bcb.onClick.AddListener(() => { if (InventoryGui.instance != null) Bags.CloseAll(InventoryGui.instance); });
+            Hover(bc, "Close", "Closes the bag.", () => "", bc, bci);
+            _bagClose.gameObject.SetActive(false);
             // search: dims the slots whose item doesn't match
             var (box, _) = Kit.Box(_frame, "jatify-search", new Color(0.173f, 0.173f, 0.196f, 0.6f), new Color(1f, 1f, 1f, 0.08f), 8); _searchBox = box.rectTransform;
             var mag = Kit.IconImg(box.rectTransform, "search", Theme.C(t.mute), 15f); mag.rectTransform.At(10, 8.5f, 15, 15);
@@ -131,7 +138,8 @@ namespace Jatify.UI
             _shown = null; _used = -1; _locksRaw = null; _query = ""; _found = null; _tipFor = null;
         }
 
-        private static float _toolsW, _renameW, _craftW = 110f, _closeX; private static RectTransform _close;
+        private static float _toolsW, _renameW, _craftW = 110f, _closeX; private static RectTransform _close, _bagClose;
+        private static Inventory _iconInv; private static readonly List<ItemDrop.ItemData> _worn = new List<ItemDrop.ItemData>();
 
         // a 32 px icon button; keys: what to show on its card ("" none)
         private static float Icon(string icon, string title, string what, System.Func<string> keys, System.Action on, float x)
@@ -281,6 +289,12 @@ namespace Jatify.UI
             foreach (var b in _g.m_container.GetComponentsInChildren<Button>(false))
             {
                 if (b == null || b == _g.m_takeAllButton || b == _g.m_stackAllButton || _frame != null && b.transform.IsChildOf(_frame) || b.name.StartsWith("jatify") || !_btnDone.Add(b.GetInstanceID())) continue;
+                if (b.name == "UPGRADE(Clone)" && b.transform.parent != null && b.transform.parent.name == "Weight(Clone)")
+                {   // Backpacks' close: a wooden tab with an X beside the panel; our close in the panel's corner does it
+                    var tabGo = b.transform.parent.gameObject; var cg = tabGo.GetComponent<CanvasGroup>() ?? _l.Added(tabGo.AddComponent<CanvasGroup>());
+                    _l.Do(() => { cg.alpha = 0f; cg.blocksRaycasts = false; cg.interactable = false; }, () => { if (cg != null) { cg.alpha = 1f; cg.blocksRaycasts = true; cg.interactable = true; } });
+                    continue;
+                }
                 var img = b.GetComponent<Image>(); var fill = Theme.C(_t.raised);
                 if (img != null)
                 {
@@ -307,11 +321,17 @@ namespace Jatify.UI
             if (c == null && _frame != null && Foreign is Inventory other)
             {   // another mod's grid: its title (EpicLoot: "Sockets: <item>"), how full it is
                 _shown = null;
-                var of = OpenFor(); _icon.sprite = of != null ? of.GetIcon() : null; _icon.enabled = _icon.sprite != null;   // EpicLoot's sockets: the item they belong to
+                if (_bagClose != null && !_bagClose.gameObject.activeSelf) _bagClose.gameObject.SetActive(true);
+                var of = OpenFor();   // EpicLoot's sockets: the item they belong to; else the worn bag it is (read when another opens)
+                if (of != null) { _icon.sprite = of.GetIcon(); _iconInv = null; }
+                else if (other != _iconInv) { _iconInv = other; var bag = Bags.Worn(Player.m_localPlayer, _worn).FirstOrDefault(b => Bags.Contents(b) == other); _icon.sprite = bag?.GetIcon(); }
+                _icon.enabled = _icon.sprite != null;
                 var title = _g.m_containerName != null ? _g.m_containerName.text : ""; if (_name.text != title) _name.text = title;
                 var sub = $"{other.NrOfItems()} of {other.GetWidth() * other.GetHeight()} slots"; if (_sub.text != sub) _sub.text = sub;
                 return;
             }
+            if (_bagClose != null && _bagClose.gameObject.activeSelf) _bagClose.gameObject.SetActive(false);
+            _iconInv = null;
             if (c == null || _frame == null) { _shown = null; return; }
             var inv = c.GetInventory();
             if (c != _shown)

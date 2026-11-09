@@ -41,7 +41,7 @@ namespace Jatify.UI
 <b>Other mods</b>
 - Fate Woven: a tab on the inventory's left edge opens its panel. Its panel and a chest take turns in crafting's spot. Its ability bar sits above the health bars and stays there while you build, repair or open the inventory.
 - Advanced_Backpacks: crafting and the character panel stay while you wear one of its backpacks. Crafting from chests never takes one of its backpacks, and the trash won't destroy one that still holds items.
-- Backpacks: your pack waits for its tab instead of opening with the inventory. A line joins a bag's tab to its open panel.
+- Backpacks: your pack waits for its tab instead of opening with the inventory; the tab closes it again. A line joins a bag's tab to its open panel, which shows the bag's icon and a close button.
 - Mod authors get more ways to fit in with Jatify: see For mod authors in the README.
 
 These notes are always there: press Esc, What's new! on the world card.

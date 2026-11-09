@@ -27,7 +27,7 @@
 
 - Fate Woven (0.2.1950): a tab on the inventory's left edge, with Fate Woven's icon, opens and closes its panel, and lights up while it's open; its floating button is tucked away. Its panel and a chest or backpack take turns in crafting's spot: opening a chest or a bag's tab closes it, and opening it hides the chest until it closes. Its ability bar sits above Jatify's health bars and stays there while you build, repair or open the inventory (it jumped up, and flashed over the inventory as it opened).
 - Advanced_Backpacks (1.1.0): crafting and the character panel stay while you wear one of its backpacks (#28). Crafting from chests never takes one of its backpacks, and Jatify's trash refuses a backpack that still holds items.
-- Backpacks: your pack no longer opens by itself with the inventory (its Auto Open Backpack); its tab on the panel's edge opens it. A line joins a bag's lit tab to its open panel, for every bag mod.
+- Backpacks: your pack no longer opens by itself with the inventory (its Auto Open Backpack); its tab on the panel's edge opens it, and a second click closes it. A line joins a bag's lit tab to its open panel, for every bag mod. An open bag shows its own icon and a close button in the panel's corner (Backpacks' wooden X tab is gone).
 - For mod authors, `Jatify.UI.Look` version 2: buttons in the inventory header, where Jatify's windows are on screen, a bar under stamina, a reserved part of health, stamina or eitr, and a theme-changed event. See *For mod authors* in the README.
 
 ## 0.3.0
