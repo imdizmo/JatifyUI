@@ -71,7 +71,12 @@ namespace Jatify.UI
             if (now != null && now != _shown && open) { Toggle(); open = Open; }
             _shown = now;
             bool hide = up && open;
-            if (_cg == null || _cg.transform != g.m_container) { _cg = g.m_container.GetComponent<CanvasGroup>() ?? g.m_container.gameObject.AddComponent<CanvasGroup>(); _hid = !hide; }   // a rebuilt panel: set it once
+            if (_cg == null || _cg.transform != g.m_container)
+            {   // only once the panel has shown: Valheim's UIGroupHandler takes the CanvasGroup it finds on its first activation and keeps it
+                // uninteractable while the chest isn't the gamepad's group, so every chest button ignored clicks (user: Take all, Put all)
+                if (!up) return;
+                _cg = g.m_container.GetComponent<CanvasGroup>() ?? g.m_container.gameObject.AddComponent<CanvasGroup>(); _hid = !hide;   // a rebuilt panel: set it once
+            }
             if (hide == _hid) return;
             _hid = hide;
             _cg.alpha = hide ? 0f : 1f; _cg.blocksRaycasts = !hide; _cg.interactable = !hide;
