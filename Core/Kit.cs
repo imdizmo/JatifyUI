@@ -56,6 +56,26 @@ namespace Jatify.UI
             }
         }
 
+        // another mod's own icon.png, read from its installed package (next to its DLL or a folder or two up, below plugins/):
+        // nothing of theirs ships with Jatify. Null when the mod isn't installed or has none. Not cached: the caller frees it
+        internal static Sprite ModIcon(string guid)
+        {
+            try
+            {
+                if (!BepInEx.Bootstrap.Chainloader.PluginInfos.TryGetValue(guid, out var info) || string.IsNullOrEmpty(info.Location)) return null;
+                var dir = System.IO.Path.GetDirectoryName(info.Location);
+                for (int i = 0; i < 3 && !string.IsNullOrEmpty(dir) && System.IO.Path.GetFileName(dir) != "plugins"; i++, dir = System.IO.Path.GetDirectoryName(dir))
+                {
+                    var f = System.IO.Path.Combine(dir, "icon.png"); if (!System.IO.File.Exists(f)) continue;
+                    var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false) { name = "jatify-modicon-" + guid, filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+                    if (!LoadPng(tex, System.IO.File.ReadAllBytes(f))) { Object.Destroy(tex); return null; }
+                    return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+                }
+            }
+            catch (System.Exception e) { Log.Warn($"mod icon {guid}: {e.Message}"); }
+            return null;
+        }
+
         // ImageConversion.LoadImage by reflection: its assembly targets a newer netstandard than we can reference.
         private static System.Func<Texture2D, byte[], bool, bool> _load;
         private static bool LoadPng(Texture2D tex, byte[] bytes)

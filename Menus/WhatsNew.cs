@@ -39,9 +39,9 @@ namespace Jatify.UI
 - Continue lights up on hover like the other entries, and the lists on the Jatify UI and Mods pages slide and light up the same way.
 
 <b>Other mods</b>
-- Fate Woven: a tab on the inventory's left edge opens its panel. Its panel and a chest take turns in crafting's spot. Its ability bar sits above the health bars and stays there while you build, repair or open the inventory.
-- Advanced_Backpacks: crafting and the character panel stay while you wear one of its backpacks. Crafting from chests never takes one of its backpacks, and the trash won't destroy one that still holds items.
-- Backpacks: your pack waits for its tab instead of opening with the inventory; the tab closes it again. A line joins a bag's tab to its open panel; Backpacks' and RustyBags' bags show their icon and a close button there.
+{FateWoven}Fate Woven: a tab on the inventory's left edge opens its panel. Its panel and a chest take turns in crafting's spot. Its ability bar sits above the health bars and stays there while you build, repair or open the inventory.
+{p0kahontazz.advancedbackpacks}Advanced_Backpacks: crafting and the character panel stay while you wear one of its backpacks. Crafting from chests never takes one of its backpacks, and the trash won't destroy one that still holds items.
+{org.bepinex.plugins.backpacks}Backpacks: your pack waits for its tab instead of opening with the inventory; the tab closes it again. A line joins a bag's tab to its open panel; Backpacks' and RustyBags' bags show their icon and a close button there.
 - Mod authors get more ways to fit in with Jatify: see For mod authors in the README.
 
 These notes are always there: press Esc, What's new! on the world card.
@@ -83,7 +83,8 @@ Thanks for the reports and ideas!";
             var view = Kit.Node(b, "View").At(28, 104, 564, 454); view.gameObject.AddComponent<RectMask2D>();
             var hit = view.gameObject.AddComponent<Image>(); hit.color = new Color(0, 0, 0, 0);
             _content = Kit.Node(view, "Content"); _content.anchorMin = new Vector2(0f, 1f); _content.anchorMax = new Vector2(1f, 1f); _content.pivot = new Vector2(0.5f, 1f);
-            // the notes in pieces: text, and a picture where a line reads [name] (assets/whatsnew/<name>.jpg)
+            // the notes in pieces: text, a picture where a line reads [name] (assets/whatsnew/<name>.jpg), and a mod's icon before a line
+            // that starts {guid}
             float h = 0f; var text = new System.Text.StringBuilder();
             void Flush()
             {
@@ -94,6 +95,17 @@ Thanks for the reports and ideas!";
             foreach (var line in Notes.Split('\n'))
             {
                 var l = line.TrimEnd('\r');
+                if (l.StartsWith("{") && l.IndexOf('}') > 1)
+                {   // {guid}text: that mod's own icon beside the line, when it is installed; plain text otherwise
+                    int e = l.IndexOf('}'); var rest = l.Substring(e + 1); var ic = Kit.ModIcon(l.Substring(1, e - 1));
+                    if (ic == null) { text.Append("- ").Append(rest).Append('\n'); continue; }
+                    Flush(); _pictures.Add(ic);
+                    var (tile, _) = Kit.Box(_content, "ModIcon", new Color(0, 0, 0, 0.3f), Theme.C(t.line2), 6); tile.rectTransform.At(0, h + 1, 30, 30);
+                    var im = Kit.Img(tile.rectTransform, "I", ic, Color.white, false); im.rectTransform.Fill(2f); im.preserveAspect = true;
+                    var lt = Kit.Text(_content, "Notes", rest, Fonts.Medium, 15f, Theme.C(t.text)); lt.richText = true; lt.textWrappingMode = TextWrappingModes.Normal; lt.alignment = TextAlignmentOptions.TopLeft; lt.lineSpacing = 6f;
+                    float lh = Mathf.Max(32f, lt.GetPreferredValues(rest, 508f, 0f).y); lt.rectTransform.At(40, h, 508, lh); h += lh + 10f;
+                    continue;
+                }
                 if (!(l.StartsWith("[") && l.EndsWith("]"))) { text.Append(l).Append('\n'); continue; }
                 Flush();
                 var sp = Kit.Picture(l.Substring(1, l.Length - 2)); if (sp == null) continue;
