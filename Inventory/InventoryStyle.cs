@@ -393,6 +393,36 @@ namespace Jatify.UI
                 int lit = Bags.IsOpen(it) ? 1 : 0; if (lit != _bagLit[i]) { _bagLit[i] = lit; Tint(tab, lit == 1); }
             }
         }
+        // a line from the lit bag tab to the bag's panel, a small diamond where it meets it (user: which tab is that panel's)
+        private static RectTransform _link, _linkLine, _linkDot; private static readonly Vector3[] _lc = new Vector3[4];
+        private static void BagLink()
+        {
+            RectTransform from = null;
+            for (int i = 0; i < _bagTabs.Count && i < _bagLit.Count; i++) if (_bagLit[i] == 1 && _bagTabs[i] != null && _bagTabs[i].gameObject.activeInHierarchy) { from = _bagTabs[i]; break; }
+            var to = ChestPanel.Frame;
+            if (from == null || to == null || !to.gameObject.activeInHierarchy || FateWoven.Covers)
+            {
+                if (_link != null && _link.gameObject.activeSelf) _link.gameObject.SetActive(false);
+                return;
+            }
+            if (_link == null || _link.parent != from)
+            {   // on the tab, whose canvas draws over the inventory and the bag's panel
+                if (_link != null) UnityEngine.Object.Destroy(_link.gameObject);
+                _link = Kit.Node(from, "jatify-bag-link"); _link.anchorMin = _link.anchorMax = _link.pivot = new Vector2(0.5f, 0.5f); _link.sizeDelta = Vector2.zero;
+                var c = Theme.C(_t.accent);
+                var line = Kit.Img(_link, "Line", null, c, false); line.raycastTarget = false; _linkLine = line.rectTransform; _linkLine.anchorMin = _linkLine.anchorMax = new Vector2(0.5f, 0.5f); _linkLine.pivot = new Vector2(0f, 0.5f);
+                var dot = Kit.Img(_link, "Dot", null, c, false); dot.raycastTarget = false; _linkDot = dot.rectTransform; _linkDot.anchorMin = _linkDot.anchorMax = new Vector2(0.5f, 0.5f); _linkDot.sizeDelta = new Vector2(8f, 8f); _linkDot.localEulerAngles = new Vector3(0f, 0f, 45f);
+            }
+            if (!_link.gameObject.activeSelf) _link.gameObject.SetActive(true);
+            _link.localPosition = Vector3.zero;   // at the tab's own origin: the points below are in its local space
+            from.GetWorldCorners(_lc); var a = (_lc[2] + _lc[3]) / 2f;   // the tab's right edge, halfway up
+            to.GetWorldCorners(_lc); float edge = 24f * Root.Canvas.transform.lossyScale.y;
+            var b = new Vector3(_lc[0].x, Mathf.Clamp(a.y, _lc[0].y + edge, _lc[1].y - edge), a.z);   // the panel's left edge, level with the tab where it can be
+            Vector2 la = from.InverseTransformPoint(a), lb = from.InverseTransformPoint(b), d = lb - la;
+            _linkLine.localPosition = la; _linkLine.sizeDelta = new Vector2(d.magnitude, 2f); _linkLine.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg);
+            _linkDot.localPosition = lb;
+        }
+
         private static void Column(bool mods)
         {
             if (_eq == null || Cfg.GearCollapsed == null) return;
@@ -972,6 +1002,7 @@ namespace Jatify.UI
             float rx = RightLeft - 1030f;   // the design's right-hand column moved so its gap to the right edge matches the inventory's 160 to the left (user)
             Place(_for.m_crafting, 1044f + rx, 204f);
             ChestPanel.Layout();
+            BagLink();
             if (_craftFade != null) { _craftFade.alpha = chest ? 0f : 1f; _craftFade.blocksRaycasts = !chest; _craftFade.interactable = !chest; }
             Place(_for.m_info, 1080f + rx, 39f); // inside the design's 670 x 140 character panel at (1030, 32); vanilla's name sits above its box
         }
@@ -1032,7 +1063,7 @@ namespace Jatify.UI
             ChestPanel.Restore();
             _eq?.Destroy(); _eq = null; _tabs.Clear(); _tabOn = null; _badge = null; _badgeShown = -1;
             _trash?.Destroy(); _trash = null; _stats?.Destroy(); _stats = null;
-            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _gearTab = null; _modsTab = null; _fwTab = null; _fwLit = false; FateWoven.Unhide(); _colLit = -1; _bagTabs.Clear(); _bagFor.Clear(); _bagLit.Clear(); _bagsAt = 0f; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _narrowLaid = -1; _acts.Clear(); _icons.Clear(); _modBtns.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
+            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _gearTab = null; _modsTab = null; _fwTab = null; _fwLit = false; FateWoven.Unhide(); _colLit = -1; _bagTabs.Clear(); _bagFor.Clear(); _bagLit.Clear(); _link = _linkLine = _linkDot = null; _bagsAt = 0f; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _narrowLaid = -1; _acts.Clear(); _icons.Clear(); _modBtns.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
         }
     }
 

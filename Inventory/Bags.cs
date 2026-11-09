@@ -114,6 +114,23 @@ namespace Jatify.UI
             return false;
         }
 
+        // Backpacks opens your worn pack whenever the inventory opens (its Auto Open Backpack, on by default): with Jatify its tab
+        // opens it in one click, so it stays closed until then (user). A chest you open, and other mods' bags, are left alone
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Show))]
+        [HarmonyAfter("org.bepinex.plugins.backpacks")]
+        private static class NoAutoOpen
+        {
+            private static readonly AccessTools.FieldRef<InventoryGui, InventoryGrid> Grid = AccessTools.FieldRefAccess<InventoryGui, InventoryGrid>("m_containerGrid");
+            private static readonly List<ItemDrop.ItemData> _w = new List<ItemDrop.ItemData>();
+            private static void Postfix(InventoryGui __instance, Container container)
+            {
+                Bind(); if (container != null || _bp == null || __instance == null) return;
+                var shown = Grid(__instance)?.GetInventory(); if (shown == null) return;
+                foreach (var it in Worn(Player.m_localPlayer, _w))
+                    if (KindOf(it) == Kind.Backpacks && Contents(it) == shown) { CloseContainer?.Invoke(__instance, null); return; }
+            }
+        }
+
         private static readonly MethodInfo CloseContainer = AccessTools.Method(typeof(InventoryGui), "CloseContainer");
         // closes whichever bag (and chest) is open: Valheim's CloseContainer clears Backpacks' and AdventureBackpacks'; RustyBags' bag closes itself
         internal static void CloseAll(InventoryGui g)
