@@ -180,8 +180,8 @@ namespace Jatify.UI
 
         // ---- colours (#40) ------------------------------------------------------------------------------
         private const string ColoursSection = "Colours";
-        // token, label, help, then swatches: Jatify's default first, then a few that suit the game. ponytail: presets plus a
-        // hex field, no colour wheel; add one if players ask for colours the swatches can't reach.
+        // token, label, help, then swatches: Jatify's default first, then a few that suit the game; the wheel tile opens the
+        // picker for any other colour.
         private static readonly (string token, string label, string help, string[] swatches)[] ColourRows =
         {
             ("accent", "Accent", "Buttons, switches, highlights and the selection mark.", new[] { "#EC8219", "#22D67E", "#4DA3FF", "#E5484D", "#B57EDC", "#E8C547" }),
@@ -205,9 +205,16 @@ namespace Jatify.UI
                 var cur = (string)typeof(ThemeData).GetField(token).GetValue(_t);
                 Kit.Text(_content, "Label", label, Fonts.Medium, 16f, Color.white).rectTransform.At(0, y + 6, 300, 22);
                 Kit.Text(_content, "Desc", help, Fonts.Medium, 12.5f, Theme.C(_t.dim)).rectTransform.At(0, y + 28, 300, 18);
-                // the swatches, right to left from the hex field; the current one ringed in white
+                // right to left from the hex field: the picker (ringed when the current colour is no swatch; one column for every
+                // row), then the swatches, the current one ringed in white
                 float x = 800f - 104f;
                 HexField(token, cur, x, y + 8f);
+                bool own = !swatches.Any(sw => string.Equals(sw, cur, StringComparison.OrdinalIgnoreCase));
+                x -= 34f; var (cring, _) = Kit.Box(_content, "Custom", new Color(0.05f, 0.05f, 0.06f, 1f), own ? Color.white : Theme.C(_t.line2), 8); cring.rectTransform.At(x, y + 8, 28, 28);
+                var wheel = Kit.Img(cring.rectTransform, "Wheel", ColourPicker.Wheel(), Color.white, false); wheel.rectTransform.Fill(); wheel.rectTransform.offsetMin = new Vector2(3, 3); wheel.rectTransform.offsetMax = new Vector2(-3, -3); wheel.raycastTarget = false;
+                var tk = token; var lb = label; cring.raycastTarget = true;
+                cring.gameObject.AddComponent<Button>().onClick.AddListener(() => ColourPicker.Show(_root, _t, tk, lb, tk == "glass", v => Pick(tk, v)));
+                x -= 6f;
                 for (int i = swatches.Length - 1; i >= 0; i--)
                 {
                     x -= 34f; var sw = swatches[i]; bool on = string.Equals(sw, cur, StringComparison.OrdinalIgnoreCase);
@@ -216,12 +223,6 @@ namespace Jatify.UI
                     ring.rectTransform.At(x, y + 8, 28, 28);
                     ring.raycastTarget = true; ring.gameObject.AddComponent<Button>().onClick.AddListener(() => Pick(token, sw));
                 }
-                // any other colour: the picker, with a preview of the UI in it; ringed when the current colour is no swatch
-                bool own = !swatches.Any(sw => string.Equals(sw, cur, StringComparison.OrdinalIgnoreCase));
-                x -= 34f; var (cring, _) = Kit.Box(_content, "Custom", new Color(0.05f, 0.05f, 0.06f, 1f), own ? Color.white : Theme.C(_t.line2), 8); cring.rectTransform.At(x, y + 8, 28, 28);
-                var hue = Kit.Img(cring.rectTransform, "Hue", Sprite.Create(ColourPicker.HueTex(), new Rect(0, 0, 1, 128), new Vector2(0.5f, 0.5f)), Color.white, false); hue.rectTransform.Fill(); hue.rectTransform.offsetMin = new Vector2(4, 4); hue.rectTransform.offsetMax = new Vector2(-4, -4); hue.raycastTarget = false;
-                var tk = token; var lb = label; cring.raycastTarget = true;
-                cring.gameObject.AddComponent<Button>().onClick.AddListener(() => ColourPicker.Show(_root, _t, tk, lb, tk == "glass", v => Pick(tk, v)));
                 y += 56f;
             }
             var (rb, _) = Kit.Box(_content, "Reset", Theme.C(_t.raised), Theme.C(_t.line2), 8); rb.rectTransform.At(0, y + 12, 170, 32);

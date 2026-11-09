@@ -202,6 +202,22 @@ namespace Jatify.UI
             for (int y = 0; y < 128; y++) _hue.SetPixel(0, y, UnityEngine.Color.HSVToRGB(y / 127f, 1f, 1f));
             _hue.Apply(false); return _hue;
         }
+        // the picker's tile in the Colours rows: a hue wheel, white in the middle, its edge smoothed
+        private static Sprite _wheel;
+        internal static Sprite Wheel()
+        {
+            if (_wheel != null) return _wheel;
+            const int n = 64; var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            for (int y = 0; y < n; y++) for (int x = 0; x < n; x++)
+            {
+                float dx = (x + 0.5f) / n * 2f - 1f, dy = (y + 0.5f) / n * 2f - 1f, r = Mathf.Sqrt(dx * dx + dy * dy);
+                float h = Mathf.Atan2(dy, dx) / (2f * Mathf.PI); if (h < 0f) h += 1f;
+                var c = UnityEngine.Color.HSVToRGB(h, Mathf.Clamp01(r * 1.3f), 1f); c.a = Mathf.Clamp01((1f - r) * n * 0.5f);
+                tex.SetPixel(x, y, c);
+            }
+            tex.Apply(false);
+            return _wheel = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f));
+        }
         private static Texture2D AlphaTex()
         {
             if (_alphaRamp != null) return _alphaRamp;
