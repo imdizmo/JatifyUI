@@ -9,7 +9,14 @@
 ### HUD
 
 - The key hints at the bottom right stack in a column at the screen's right edge, no longer above the action bar.
+- Looking at a chest, its card sits at the bottom left, no longer over the health bars.
+- The building card sits above the right-hand slots and left of the key hints; it covered both.
 - Pause screens also hide what other mods add to Valheim's HUD (Fate Woven's ability bar showed through the menu).
+
+### Windows
+
+- Split stack is a Jatify card in the middle of the screen with Jatify's slider and buttons; it was a bare wooden panel over the character column.
+- Valheim's yes / no and message popups are Jatify cards too. Other mods that use them take the look: Fate Woven's first-time tips, and Quick Stack Store's trash prompt (a copy of Split stack).
 
 ### Menus
 
@@ -18,7 +25,7 @@
 
 ### Mod support
 
-- Fate Woven (0.2.1950): a tab on the inventory's left edge, with Fate Woven's icon, opens and closes its panel, and lights up while it's open; its floating button is tucked away. Its panel and a chest or backpack take turns in crafting's spot: opening a chest or a bag's tab closes it, and opening it hides the chest until it closes.
+- Fate Woven (0.2.1950): a tab on the inventory's left edge, with Fate Woven's icon, opens and closes its panel, and lights up while it's open; its floating button is tucked away. Its panel and a chest or backpack take turns in crafting's spot: opening a chest or a bag's tab closes it, and opening it hides the chest until it closes. Its ability bar sits above Jatify's health bars and stays there while you build, repair or open the inventory (it jumped up, and flashed over the inventory as it opened).
 - Advanced_Backpacks (1.1.0): crafting and the character panel stay while you wear one of its backpacks (#28). Crafting from chests never takes one of its backpacks, and Jatify's trash refuses a backpack that still holds items.
 - For mod authors, `Jatify.UI.Look` version 2: buttons in the inventory header, where Jatify's windows are on screen, a bar under stamina, a reserved part of health, stamina or eitr, and a theme-changed event. See *For mod authors* in the README.
 

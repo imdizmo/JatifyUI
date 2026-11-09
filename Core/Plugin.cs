@@ -70,6 +70,7 @@ namespace Jatify.UI
             Root.Create(_theme);
             _theme.Changed += Root.Restyle;
             _theme.Changed += d => { if (InventoryGui.instance != null) { InventoryStyle.Apply(d); CraftingStyle.Apply(d); } if (Hud.instance != null) BuildStyle.Apply(d); if (Minimap.instance != null) MapStyle.Apply(d); if (Menu.instance != null) MenuStyle.Apply(d); StartMenu.Restore(); };
+            _theme.Changed += _ => DialogStyle.Restore();   // built again with the new colours on the next tick
             _theme.Changed += _ => Look.FireTheme();   // after Jatify's own restyle
             Deeds.Model.Earned += OnEarned;
             _harmony = new Harmony(Guid);
@@ -137,6 +138,7 @@ namespace Jatify.UI
             if (InventoryGui.instance == null && _invStyled) { _invStyled = false; InventoryStyle.Restore(); CraftingStyle.Restore(); }
             Safe("inventory", InventoryStyle.Tick);
             Safe("crafting", CraftingStyle.Tick);
+            Safe("dialogs", DialogStyle.Tick);
             if (Hud.instance != null && Player.m_localPlayer != null && !_buildStyled) { _buildStyled = true; Safe("build-apply", () => BuildStyle.Apply(_theme.D)); }
             if (Hud.instance == null && _buildStyled) { _buildStyled = false; BuildStyle.Restore(); }
             Safe("build", BuildStyle.Tick);
@@ -179,7 +181,7 @@ namespace Jatify.UI
             Safe("whats-new", WhatsNew.Tick);   // release builds too (key capture, closing with the menu)
         }
 
-        private void LateUpdate() { if (Headless) return; Safe("vanilla-hud", VanillaHud.Tick); Safe("minimap", () => VanillaMinimap.Tick(Root.MapHole)); Safe("layout", InventoryStyle.Layout); Safe("mod-layout", Look.TickLayout); Safe("notices", Notices.Tick); Safe("save-badge", SaveBadge.Tick); Safe("chest-peek", ChestPeek.Tick); Safe("graves", Graves.Tick); Safe("cursor", CursorSkin.Tick); Safe("hover-card", HoverCard.Tick); Safe("item-tip", ItemTip.Tick); Safe("epic-skin", EpicSkin.Tick); Safe("azu-hold", AzuHold.Tick); } // after the game's own HUD update and animators
+        private void LateUpdate() { if (Headless) return; Safe("vanilla-hud", VanillaHud.Tick); Safe("minimap", () => VanillaMinimap.Tick(Root.MapHole)); Safe("layout", InventoryStyle.Layout); Safe("fatewoven-bar", FateWoven.HoldBar); Safe("mod-layout", Look.TickLayout); Safe("notices", Notices.Tick); Safe("save-badge", SaveBadge.Tick); Safe("chest-peek", ChestPeek.Tick); Safe("graves", Graves.Tick); Safe("cursor", CursorSkin.Tick); Safe("hover-card", HoverCard.Tick); Safe("item-tip", ItemTip.Tick); Safe("epic-skin", EpicSkin.Tick); Safe("azu-hold", AzuHold.Tick); } // after the game's own HUD update and animators
 
         private static void DevTeardown()
         {
@@ -259,7 +261,7 @@ namespace Jatify.UI
             Safe("campfire-unload", Campfire.Module.Unload);   // after unpatching (its postfixes stay out of the hand-back), before Kit and Fonts go
             if (_theme != null) { _theme.Changed -= Root.Restyle; _theme.Dispose(); }
             Deeds.Model.Earned -= OnEarned;
-            Notices.Restore(); DevTeardown(); SaveBadge.Destroy(); ChestPeek.Destroy(); CursorSkin.Restore(); HoverCard.Destroy(); ItemTip.Destroy();
+            Notices.Restore(); DevTeardown(); SaveBadge.Destroy(); ChestPeek.Destroy(); DialogStyle.Restore(); CursorSkin.Restore(); HoverCard.Destroy(); ItemTip.Destroy();
             SettingsStyle.Restore();
             VanillaHud.Restore();
             VanillaMinimap.Restore();

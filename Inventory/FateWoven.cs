@@ -77,6 +77,36 @@ namespace Jatify.UI
             _cg.alpha = hide ? 0f : 1f; _cg.blocksRaycasts = !hide; _cg.interactable = !hide;
         }
 
+        // its ability bar places itself over Valheim's stamina bar, which Jatify hides and which jumps while building or repairing:
+        // the ability bar jumped with it (user). Jatify sets it instead, its lowest part (the level strip) Gap px over Jatify's
+        // health bars and the held item's name, in every mode. Fate Woven places it in its Update; this runs after (LateUpdate)
+        private const float Gap = 40f;
+        private static RectTransform _bar; private static float _barLook, _partsAt, _heldY = float.NaN;
+        private static readonly System.Collections.Generic.List<RectTransform> _parts = new System.Collections.Generic.List<RectTransform>();
+        private static readonly Vector3[] _c4 = new Vector3[4];
+        internal static void HoldBar()
+        {
+            if (Player.m_localPlayer == null || Root.Hud == null || Root.Canvas == null || !On) return;
+            if (_bar == null)
+            {
+                if (Time.unscaledTime < _barLook) return;
+                _barLook = Time.unscaledTime + 1f;
+                _bar = GameObject.Find("WildcardAbilityBar")?.transform as RectTransform; if (_bar == null) return;
+                _partsAt = 0f; _heldY = float.NaN;
+            }
+            if (!_bar.gameObject.activeInHierarchy || _bar.parent == null) return;
+            if (Time.unscaledTime >= _partsAt) { _partsAt = Time.unscaledTime + 0.5f; _bar.GetComponentsInChildren(false, _parts); }   // its slots and level strip, read again twice a second
+            float low = float.MaxValue, top = float.MinValue;
+            foreach (var r in _parts) { if (r == null || r == _bar || !r.gameObject.activeInHierarchy || r.rect.height < 0.5f) continue; r.GetWorldCorners(_c4); low = Mathf.Min(low, _c4[0].y); }
+            foreach (var r in Root.Hud.HealthParts) { if (r == null || !r.gameObject.activeInHierarchy) continue; r.GetWorldCorners(_c4); top = Mathf.Max(top, _c4[1].y); }
+            // our health bars hidden (inventory, chest, a picked item): the height it had, else it jumped up over the inventory as it
+            // faded out (user: "equipment slots" flashing behind the top and crafting panels)
+            if (low == float.MaxValue || top == float.MinValue) { if (!float.IsNaN(_heldY) && _bar.anchoredPosition.y != _heldY) _bar.anchoredPosition = new Vector2(_bar.anchoredPosition.x, _heldY); return; }
+            float dy = (top + Gap * Root.Canvas.transform.lossyScale.y - low) / Mathf.Max(0.0001f, _bar.parent.lossyScale.y);
+            if (Mathf.Abs(dy) > 0.5f) _bar.anchoredPosition += new Vector2(0f, dy);
+            _heldY = _bar.anchoredPosition.y;
+        }
+
         // its floating button, hidden in a holder of ours on the inventory (it outlives our restyles: under the tab it went with
         // every colour change); once its parent changes, Fate Woven stops placing and showing it. Its icon becomes the tab's.
         // Looked for twice a second until found (it builds it the first time the inventory opens)

@@ -20,18 +20,26 @@ namespace Jatify.UI
         private const string Notes =
 @"<b>Colours</b>
 - Press Esc, then Jatify UI, then Colours: the accent, panels, text, health, stamina and eitr, each with a few ready colours and a hex field.
+[colours]
 - The colour wheel on each row opens a picker for any other colour, with a slice of the UI drawn in it.
 - In a world, the picker's Preview closes the menu and opens your inventory: the real UI takes the colour each time you let go of the mouse. Apply keeps it; Cancel, or closing the inventory, puts the old one back.
 
 <b>HUD</b>
 - The key hints at the bottom right stack at the screen's right edge, no longer above the action bar.
+[hints]
+- Looking at a chest, its card sits at the bottom left, clear of the health bars.
+- The building card sits above the right-hand slots, clear of the key hints.
 - Pause screens also hide what other mods add to Valheim's HUD.
+
+<b>Windows</b>
+- Split stack and Valheim's yes / no popups are Jatify cards now, and so are other mods' that use them (Fate Woven's tips, Quick Stack Store's trash prompt).
+[split]
 
 <b>Menus</b>
 - Continue lights up on hover like the other entries, and the lists on the Jatify UI and Mods pages slide and light up the same way.
 
 <b>Other mods</b>
-- Fate Woven: a tab on the inventory's left edge opens its panel. Its panel and a chest take turns in crafting's spot.
+- Fate Woven: a tab on the inventory's left edge opens its panel. Its panel and a chest take turns in crafting's spot. Its ability bar sits above the health bars and stays there while you build, repair or open the inventory.
 - Advanced_Backpacks: crafting and the character panel stay while you wear one of its backpacks. Crafting from chests never takes one of its backpacks, and the trash won't destroy one that still holds items.
 - Mod authors get more ways to fit in with Jatify: see For mod authors in the README.
 
