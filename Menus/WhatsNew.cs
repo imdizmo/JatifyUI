@@ -18,60 +18,23 @@ namespace Jatify.UI
         private static void FreePictures() { foreach (var sp in _pictures) if (sp != null) { Object.Destroy(sp.texture); Object.Destroy(sp); } _pictures.Clear(); }
 
         private const string Notes =
-@"<b>Look</b>
-- Orange is the new default colour. Colours you picked yourself in theme.json stay as they are.
-
-<b>Inventory</b>
-[inventory]
-- Tools, Food and Meads sit in one strip along the bottom of the panel.
-- Food and Meads now have 3 slots each. Anything that was in slots 4 to 6 moved into your bag, or was dropped at your feet if the bag was full.
-- Tabs on the panel's edges: the helmet shows or hides the character column, the crossed axe and sword folds the Tools, Food and Meads rows away, and the key pouch, the trash and each worn bag have tabs of their own.
-- With a short bag, Tools, Food and Meads sit under it beside the character column, and the panel is shorter.
-- The character column no longer has hand slots: what you hold is on the action bar and on the figure.
-- A new Stats tab, beside Character and Skills, holds your stats, resistances and effects.
-- PvP moved to the top panel, next to the settings button.
-- The trash works: drop an item on it, or click it while holding one. Click it again within 15 seconds to bring the item back.
+@"<b>Colours</b>
+- Press Esc, then Jatify UI, then Colours: the accent, panels, text, health, stamina and eitr, each with a few ready colours and a hex field.
+- The colour wheel on each row opens a picker for any other colour, with a slice of the UI drawn in it.
+- In a world, the picker's Preview closes the menu and opens your inventory: the real UI takes the colour each time you let go of the mouse. Apply keeps it; Cancel, or closing the inventory, puts the old one back.
 
 <b>HUD</b>
-[dock]
-- Food and Meads have their own bar, right of the action bar.
-- The guardian power sits right of the health bars, and it's bigger.
-[buffs]
-- Buffs are Valheim's plain icons, a little bigger. Ailments move under the buffs when there are many.
-- The minimap has no panel behind it, and its text has a dark edge so it reads over snow.
-- The compass is one faint line with the letters (Compass minimal, now on by default).
-- Nameplates and the boss bar are finer: the name with a small red knot each side, and a slim bar in the health bar's red.
-- Nameplates no longer show through the inventory, menus or text boxes.
-- Seasonality's time left shows under the season.
+- The key hints at the bottom right stack at the screen's right edge, no longer above the action bar.
+- Pause screens hide other mods' HUD pieces too.
 
-<b>Crafting and building</b>
-- Weapons and Armour show a second row of kinds (Swords, Axes, Helmets...).
-- Recipes you can't craft yet are as readable as the rest, and the list has a scroll bar.
-- The search box starts empty at each station.
-- Long stat lines wrap, and the item details scroll when they run long.
-- The build menu has an Everything category, shows the piece's name by the cursor, and no longer stalls with every piece unlocked.
-- The cultivator and hoe sort their pieces into Crops, Saplings and Terrain.
+<b>Menus</b>
+- Continue lights up on hover like the other entries, and the lists on the Jatify UI and Mods pages slide and light up the same way.
 
 <b>Other mods</b>
-- ExtraSlots: its slots sit in Jatify's panel and bars in place of ours: armour and utilities on the doll, quick slots and food under Tools and Food, ammo in its own bar bottom left. Slots other mods add (backpacks, jewellery, tomes, lanterns) get a Mod slots tab on the left edge. Our three mead slots stay.
-- Bags from Backpacks, AdventureBackpacks and RustyBags: a tab for each one you wear, on the panel's right edge, opens it.
-- Quick Stack Store: To chests, Restock, Sort and the trash use its actions, its own buttons are hidden, and its sort and quick stack leave your locked slots, worn gear and slot rows alone.
-- Valheim Enchantment System: the Enchant button can be clicked again.
-- A mod made for an older Valheim that fails, or one that's known to be broken (Sleepover), now gets a warning. So does a screen size that makes clicks miss the cursor.
+- Fate Woven: a tab on the inventory's left edge opens its panel. Its panel and a chest take turns in crafting's spot.
+- Advanced_Backpacks: crafting and the character panel stay while you wear one of its backpacks. Crafting from chests never takes one of its backpacks, and the trash won't destroy one that still holds items.
+- Mod authors get more ways to fit in with Jatify: see For mod authors in the README.
 
-<b>Elsewhere</b>
-- Map pins: the name box is easy to see.
-- Find servers opens the community server list in Jatify's look.
-[servers]
-- Deleting a cloud character or world works.
-- The Mods settings list scrolls.
-- With ExtraSlots installed, Jatify leaves its slots alone.
-
-<b>Where to change them</b>
-Press Esc, then Jatify UI. The HUD section has the new switches: Food timers as buffs, Buff frames, Minimap panel, Compass minimal, Power panel and Key hints. Action bar panels now covers every bar. Nameplate ornaments, Nameplate numbers and Boss icon set the nameplates and boss bar (numbers and icon are off at first).
-[settings-hud]
-The Inventory section remembers whether the character column and the Tools, Food and Meads rows are folded away (the tabs on the panel's edges do the same).
-[settings-inv]
 These notes are always there: press Esc, What's new! on the world card.
 
 Thanks for the reports and ideas!";
