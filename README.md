@@ -17,7 +17,7 @@ a lot of small conveniences you stop noticing after an hour.
   [RustyBags](https://thunderstore.io/c/valheim/p/RustyMods/RustyBags/) [1.3.5] (a tab for each bag you wear),
   [Quick Stack Store](https://thunderstore.io/c/valheim/p/Goldenrevolver/Quick_Stack_Store_Sort_Trash_Restock/) [1.4.16] (Jatify's chest buttons use its
   actions), Valheim Enchantment System [1.9.18], [Advanced_Backpacks](https://thunderstore.io/c/valheim/p/Hypnogoogic/Advanced_Backpacks/) [1.1.0]
-  and [Fate Woven](https://fatewoven.net/) [0.2.1950] (its panel opens from a tab on the inventory's edge).
+  and [Fate Woven](https://valheim.hexium.gg/mods/processq/FateWoven) [0.2.1957] (its panel opens from a tab on the inventory's edge).
 - **Language:** English only for now.
 - **Version:** 0.4.0, made for Valheim 1.0.21.
 - **Controls:** mouse and keyboard; there's no gamepad support yet.
