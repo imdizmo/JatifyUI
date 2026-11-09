@@ -254,18 +254,32 @@ namespace Jatify.UI
             var row = Kit.Node(parent, right ? "HintsRight" : "HintsLeft");
             row.anchorMin = row.anchorMax = row.pivot = new Vector2(right ? 1f : 0f, 0f);
             row.anchoredPosition = new Vector2(right ? -28f : 28f, 36f);
-            float x = 0f; var parts = new List<RectTransform>();
+            // the left row runs along the bottom; the right one is a column at the screen's edge, one key a line, right-aligned,
+            // so it stays beside the Food / Meads slots instead of above them (user)
+            float x = 0f; var lines = new List<(RectTransform cap, RectTransform what, float kw, float w)>();
             foreach (var (key, what) in items)
             {
                 var (cap, _) = Kit.Box(row, "Key", C(t.raised), C(t.line2), 5);
                 var kt = Kit.Text(cap.rectTransform, "K", key, Fonts.Mono, 10.5f, C(t.text)); kt.alignment = TextAlignmentOptions.Center;
-                float kw = Mathf.Max(20f, Kit.W(kt) + 10f);
-                cap.rectTransform.At(x, 0, kw, 20); kt.rectTransform.Fill();
+                float kw = Mathf.Max(20f, Kit.W(kt) + 10f); kt.rectTransform.Fill();
                 var wt = Kit.Text(row, "What", what, Fonts.Medium, 12f, C(t.dim)); wt.alignment = TextAlignmentOptions.MidlineLeft;
-                wt.rectTransform.At(x + kw + 6f, 0, Kit.W(wt) + 2f, 20);
-                x += kw + 6f + Kit.W(wt) + 16f;
+                lines.Add((cap.rectTransform, wt.rectTransform, kw, Kit.W(wt) + 2f));
             }
-            row.sizeDelta = new Vector2(x - 16f, 20f);
+            if (right)
+            {
+                float wide = 0f; foreach (var l in lines) wide = Mathf.Max(wide, l.kw + 6f + l.w);
+                for (int i = 0; i < lines.Count; i++)
+                {
+                    var l = lines[i]; float lx = wide - (l.kw + 6f + l.w);
+                    l.cap.At(lx, i * 24f, l.kw, 20); l.what.At(lx + l.kw + 6f, i * 24f, l.w, 20);
+                }
+                row.sizeDelta = new Vector2(wide, lines.Count * 24f - 4f);
+            }
+            else
+            {
+                foreach (var l in lines) { l.cap.At(x, 0, l.kw, 20); l.what.At(x + l.kw + 6f, 0, l.w, 20); x += l.kw + 6f + l.w + 14f; }
+                row.sizeDelta = new Vector2(x - 14f, 20f);
+            }
             var cg = row.gameObject.AddComponent<CanvasGroup>(); cg.alpha = 0.85f; cg.blocksRaycasts = false;
             return row;
         }
@@ -335,7 +349,7 @@ namespace Jatify.UI
                 if (sig != _setKey)
                 {
                     _setKey = sig; if (_setHints != null) Object.Destroy(_setHints.gameObject); _setHints = null;
-                    if (_setItems.Count > 0) { _setHints = Hints(_root, true, _t, _setItems.ToArray()); _setHints.anchoredPosition = new Vector2(_setHints.anchoredPosition.x, 64f); }
+                    if (_setItems.Count > 0) { _setHints = Hints(_root, true, _t, _setItems.ToArray()); _setHints.anchoredPosition = new Vector2(_setHints.anchoredPosition.x, _hintsR.anchoredPosition.y + _hintsR.sizeDelta.y + 12f);   // above the combat column }
                 }
             }
             if (_setHints != null && _setHints.gameObject.activeSelf != show) _setHints.gameObject.SetActive(show);
