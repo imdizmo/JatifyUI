@@ -105,6 +105,9 @@ namespace Jatify.UI
             Nice(e.Definition.Key).ToLowerInvariant().Contains(_q) || e.Definition.Key.ToLowerInvariant().Contains(_q) ||
             e.Definition.Section.ToLowerInvariant().Contains(_q) || (e.Description?.Description ?? "").ToLowerInvariant().Contains(_q);
 
+        // hover: the pause menu's slide forward and accent colour
+        private void Lift(TMP_Text tx) { var l = tx.gameObject.AddComponent<TextLift>(); l.Label = tx.rectTransform; l.Tint = tx; l.Over = Theme.C(_t.accent); }
+
         private void BuildNav()
         {
             foreach (Transform c in _nav) UnityEngine.Object.Destroy(c.gameObject);
@@ -118,11 +121,12 @@ namespace Jatify.UI
                 var tx = Kit.Text(_nav, n, n, Fonts.Bold, size, on ? Theme.C(_t.accent) : new Color(1, 1, 1, 0.78f));
                 tx.rectTransform.At(0, y, 260, step); tx.alignment = TextAlignmentOptions.MidlineLeft; tx.overflowMode = TextOverflowModes.Ellipsis; tx.raycastTarget = true;
                 tx.gameObject.AddComponent<Button>().onClick.AddListener(() => { _sel = name; BuildNav(); });
+                Lift(tx);
                 if (on) { var dia = Kit.Img(_nav, "Mark", null, Theme.C(_t.accent)); dia.rectTransform.At(-16, y + step / 2f - 3f, 7, 7); dia.rectTransform.localEulerAngles = new Vector3(0, 0, 45); }
                 y += step;
             }
             var back = Kit.Text(_nav, "Back", "Back", Fonts.Bold, 20f, Theme.C(_t.dim)); back.rectTransform.At(0, y + 18, 80, 30); back.alignment = TextAlignmentOptions.MidlineLeft;
-            back.raycastTarget = true; back.gameObject.AddComponent<Button>().onClick.AddListener(Close);
+            back.raycastTarget = true; back.gameObject.AddComponent<Button>().onClick.AddListener(Close); Lift(back);
             var esc = Kit.Text(_nav, "Esc", "Esc", Fonts.Mono, 12f, Theme.C(_t.mute)); esc.rectTransform.At(Kit.W(back) + 12f, y + 18, 60, 30); esc.alignment = TextAlignmentOptions.MidlineLeft;
             _nav.sizeDelta = new Vector2(260f, y + 60f);
             BuildRows();
