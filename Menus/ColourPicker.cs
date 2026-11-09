@@ -26,7 +26,7 @@ namespace Jatify.UI
         private Graphic _accentGlow;
         private bool _writing;
         private readonly Image _dim; private readonly RectTransform _panel; private readonly TMP_Text _title;
-        private bool _preview, _kept, _dirty; private float _liveAt;
+        private bool _preview, _kept, _dirty, _reopen; private float _liveAt;
 
         // field: ThemeData's field; alpha: panel colours carry it
         // dim: how dark the screen goes behind (edit mode keeps the real UI in view)
@@ -80,13 +80,13 @@ namespace Jatify.UI
             // buttons
             Button(p, "Default", 336, 372, 92, false, () => Set(_default));
             Button(p, "Cancel", 434, 372, 92, false, Close);
-            Button(p, "Apply", 532, 372, 108, true, () => { _kept = true; if (_preview) Plugin.Instance.SetColour(_field, Hex(Picked())); else _apply(Hex(Picked())); Close(); });
+            Button(p, "Apply", 532, 372, 108, true, () => { _kept = true; if (_preview) { Shut(); Plugin.Instance.SetColour(_field, Hex(Picked())); } else _apply(Hex(Picked())); Close(); });
             Set(_orig);
         }
 
         internal void Close()
         {
-            if (_preview && !_kept) Plugin.Instance.RevertColours();   // previewed, not applied: the saved colours come back
+            if (_preview && !_kept) { Shut(); Plugin.Instance.RevertColours(); }   // previewed, not applied: the saved colours come back
             _preview = false;
             if (_root != null) UnityEngine.Object.Destroy(_root.gameObject);
             if (_svTex != null) UnityEngine.Object.Destroy(_svTex);
@@ -119,12 +119,20 @@ namespace Jatify.UI
 
         private void Live()
         {
-            if (InventoryGui.instance == null || !InventoryGui.IsVisible()) { Close(); return; }   // Esc or Tab: back as it was
-            // the whole UI rebuilds for a colour: once the mouse is up and the colour has held for a moment, never mid-drag
+            if (InventoryGui.instance == null) { Close(); return; }
+            if (_reopen) { _reopen = false; InventoryGui.instance.Show(null); return; }
+            if (!InventoryGui.IsVisible()) { Close(); return; }   // Esc or Tab: back as it was
+            // the whole UI rebuilds for a colour: once the mouse is up and the colour has held for a moment, never mid-drag.
+            // The inventory rebuilds cleanly only while closed (an open one lost its labels and slots): closed, restyled, reopened
             if (!_dirty || Time.unscaledTime < _liveAt || Input.GetMouseButton(0)) return;
             _dirty = false;
+            InventoryGui.instance.Hide();
             Plugin.Instance.PreviewColour(_field, Hex(Picked()));
+            _reopen = true;
         }
+
+        // a preview ends with the inventory closed: it restyles cleanly only then
+        private static void Shut() { if (InventoryGui.instance != null && InventoryGui.IsVisible()) InventoryGui.instance.Hide(); }
 
         private sealed class Ticker : MonoBehaviour { internal Action Tick; private void Update() => Tick?.Invoke(); }
         private sealed class Mover : MonoBehaviour, IDragHandler
