@@ -71,6 +71,17 @@ namespace Jatify.UI
             return t != null ? t.GetComponent<TMP_Text>() : null;
         }
 
+        // the tooltip lives under the canvas of what it describes: on the inventory's edge tabs (whose own sorting Unity can drop)
+        // it drew behind the slots and Fate Woven's panel (user). The one showing gets a canvas of its own, on top; added while
+        // it shows, so the sorting holds. No raycaster: it never takes the pointer
+        internal static void Tick()
+        {
+            var tip = Current();
+            if (tip == null || !tip.activeInHierarchy) return;
+            var cv = tip.GetComponent<Canvas>() ?? tip.AddComponent<Canvas>();
+            if (!cv.overrideSorting || cv.sortingOrder != 30000) { cv.overrideSorting = true; cv.sortingOrder = 30000; }
+        }
+
         internal static void Unload() => UITooltip.HideTooltip();
     }
 }

@@ -16,9 +16,10 @@ a lot of small conveniences you stop noticing after an hour.
   [Backpacks](https://thunderstore.io/c/valheim/p/Smoothbrain/Backpacks/) [1.3.10], [AdventureBackpacks](https://thunderstore.io/c/valheim/p/Vapok/AdventureBackpacks/) [2.4.6] and
   [RustyBags](https://thunderstore.io/c/valheim/p/RustyMods/RustyBags/) [1.3.5] (a tab for each bag you wear),
   [Quick Stack Store](https://thunderstore.io/c/valheim/p/Goldenrevolver/Quick_Stack_Store_Sort_Trash_Restock/) [1.4.16] (Jatify's chest buttons use its
-  actions) and Valheim Enchantment System [1.9.18].
+  actions), Valheim Enchantment System [1.9.18], [Advanced_Backpacks](https://thunderstore.io/c/valheim/p/Hypnogoogic/Advanced_Backpacks/) [1.1.0]
+  and [Fate Woven](https://valheim.hexium.gg/mods/processq/FateWoven) [0.2.1957] (its panel opens from a tab on the inventory's edge).
 - **Language:** English only for now.
-- **Version:** 0.3.0, made for Valheim 1.0.21.
+- **Version:** 0.4.0, made for Valheim 1.0.21.
 - **Controls:** mouse and keyboard; there's no gamepad support yet.
 
 Most parts can be switched off on their own, and taking the mod out keeps your character and items (see *Taking it
@@ -325,7 +326,10 @@ Most of these can be changed under `Keys`; Ctrl + Q, Ctrl + E, Ctrl + F and Alt 
 
 - **Settings** are saved in `BepInEx/config/jatify.ui.cfg`. Change them on the *Jatify UI* page in the pause menu,
   in a BepInEx configuration manager, or in the file.
-- **Colours and size:** every colour, the corner radius, the text size and the interface scale live in `BepInEx/config/jatify.ui/theme.json`.
+- **Colours and size:** the accent, panel, text and bar colours can be picked under *Colours* on the *Jatify UI* settings page:
+  a ready colour, a hex code, or any colour from the picker behind the colour wheel. In a world, the picker's *Preview*
+  shows the real inventory and HUD in the colour before you apply it. Every colour, the corner radius, the text size and
+  the interface scale live in `BepInEx/config/jatify.ui/theme.json`.
     - Save the file and the game restyles itself while you play.
 - **Ornaments:** the knotwork can be switched off for plain panels (`Panels` → `Knotwork`).
 - **Cursor:** Jatify's cursor comes in four sizes, or you can keep your system's (`HUD` → `JatifyCursor`, `CursorSize`).
@@ -359,10 +363,42 @@ Most of these can be changed under `Keys`; Ctrl + Q, Ctrl + E, Ctrl + F and Alt 
     - VNEI's favourites and the Compendium's marks are the same list.
 - **Valheim Enchantment System:** its enchant button sits beside Repair in Jatify's look, and item tooltips and the
   crafting details show the scrolls an item takes, with how many you have.
+- **Fate Woven:** its panel opens from a tab on the inventory's left edge, with Fate Woven's icon, in place of its
+  floating button. Its panel and a chest share crafting's spot: whichever you opened last shows.
+- **Advanced_Backpacks:** its portal-slot dock keeps its own look. Crafting from chests never uses one of its backpacks,
+  and the trash won't destroy one that still holds items.
 - **Campfire:** built in as the character screen. If the standalone Campfire mod is installed, Jatify leaves the
   character screen, the party at the fire and the loading screen to it.
 - **Mods by the same author** (MapTeleport, AdminHammer, BuffMeDaddy) use Jatify's fonts and theme colours when it's
   installed. Without it they keep the same panels and colours, with Valheim's fonts.
+
+---
+
+## For mod authors
+
+Jatify has a small public class, `Jatify.UI.Look`, for mods that want to fit in. Find it at runtime, so your mod never
+needs Jatify to load. Please use it rather than hooking into Jatify's panels or reading `theme.json`: both change
+between versions, and this class only ever gains methods. Each method has one signature, so a lookup by name works.
+
+```csharp
+// BepInEx plugin GUID "jatify.ui"; returns null without Jatify
+var look = BepInEx.Bootstrap.Chainloader.PluginInfos.TryGetValue("jatify.ui", out var p) && p.Instance != null
+    ? p.Instance.GetType().Assembly.GetType("Jatify.UI.Look") : null;
+look?.GetMethod("AddHeaderButton").Invoke(null, new object[] { "MyMod.Runes", runesIcon, "Runes", "Opens your runes", (Action)OpenRunes, 0, null });
+```
+
+| Member | What it does |
+|---|---|
+| `Version` (const int) | 2 here. Check it before using something newer than 1. |
+| `Color(token)`, `Font(kind)`, `Rounded(r)`, `Ring(r)`, `Icon(name)` | Jatify's theme colours, fonts, panel sprites and icons. |
+| `ThemeChanged` (event) | The player changed the theme; read the colours again. |
+| `AddHeaderButton(id, icon, title, tooltip, onClick, order, lit)`, `RemoveHeaderButton(id)` | A square button in the inventory header, after Jatify's own. `lit` (optional, `Func<bool>`) shows it lit while your window is open. |
+| `WindowRect(name)`, `LayoutChanged` (event) | Where Jatify draws `inventory`, `crafting`, `character`, `chest`, `health` and `hotbar`, in screen pixels (origin bottom left); `Rect.zero` while hidden. |
+| `AddStatusBar(id, label, colour, value, max, order)`, `RemoveStatusBar(id)` | A bar in the HUD's health column, in the row under stamina, while `max` is above 0. |
+| `SetReserve(bar, amount)` | A darker reserved part at the end of `health`, `stamina` or `eitr`. `null` clears it. |
+| `Keys()` | Jatify's set keys by setting name, to warn about clashes. |
+
+A callback that throws is logged with its id and switched off; it never breaks the UI.
 
 ---
 
@@ -407,6 +443,8 @@ Without the mod:
 
 ## Changes
 
+- **0.4.0:** a colour picker with a live preview, Fate Woven and Advanced_Backpacks support, version 2 of the API for
+  mod authors, key hints at the screen's edge.
 - **0.3.0:** orange look and new icon, a reworked inventory and HUD, ExtraSlots, backpack and Quick Stack Store support,
   a What's new window.
 - **0.2.1:** Valheim Enchantment System support, server settings for everyone on a server, an A to Z skill order.

@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 namespace Jatify.UI
 {
-    // Looking at a chest (live design chestPeek): a small card right of the crosshair with the chest's
+    // Looking at a chest (live design chestPeek): a small card whose bottom-left corner sits at the crosshair (user), with the chest's
     // name, how full it is, a mini grid of what is inside, "E Open" and whether crafting uses it.
     // Valheim keeps every loaded chest's inventory in sync, so this only reads it; a chest you may not
     // open shows its name and "Private" only.
@@ -44,7 +44,7 @@ namespace Jatify.UI
         private static void Build()
         {
             _root = Kit.Node(Root.Canvas.transform, "jatify-peek");
-            _root.anchorMin = _root.anchorMax = new Vector2(0.5f, 1f); _root.pivot = new Vector2(0f, 1f); _root.anchoredPosition = new Vector2(28f, -600f);
+            _root.anchorMin = _root.anchorMax = new Vector2(0.5f, 0.5f); _root.pivot = Vector2.zero; _root.anchoredPosition = new Vector2(16f, 16f);   // a step up and right of the crosshair
             Notices.OnTop(_root);
             _cg = _root.gameObject.AddComponent<CanvasGroup>(); _cg.blocksRaycasts = false; _cg.alpha = 0f;
         }
@@ -58,7 +58,9 @@ namespace Jatify.UI
             HoverCard.Parse(Hud.instance != null && Hud.instance.m_hoverName != null ? Hud.instance.m_hoverName.text : "");
             int lines = Mathf.Max(1, HoverCard.Actions.Count) + (open ? 1 : 0);   // Valheim's actions for this chest, and the crafting state
             float h = (open ? 12 + 24 + 8 + rows * (Cell + Gap) - Gap + 10 : 12 + 24 + 8) + lines * 24 + 8;
-            _root.anchoredPosition = new Vector2(28f, -Mathf.Min(600f, 1080f - 16f - h));   // never past the bottom of the screen
+            _root.sizeDelta = new Vector2(w, h);   // the card fills it; it grows up and right from the crosshair
+            float half = ((RectTransform)Root.Canvas.transform).rect.height / 2f;
+            _root.anchoredPosition = new Vector2(16f, Mathf.Min(16f, half - 16f - h));   // a very tall chest: lowered so it stays on screen
             var (bg, _) = Card.Box(_root, "Card", t); bg.rectTransform.At(0, 0, w, h);
             // title: icon, name, used / total
             var piece = c.GetComponentInParent<Piece>();

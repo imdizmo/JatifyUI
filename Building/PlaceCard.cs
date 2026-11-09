@@ -5,8 +5,8 @@ namespace Jatify.UI
 {
     // The piece you are placing (our look; Valheim's own card is hidden in BuildStyle):
     // icon, name and description, then a chip per cost as have/need (have in red when short; nearby chests
-    // count as for building) and the station it needs, red when none is in range. Bottom right, left of the
-    // food / mead column; rebuilt only when what it shows changes, checked 4 times a second.
+    // count as for building) and the station it needs, red when none is in range. Bottom right, above the food / mead
+    // bar and left of the key hints; rebuilt only when what it shows changes, checked 4 times a second.
     internal static class PlaceCard
     {
         private const float W = 480f, ChipW = 223f, ChipH = 34f;
@@ -21,7 +21,7 @@ namespace Jatify.UI
             if (_root == null)
             {
                 _root = Kit.Node(Root.Canvas.transform, "jatify-placecard");
-                _root.anchorMin = _root.anchorMax = _root.pivot = new Vector2(1f, 0f); _root.anchoredPosition = new Vector2(-96f, 66f);
+                _root.anchorMin = _root.anchorMax = _root.pivot = new Vector2(1f, 0f); _root.anchoredPosition = new Vector2(-140f, 100f);   // above the right-hand slot bar, left of the key hints at the screen's edge (user: it covered both)
             }
             if (!_root.gameObject.activeSelf) _root.gameObject.SetActive(true);
             if (Time.unscaledTime < _next) return;

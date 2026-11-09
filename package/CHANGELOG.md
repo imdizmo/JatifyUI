@@ -1,3 +1,36 @@
+## 0.4.0
+
+### Colours
+
+- Jatify UI settings have a Colours page: the accent, panels, text, health, stamina and eitr, each with a few ready colours and a hex field (#40).
+- The colour wheel on each row opens a picker for any other colour: a saturation and brightness square, a hue strip (and an opacity strip for Panels), R G B and H S V fields (0 to 1) and a hex field, the colour you started with one click away, and a slice of the UI drawn in the new colour.
+- Preview, in a world: the menu closes, the inventory opens and the real UI takes the colour each time you let go of the mouse. Apply keeps it; Cancel, or closing the inventory, puts the old one back. Nothing is saved before Apply.
+- This is a first look at the colours: they get a bigger rework in the next update.
+
+### HUD
+
+- The key hints at the bottom right stack in a column at the screen's right edge, no longer above the action bar.
+- Looking at a chest, its card opens up and right from the crosshair, its corner at the crosshair.
+- The building card sits above the right-hand slots and left of the key hints; it covered both.
+- Pause screens also hide what other mods add to Valheim's HUD (Fate Woven's ability bar showed through the menu).
+
+### Windows
+
+- Split stack is a Jatify card in the middle of the screen with Jatify's slider and buttons; it was a bare wooden panel over the character column.
+- Valheim's yes / no and message popups are Jatify cards too. Other mods that use them take the look: Fate Woven's first-time tips, and Quick Stack Store's trash prompt (a copy of Split stack).
+
+### Menus
+
+- Continue lights up on hover like the other entries.
+- The section lists on the Jatify UI and Mods pages, and Back, slide forward and light up on hover like the pause menu.
+
+### Mod support
+
+- Fate Woven (0.2.1957): a tab on the inventory's left edge, with Fate Woven's icon, opens and closes its panel, and lights up while it's open; its floating button is tucked away. Its panel and a chest or backpack take turns in crafting's spot: opening a chest or a bag's tab closes it, and opening it hides the chest until it closes. Its ability bar sits above Jatify's health bars and stays there while you build, repair or open the inventory (it jumped up, and flashed over the inventory as it opened).
+- Advanced_Backpacks (1.1.0): crafting and the character panel stay while you wear one of its backpacks (#28). Crafting from chests never takes one of its backpacks, and Jatify's trash refuses a backpack that still holds items.
+- Backpacks: your pack no longer opens by itself with the inventory (its Auto Open Backpack); its tab on the panel's edge opens it, and a second click closes it. A line joins a bag's lit tab to its open panel, for every bag mod. A Backpacks or RustyBags bag shows its own icon and a close button in the panel's corner (Backpacks' wooden X tab is gone).
+- For mod authors, `Jatify.UI.Look` version 2: buttons in the inventory header, where Jatify's windows are on screen, a bar under stamina, a reserved part of health, stamina or eitr, and a theme-changed event. See *For mod authors* in the README.
+
 ## 0.3.0
 
 ### Look

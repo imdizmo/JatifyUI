@@ -30,6 +30,8 @@ namespace Jatify.UI
         private static Equipment _eq;
         private static Trash _trash;
         internal static Trash TrashSlot => _trash;
+        internal static RectTransform Frame => _frame;
+        internal static RectTransform InfoPanel => _for != null && _for.m_info != null ? _for.m_info.Find("jatify-panel") as RectTransform : null;
         private static int _rowsShown = -1;
         private static Image _weightFill;
         private static int _armorShown = -1, _wShown = -1, _wMaxShown = -1;
@@ -97,6 +99,8 @@ namespace Jatify.UI
                 ax = IconAction(head, ax, "shield-knot", "Loadouts", "Save sets of gear and put one on at once (AzuEPI)", "AzuEPI_LoadoutsToggleButton", tipPrefab, t);
                 IconAction(head, ax, "tab-book", "Stats", "Your full character sheet (AzuEPI)", "AzuEPI_StatsToggleButton", tipPrefab, t);
             }
+            _tipPrefab = grid.m_elementPrefab.GetComponent<UITooltip>()?.m_tooltipPrefab;
+            BuildModButtons();
             _armorShown = _wShown = _wMaxShown = -1;
             _eq = new Equipment(_frame, t, grid.m_elementPrefab.GetComponent<UITooltip>()?.m_tooltipPrefab);
             var mask = grid.GetComponent<RectMask2D>();                    // our rows sit outside vanilla's grid rect: do not clip them
@@ -120,6 +124,12 @@ namespace Jatify.UI
             // Mod slots (other mods' slots on a page of their own) shows only when a mod adds any
             _modsTab = EdgeTab("jatify-mods-tab", true, "box", "Mod slots", "Shows other mods' slots: backpacks, jewellery, tomes, lanterns...", () => Column(true), t, g);
             _gearTab = EdgeTab("jatify-gear-tab", true, "host_helmet_icon", "Character", "Shows or hides the character, gear, skills and stats column.", () => Column(false), t, g);
+            // Fate Woven's panel: a tab under the column's (FateWoven.cs); its icon is Fate Woven's own, taken once it shows
+            if (FateWoven.On)
+            {
+                _fwTab = EdgeTab("jatify-fatewoven-tab", true, "box", "Fate Woven", "Opens or closes Fate Woven: abilities, runes, mastery and blessings.", FateWoven.Toggle, t, g);
+                var fic = _fwTab.Find("Clip/Tab/Icon")?.GetComponent<Image>(); if (fic != null) fic.enabled = false;
+            }
             // the trash sits under the grid (design position); the item detail box beside it was removed (user)
             StyleInfo(g.m_info, t);
             _trash = new Trash(_frame, t);
@@ -320,24 +330,38 @@ namespace Jatify.UI
         private static readonly List<(RectTransform rt, TMPro.TextMeshProUGUI tx, float w)> _acts = new List<(RectTransform, TMPro.TextMeshProUGUI, float)>();
         private static void LayNarrow()
         {
-            int key = Narrow ? 1 : 0; if (_frame == null || key == _narrowLaid) return; _narrowLaid = key;
+            int key = (Narrow ? 1 : 0) + _icons.Count * 2; if (_frame == null || key == _narrowLaid) return; _narrowLaid = key;
             bool n = Narrow;
             foreach (var name in new[] { "jatify-equipment", "jatify-stats" }) { var c = _frame.Find(name); if (c != null) c.gameObject.SetActive(!n); }
             if (_panel != null) { _panel.offsetMin = new Vector2(Lx, 0f); _panel.offsetMax = Vector2.zero; }
             _head?.At(Lx, 0, 850 - Lx, 52); _headLine?.At(Lx, 52, 850 - Lx, 1);
+            // the actions with their labels, then the icon buttons (AzuEPI's, other mods'), left of the weight chip; when that
+            // doesn't fit, the actions show their icons only (as narrow); icons that still don't fit are hidden
+            float limit = 850f - Lx - 17f - 202f - 6f, full = 105f;
+            foreach (var (_, _, w) in _acts) full += w + 6f;
+            bool icon = n || full + 15f + _icons.Count * 36f - 6f > limit;
             float x = 105f;
             foreach (var (rt, tx, w) in _acts)
             {
-                if (rt == null) continue; float ww = n ? 32f : w;
-                rt.anchoredPosition = new Vector2(x, 0f); rt.sizeDelta = new Vector2(ww, 30f); if (tx != null) tx.gameObject.SetActive(!n); x += ww + 6f;
+                if (rt == null) continue; float ww = icon ? 32f : w;
+                rt.anchoredPosition = new Vector2(x, 0f); rt.sizeDelta = new Vector2(ww, 30f); if (tx != null) tx.gameObject.SetActive(!icon); x += ww + 6f;
             }
+            x += 15f;   // a gap between the actions and the icon buttons
+            int hidden = 0;
+            foreach (var rt in _icons)
+            {
+                if (rt == null) continue; bool fits = x + 30f <= limit;
+                if (rt.gameObject.activeSelf != fits) rt.gameObject.SetActive(fits); if (!fits) { hidden++; continue; }
+                rt.anchoredPosition = new Vector2(x, 0f); x += 36f;
+            }
+            if (hidden > 0) Log.Warn($"inventory header: {hidden} mod button(s) don't fit and are hidden");
             _beltsLaid = -1;
         }
-        private static RectTransform _fold, _keyTab, _gearTab, _modsTab; private static int _colLit = -1;
+        private static RectTransform _fold, _keyTab, _gearTab, _modsTab, _fwTab; private static int _colLit = -1; private static bool _fwLit;
 
         // worn bags (Backpacks, AdventureBackpacks, RustyBags): a tab each above the key pouch's, the bag's own icon, lit while open; a
-        // click opens it as its own key does, or switches to it (user: their keys work, this shows them cleanly). It never closes one:
-        // Backpacks opens its pack with the inventory, and a first click that closed it showed crafting instead (user)
+        // click opens it as its own key does, or switches to it (user: their keys work, this shows them cleanly); on a lit tab it closes
+        // it and crafting comes back (Backpacks' pack no longer opens with the inventory, Bags.NoAutoOpen)
         private static readonly List<RectTransform> _bagTabs = new List<RectTransform>(); private static readonly List<ItemDrop.ItemData> _bagFor = new List<ItemDrop.ItemData>(), _worn = new List<ItemDrop.ItemData>();
         private static float _bagsAt; private static readonly List<int> _bagLit = new List<int>();
         private static void TickBagTabs()
@@ -351,7 +375,7 @@ namespace Jatify.UI
                 if (i >= _bagTabs.Count)
                 {
                     int n = i; var t = Plugin.Instance.ThemeData;
-                    _bagTabs.Add(EdgeTab("jatify-bag-tab", false, "box", "Bag", "", () => { if (n < _bagFor.Count && _bagFor[n] != null) { if (!Bags.IsOpen(_bagFor[n])) Bags.Open(_bagFor[n]); } }, t, InventoryGui.instance));
+                    _bagTabs.Add(EdgeTab("jatify-bag-tab", false, "box", "Bag", "", () => { FateWoven.Close(); if (n < _bagFor.Count && _bagFor[n] != null) { if (Bags.IsOpen(_bagFor[n])) Bags.CloseAll(InventoryGui.instance); else Bags.Open(_bagFor[n]); } }, t, InventoryGui.instance));
                     _bagFor.Add(null); _bagLit.Add(-1);
                 }
                 var tab = _bagTabs[i]; bool on = i < _worn.Count;
@@ -364,11 +388,41 @@ namespace Jatify.UI
                 {
                     _bagFor[i] = it; _bagLit[i] = -1;
                     var ic = tab.GetComponentsInChildren<Image>(true).FirstOrDefault(x => x.name == "Icon"); if (ic != null) ic.sprite = it.GetIcon();
-                    var tip = tab.GetComponentInChildren<UITooltip>(true); if (tip != null) tip.Set(Localization.instance.Localize(it.m_shared.m_name), "Opens it.");
+                    var tip = tab.GetComponentInChildren<UITooltip>(true); if (tip != null) tip.Set(Localization.instance.Localize(it.m_shared.m_name), "Opens or closes it.");
                 }
                 int lit = Bags.IsOpen(it) ? 1 : 0; if (lit != _bagLit[i]) { _bagLit[i] = lit; Tint(tab, lit == 1); }
             }
         }
+        // a line from the lit bag tab to the bag's panel, a small diamond where it meets it (user: which tab is that panel's)
+        private static RectTransform _link, _linkLine, _linkDot; private static readonly Vector3[] _lc = new Vector3[4];
+        private static void BagLink()
+        {
+            RectTransform from = null;
+            for (int i = 0; i < _bagTabs.Count && i < _bagLit.Count; i++) if (_bagLit[i] == 1 && _bagTabs[i] != null && _bagTabs[i].gameObject.activeInHierarchy) { from = _bagTabs[i]; break; }
+            var to = ChestPanel.Frame;
+            if (from == null || to == null || !to.gameObject.activeInHierarchy || FateWoven.Covers)
+            {
+                if (_link != null && _link.gameObject.activeSelf) _link.gameObject.SetActive(false);
+                return;
+            }
+            if (_link == null || _link.parent != from)
+            {   // on the tab, whose canvas draws over the inventory and the bag's panel
+                if (_link != null) UnityEngine.Object.Destroy(_link.gameObject);
+                _link = Kit.Node(from, "jatify-bag-link"); _link.anchorMin = _link.anchorMax = _link.pivot = new Vector2(0.5f, 0.5f); _link.sizeDelta = Vector2.zero;
+                var c = Theme.C(_t.accent);
+                var line = Kit.Img(_link, "Line", null, c, false); line.raycastTarget = false; _linkLine = line.rectTransform; _linkLine.anchorMin = _linkLine.anchorMax = new Vector2(0.5f, 0.5f); _linkLine.pivot = new Vector2(0f, 0.5f);
+                var dot = Kit.Img(_link, "Dot", null, c, false); dot.raycastTarget = false; _linkDot = dot.rectTransform; _linkDot.anchorMin = _linkDot.anchorMax = new Vector2(0.5f, 0.5f); _linkDot.sizeDelta = new Vector2(8f, 8f); _linkDot.localEulerAngles = new Vector3(0f, 0f, 45f);
+            }
+            if (!_link.gameObject.activeSelf) _link.gameObject.SetActive(true);
+            _link.localPosition = Vector3.zero;   // at the tab's own origin: the points below are in its local space
+            from.GetWorldCorners(_lc); var a = (_lc[2] + _lc[3]) / 2f;   // the tab's right edge, halfway up
+            to.GetWorldCorners(_lc); float edge = 24f * Root.Canvas.transform.lossyScale.y;
+            var b = new Vector3(_lc[0].x, Mathf.Clamp(a.y, _lc[0].y + edge, _lc[1].y - edge), a.z);   // the panel's left edge, level with the tab where it can be
+            Vector2 la = from.InverseTransformPoint(a), lb = from.InverseTransformPoint(b), d = lb - la;
+            _linkLine.localPosition = la; _linkLine.sizeDelta = new Vector2(d.magnitude, 2f); _linkLine.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg);
+            _linkDot.localPosition = lb;
+        }
+
         private static void Column(bool mods)
         {
             if (_eq == null || Cfg.GearCollapsed == null) return;
@@ -670,6 +724,13 @@ namespace Jatify.UI
                 int lit = Narrow || _eq == null ? 0 : _eq.OnMods ? 2 : 1;   // the tab whose page shows is lit
                 if (lit != _colLit) { _colLit = lit; Tint(_gearTab, lit == 1); Tint(_modsTab, lit == 2); }
             }
+            if (_fwTab != null)
+            {
+                _fwTab.At(Lx - 52f + 1f, 123f - 32f + 66f * (_modsTab != null && _modsTab.gameObject.activeSelf ? 2 : 1), 52, 60);
+                FateWoven.Park(_fwTab);
+                FateWoven.Share(InventoryGui.instance);
+                bool open = FateWoven.Open; if (open != _fwLit) { _fwLit = open; Tint(_fwTab, open); }
+            }
             int key = SpecialRows.Start * 4 + (Folded ? 1 : 0) + (Narrow ? 2 : 0) + Mathf.RoundToInt(EsBelow) * 1000 + (UnderBag ? 1 << 24 : 0);   // ExtraSlots adding a row under the doll moves the strip
             HideRowCells();
             if (_beltLine == null || _beltsLaid == key) return;
@@ -749,7 +810,49 @@ namespace Jatify.UI
                 Log.Warn("AzuEPI: no " + azuButton + " (its option may be off)");
             });
             if (tipPrefab != null) { var tip = b.gameObject.AddComponent<UITooltip>(); tip.m_tooltipPrefab = tipPrefab; tip.Set(title, text); }
+            _icons.Add(rt);
             return x + 36f;
+        }
+
+        // ---- other mods' header buttons (Look.AddHeaderButton): square icon buttons after ours, their sprite in its own colours
+        private static readonly List<RectTransform> _icons = new List<RectTransform>();   // AzuEPI's, then the mods'
+        private static readonly List<(RectTransform rt, Image line, Image icon, Look.HeadButton b)> _modBtns = new List<(RectTransform, Image, Image, Look.HeadButton)>();
+        private static GameObject _tipPrefab; private static float _litAt;
+        internal static void ModButtonsChanged() { if (_head != null) { BuildModButtons(); _narrowLaid = -1; } }
+        private static void BuildModButtons()
+        {
+            foreach (var m in _modBtns) { _icons.Remove(m.rt); if (m.rt != null) Object.Destroy(m.rt.gameObject); }
+            _modBtns.Clear();
+            if (_head == null) return;
+            var t = _t ?? Plugin.Instance.ThemeData;
+            foreach (var mb in Look.Buttons)
+            {
+                var b0 = mb;
+                var (b, f) = Kit.Box(_head, "jatify-mod-" + b0.Id, Theme.C(t.raised), Theme.C(t.glassLine), 8);
+                var rt = b.rectTransform; rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0f, 0.5f); rt.sizeDelta = new Vector2(30f, 30f);
+                var ic = Kit.Img(rt, "Icon", b0.Icon, new Color(1f, 1f, 1f, 0.8f), false); ic.preserveAspect = true; ic.raycastTarget = false; ic.rectTransform.At(3, 3, 24, 24);   // bigger than our 16 px line icons: mod art is busier (user)
+                if (b0.Icon == null) ic.enabled = false;
+                b.raycastTarget = true; var btn = b.gameObject.AddComponent<Button>(); btn.targetGraphic = f;
+                var cb = btn.colors; cb.highlightedColor = new Color(1.3f, 1.3f, 1.35f); btn.colors = cb;
+                btn.onClick.AddListener(() => Look.Try(b0.Id, b0.Click, () => Look.RemoveHeaderButton(b0.Id)));
+                if (_tipPrefab != null) { var tip = b.gameObject.AddComponent<UITooltip>(); tip.m_tooltipPrefab = _tipPrefab; tip.Set(b0.Title, b0.Tip); }
+                _modBtns.Add((rt, b, ic, b0)); _icons.Add(rt);
+            }
+        }
+        // lit while the mod says its window is open: the outline in the accent, the icon at full strength
+        private static void TickModButtons()
+        {
+            if (_modBtns.Count == 0 || Time.unscaledTime < _litAt) return;
+            _litAt = Time.unscaledTime + 0.2f;
+            Look.HeadButton dead = null;
+            foreach (var (rt, line, icon, b) in _modBtns)
+            {
+                if (b.Lit == null || line == null) continue;
+                bool on = false; if (!Look.Try(b.Id, () => on = b.Lit(), null)) { dead = b; continue; }
+                var lc = Theme.C(on ? _t.accent : _t.glassLine); if (line.color != lc) line.color = lc;
+                var icc = new Color(1f, 1f, 1f, on ? 1f : 0.8f); if (icon.color != icc) icon.color = icc;
+            }
+            if (dead != null) Look.RemoveHeaderButton(dead.Id);
         }
 
         private static RectTransform Chip(Transform head, float right, float w, string label, ThemeData t, out TextMeshProUGUI value)
@@ -870,7 +973,7 @@ namespace Jatify.UI
             }
             var counts = $"{slots} SLOTS · USED {used} · LOCKED {locked}";
             if (_invLabel != null && counts != _countsShown) { _countsShown = counts; _invLabel.text = counts; }
-            LayNarrow(); LayBelts();   // the row count can change (settings, Valheim's own rows)
+            LayNarrow(); LayBelts(); TickModButtons();   // the row count can change (settings, Valheim's own rows)
             int w = Mathf.RoundToInt(p.GetInventory().GetTotalWeight()), m = Mathf.RoundToInt(p.GetMaxCarryWeight());
             if (_weight != null && (w != _wShown || m != _wMaxShown))
             {
@@ -895,10 +998,11 @@ namespace Jatify.UI
             if (_for == null || !InventoryGui.IsVisible() || Root.Canvas == null) return;
             PlaceGrid();
             PlaceFrame();
-            bool chest = _for.m_container != null && _for.m_container.gameObject.activeInHierarchy;
+            bool chest = _for.m_container != null && _for.m_container.gameObject.activeInHierarchy && !ChestPanel.Docked && !FateWoven.Covers;   // Advanced_Backpacks' dock: crafting stays; Fate Woven's panel up: crafting's frame holds it
             float rx = RightLeft - 1030f;   // the design's right-hand column moved so its gap to the right edge matches the inventory's 160 to the left (user)
             Place(_for.m_crafting, 1044f + rx, 204f);
             ChestPanel.Layout();
+            BagLink();
             if (_craftFade != null) { _craftFade.alpha = chest ? 0f : 1f; _craftFade.blocksRaycasts = !chest; _craftFade.interactable = !chest; }
             Place(_for.m_info, 1080f + rx, 39f); // inside the design's 670 x 140 character panel at (1030, 32); vanilla's name sits above its box
         }
@@ -959,7 +1063,7 @@ namespace Jatify.UI
             ChestPanel.Restore();
             _eq?.Destroy(); _eq = null; _tabs.Clear(); _tabOn = null; _badge = null; _badgeShown = -1;
             _trash?.Destroy(); _trash = null; _stats?.Destroy(); _stats = null;
-            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _gearTab = null; _modsTab = null; _colLit = -1; _bagTabs.Clear(); _bagFor.Clear(); _bagLit.Clear(); _bagsAt = 0f; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _narrowLaid = -1; _acts.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
+            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _gearTab = null; _modsTab = null; _fwTab = null; _fwLit = false; FateWoven.Unhide(); _colLit = -1; _bagTabs.Clear(); _bagFor.Clear(); _bagLit.Clear(); _link = _linkLine = _linkDot = null; _bagsAt = 0f; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _narrowLaid = -1; _acts.Clear(); _icons.Clear(); _modBtns.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
         }
     }
 

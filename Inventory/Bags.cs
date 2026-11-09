@@ -114,6 +114,23 @@ namespace Jatify.UI
             return false;
         }
 
+        // Backpacks opens your worn pack whenever the inventory opens (its Auto Open Backpack, on by default): with Jatify its tab
+        // opens it in one click, so it stays closed until then (user). A chest you open, and other mods' bags, are left alone
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Show))]
+        [HarmonyAfter("org.bepinex.plugins.backpacks")]
+        private static class NoAutoOpen
+        {
+            private static readonly AccessTools.FieldRef<InventoryGui, InventoryGrid> Grid = AccessTools.FieldRefAccess<InventoryGui, InventoryGrid>("m_containerGrid");
+            private static readonly List<ItemDrop.ItemData> _w = new List<ItemDrop.ItemData>();
+            private static void Postfix(InventoryGui __instance, Container container)
+            {
+                Bind(); if (container != null || _bp == null || __instance == null) return;
+                var shown = Grid(__instance)?.GetInventory(); if (shown == null) return;
+                foreach (var it in Worn(Player.m_localPlayer, _w))
+                    if (KindOf(it) == Kind.Backpacks && Contents(it) == shown) { CloseContainer?.Invoke(__instance, null); return; }
+            }
+        }
+
         private static readonly MethodInfo CloseContainer = AccessTools.Method(typeof(InventoryGui), "CloseContainer");
         // closes whichever bag (and chest) is open: Valheim's CloseContainer clears Backpacks' and AdventureBackpacks'; RustyBags' bag closes itself
         internal static void CloseAll(InventoryGui g)
@@ -126,6 +143,47 @@ namespace Jatify.UI
                 if (cur != null) AccessTools.Method(cur.GetType(), "Close")?.Invoke(cur, null);
             }
             catch (Exception e) { Warn("close", e); }
+        }
+    }
+
+    // Hypnogoogic's Advanced_Backpacks (#28): a worn Enhanced or better backpack opens its portal and ship slots as a stand-in
+    // chest each time the inventory opens; its rows and those slots live in the backpack item's own data (adv_bp, adv_bpx). No
+    // calls into it: its GUID, its prefab names and its data keys only.
+    internal static class AdvPacks
+    {
+        private static int _on = -1;
+        internal static bool On { get { if (_on < 0) _on = BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey("p0kahontazz.advancedbackpacks") ? 1 : 0; return _on == 1; } }
+        internal static bool IsPack(ItemDrop.ItemData it) => On && it?.m_dropPrefab != null && it.m_dropPrefab.name.StartsWith("AdvancedBackpack", StringComparison.Ordinal);
+
+        // its stand-in chest: a Container on the player (a real chest never is); "Portal and ship" tells it from AdventureBackpacks'
+        internal static bool IsDock(Container c) => On && c != null && c.gameObject.name == "AB_BackpackProxy" && c.m_name == "Portal and ship" && c.GetComponentInParent<Player>() != null;
+
+        // the backpack's own names, for chest stock (which counts by name)
+        private static HashSet<string> _names;
+        internal static bool IsPackName(string name)
+        {
+            if (!On || ObjectDB.instance == null) return false;
+            if (_names == null || _names.Count == 0)
+            {
+                _names = new HashSet<string>();
+                foreach (var go in ObjectDB.instance.m_items) if (go != null && go.name.StartsWith("AdvancedBackpack", StringComparison.Ordinal)) { var d = go.GetComponent<ItemDrop>(); if (d != null) _names.Add(d.m_itemData.m_shared.m_name); }
+            }
+            return _names.Contains(name);
+        }
+
+        // how many items it holds where they would be lost with it: its portal / ship slots always, its rows unless worn (taking a
+        // worn one off releases its rows into the bag)
+        internal static int Held(ItemDrop.ItemData it)
+        {
+            if (!IsPack(it)) return 0;
+            int n = Count(it, "adv_bpx"); if (!it.m_equipped) n += Count(it, "adv_bp");
+            return n;
+        }
+        private static int Count(ItemDrop.ItemData it, string key)
+        {
+            if (!it.m_customData.TryGetValue(key, out var b64) || string.IsNullOrEmpty(b64)) return 0;
+            try { var inv = new Inventory("", null, 8, 32); inv.Load(new ZPackage(b64)); return inv.GetAllItems().Sum(i => i.m_stack); }
+            catch (Exception e) { Log.Warn($"Advanced_Backpacks: {key} unreadable ({e.Message}), treated as not empty"); return 1; }
         }
     }
 }

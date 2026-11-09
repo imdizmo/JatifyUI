@@ -9,6 +9,7 @@ namespace Jatify.UI
     [Serializable]
     internal class ThemeData
     {
+        public int migrated;                    // 1: the 0.3.0 move from green to orange is done (once: green is a ready colour again)
         public string glass = "#262323C5";     // panel fill
         public string glassLine = "#FFFFFF26";  // panel outline
         public string line2 = "#FFFFFF33";      // stronger outline
@@ -68,6 +69,7 @@ namespace Jatify.UI
         };
         private void Migrate()
         {
+            if (D.migrated >= 1) return;
             var fresh = new ThemeData(); bool moved = false;
             foreach (var (token, was) in Old)
             {
@@ -75,9 +77,31 @@ namespace Jatify.UI
                 if (!string.Equals((string)f.GetValue(D), was, StringComparison.OrdinalIgnoreCase)) continue;
                 f.SetValue(D, f.GetValue(fresh)); moved = true;
             }
-            if (!moved) return;
-            try { File.WriteAllText(_file, JsonUtility.ToJson(D, true)); Log.Info("theme.json: the old green defaults moved to the new orange ones"); }
+            D.migrated = 1;
+            try { File.WriteAllText(_file, JsonUtility.ToJson(D, true)); if (moved) Log.Info("theme.json: the old green defaults moved to the new orange ones"); }
             catch (Exception e) { Log.Warn("theme.json not updated: " + e.Message); }
+        }
+
+        // the settings page's Colours section: one token to a new value, written to the file and applied at once (the
+        // watcher's own reload after it is harmless). The accent's soft tint follows the accent.
+        internal void Set(string token, string hex)
+        {
+            if (!Put(token, hex)) return;
+            try { File.WriteAllText(_file, JsonUtility.ToJson(D, true)); }
+            catch (Exception e) { Log.Warn("theme.json not saved: " + e.Message); }
+            Changed?.Invoke(D);
+        }
+
+        // the colour picker's preview: the UI restyles, theme.json stays as it was; Revert reads it back
+        internal void Preview(string token, string hex) { if (Put(token, hex)) Changed?.Invoke(D); }
+        internal void Revert() { if (Read()) Changed?.Invoke(D); }
+
+        private bool Put(string token, string hex)
+        {
+            var f = typeof(ThemeData).GetField(token); if (f == null || f.FieldType != typeof(string)) return false;
+            f.SetValue(D, hex);
+            if (token == "accent") D.accentSoft = hex.Substring(0, 7) + "24";
+            return true;
         }
 
         private bool Read()

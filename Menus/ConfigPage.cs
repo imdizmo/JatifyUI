@@ -22,7 +22,7 @@ namespace Jatify.UI
     internal sealed class ConfigPage
     {
         private readonly RectTransform _root, _nav, _content;
-        private readonly ThemeData _t;
+        private ThemeData _t;   // replaced when a colour is picked, so the page shows it at once
         private readonly bool _modsMode;
         private string _sel, _q = "";   // _q: the search, lower case
         private TMP_InputField _search;
@@ -76,6 +76,7 @@ namespace Jatify.UI
         internal void Close()
         {
             if (_title != null) _title.SetActive(true);
+            ColourPicker.Open?.Close();
             if (_root != null) UnityEngine.Object.Destroy(_root.gameObject);
             if (Open == this) Open = null;
         }
@@ -104,10 +105,14 @@ namespace Jatify.UI
             Nice(e.Definition.Key).ToLowerInvariant().Contains(_q) || e.Definition.Key.ToLowerInvariant().Contains(_q) ||
             e.Definition.Section.ToLowerInvariant().Contains(_q) || (e.Description?.Description ?? "").ToLowerInvariant().Contains(_q);
 
+        // hover: the pause menu's slide forward and accent colour
+        private void Lift(TMP_Text tx) { var l = tx.gameObject.AddComponent<TextLift>(); l.Label = tx.rectTransform; l.Tint = tx; l.Over = Theme.C(_t.accent); }
+
         private void BuildNav()
         {
             foreach (Transform c in _nav) UnityEngine.Object.Destroy(c.gameObject);
             var items = _modsMode ? Sources().Select(s => s.name).ToList() : Plugin.Instance.Config.Entries().Select(e => e.Definition.Section).Distinct().ToList();
+            if (!_modsMode) items.Add(ColoursSection);   // not a config section: theme.json's colours (#40)
             if (_sel == null || !items.Contains(_sel)) _sel = items.FirstOrDefault();
             float y = 0f, size = _modsMode ? 20f : 26f, step = _modsMode ? 34f : 44f;
             foreach (var n in items)
@@ -116,11 +121,12 @@ namespace Jatify.UI
                 var tx = Kit.Text(_nav, n, n, Fonts.Bold, size, on ? Theme.C(_t.accent) : new Color(1, 1, 1, 0.78f));
                 tx.rectTransform.At(0, y, 260, step); tx.alignment = TextAlignmentOptions.MidlineLeft; tx.overflowMode = TextOverflowModes.Ellipsis; tx.raycastTarget = true;
                 tx.gameObject.AddComponent<Button>().onClick.AddListener(() => { _sel = name; BuildNav(); });
+                Lift(tx);
                 if (on) { var dia = Kit.Img(_nav, "Mark", null, Theme.C(_t.accent)); dia.rectTransform.At(-16, y + step / 2f - 3f, 7, 7); dia.rectTransform.localEulerAngles = new Vector3(0, 0, 45); }
                 y += step;
             }
             var back = Kit.Text(_nav, "Back", "Back", Fonts.Bold, 20f, Theme.C(_t.dim)); back.rectTransform.At(0, y + 18, 80, 30); back.alignment = TextAlignmentOptions.MidlineLeft;
-            back.raycastTarget = true; back.gameObject.AddComponent<Button>().onClick.AddListener(Close);
+            back.raycastTarget = true; back.gameObject.AddComponent<Button>().onClick.AddListener(Close); Lift(back);
             var esc = Kit.Text(_nav, "Esc", "Esc", Fonts.Mono, 12f, Theme.C(_t.mute)); esc.rectTransform.At(Kit.W(back) + 12f, y + 18, 60, 30); esc.alignment = TextAlignmentOptions.MidlineLeft;
             _nav.sizeDelta = new Vector2(260f, y + 60f);
             BuildRows();
@@ -131,10 +137,11 @@ namespace Jatify.UI
         {
             foreach (Transform c in _content) UnityEngine.Object.Destroy(c.gameObject);
             float y = 0f;
+            if (!_modsMode && _q.Length == 0 && _sel == ColoursSection) { _content.sizeDelta = new Vector2(0f, Colours() + 40f); return; }
             foreach (var (group, entries) in Groups())
             {
                 var h = Kit.Text(_content, "Group", group, Fonts.Norse, 28f, Color.white); h.rectTransform.At(0, y + 12, 800, 30);
-                var line = Kit.Img(_content, "Line", null, new Color(0.13f, 0.84f, 0.49f, 0.45f)); line.rectTransform.At(0, y + 46, 240, 1);
+                var line = Kit.Img(_content, "Line", null, Theme.C(_t.accent) * new Color(1f, 1f, 1f, 0.45f)); line.rectTransform.At(0, y + 46, 240, 1);
                 y += 58f;
                 foreach (var e in entries) y = Row(e, y);
             }
@@ -174,6 +181,84 @@ namespace Jatify.UI
                 return "AzuEPI is installed: there are no Food / Tools / Meads rows. Its quick slots use its own keys (its Quick Slot Hotkeys).";
             return null;
         }
+
+        // ---- colours (#40) ------------------------------------------------------------------------------
+        private const string ColoursSection = "Colours";
+        // token, label, help, then swatches: Jatify's default first, then a few that suit the game; the wheel tile opens the
+        // picker for any other colour.
+        private static readonly (string token, string label, string help, string[] swatches)[] ColourRows =
+        {
+            ("accent", "Accent", "Buttons, switches, highlights and the selection mark.", new[] { "#EC8219", "#22D67E", "#4DA3FF", "#E5484D", "#B57EDC", "#E8C547" }),
+            ("glass", "Panels", "The see-through fill behind every window.", new[] { "#262323C5", "#141416EB", "#1E2A33D0", "#2B2118D8", "#000000E0", "#33333BC0" }),
+            ("text", "Text", "Most of the writing.", new[] { "#ECEEED", "#FFFFFF", "#E8DCC8", "#D6E2EA" }),
+            ("health", "Health", "The health bar and damage.", new[] { "#E5484D", "#FF6B6B", "#C0392B", "#E86A92" }),
+            ("stamina", "Stamina", "The stamina bar.", new[] { "#F5B942", "#FFD95A", "#E8913A", "#9BD35A" }),
+            ("eitr", "Eitr", "The eitr bar.", new[] { "#740DFF", "#5AA9FF", "#B57EDC", "#3FD1C8" }),
+        };
+
+        private float Colours()
+        {
+            var h = Kit.Text(_content, "Group", ColoursSection, Fonts.Norse, 28f, Color.white); h.rectTransform.At(0, 12, 800, 30);
+            var line = Kit.Img(_content, "Line", null, Theme.C(_t.accent) * new Color(1f, 1f, 1f, 0.45f)); line.rectTransform.At(0, 46, 240, 1);
+            var note = Kit.Text(_content, "Note", "Saved in BepInEx/config/jatify.ui/theme.json, where every other colour is too.", Fonts.Medium, 12.5f, Theme.C(_t.dim));
+            note.rectTransform.At(0, 54, 700, 20);
+            float y = 84f;
+            var defaults = new ThemeData();
+            foreach (var (token, label, help, swatches) in ColourRows)
+            {
+                var cur = (string)typeof(ThemeData).GetField(token).GetValue(_t);
+                Kit.Text(_content, "Label", label, Fonts.Medium, 16f, Color.white).rectTransform.At(0, y + 6, 300, 22);
+                Kit.Text(_content, "Desc", help, Fonts.Medium, 12.5f, Theme.C(_t.dim)).rectTransform.At(0, y + 28, 300, 18);
+                // right to left from the hex field: the picker (ringed when the current colour is no swatch; one column for every
+                // row), then the swatches, the current one ringed in white
+                float x = 800f - 104f;
+                HexField(token, cur, x, y + 8f);
+                bool own = !swatches.Any(sw => string.Equals(sw, cur, StringComparison.OrdinalIgnoreCase));
+                x -= 34f; var (cring, _) = Kit.Box(_content, "Custom", new Color(0.05f, 0.05f, 0.06f, 1f), own ? Color.white : Theme.C(_t.line2), 8); cring.rectTransform.At(x, y + 8, 28, 28);
+                var wheel = Kit.Img(cring.rectTransform, "Wheel", ColourPicker.Wheel(), Color.white, false); wheel.rectTransform.Fill(); wheel.rectTransform.offsetMin = new Vector2(3, 3); wheel.rectTransform.offsetMax = new Vector2(-3, -3); wheel.raycastTarget = false;
+                var tk = token; var lb = label; cring.raycastTarget = true;
+                cring.gameObject.AddComponent<Button>().onClick.AddListener(() => ColourPicker.Show(_root, _t, tk, lb, tk == "glass", v => Pick(tk, v)));
+                x -= 6f;
+                for (int i = swatches.Length - 1; i >= 0; i--)
+                {
+                    x -= 34f; var sw = swatches[i]; bool on = string.Equals(sw, cur, StringComparison.OrdinalIgnoreCase);
+                    var c = Theme.C(sw); c.a = 1f;   // shown solid: a see-through panel colour can't be judged over the page
+                    var (ring, _) = Kit.Box(_content, "Swatch", c, on ? Color.white : Theme.C(_t.line2), 8);
+                    ring.rectTransform.At(x, y + 8, 28, 28);
+                    ring.raycastTarget = true; ring.gameObject.AddComponent<Button>().onClick.AddListener(() => Pick(token, sw));
+                }
+                y += 56f;
+            }
+            var (rb, _) = Kit.Box(_content, "Reset", Theme.C(_t.raised), Theme.C(_t.line2), 8); rb.rectTransform.At(0, y + 12, 170, 32);
+            var rt = Kit.Text(rb.rectTransform, "V", "Reset these colours", Fonts.Medium, 13f, Color.white); rt.alignment = TextAlignmentOptions.Center; rt.rectTransform.Fill();
+            rb.raycastTarget = true; rb.gameObject.AddComponent<Button>().onClick.AddListener(() =>
+            {
+                foreach (var row in ColourRows) Plugin.Instance.SetColour(row.token, (string)typeof(ThemeData).GetField(row.token).GetValue(defaults));
+                Refresh();
+            });
+            return y + 56f;
+        }
+
+        // #RRGGBB or #RRGGBBAA; anything else puts the current value back
+        private void HexField(string token, string cur, float x, float y)
+        {
+            var (b, _) = Kit.Box(_content, "Hex", Theme.C(_t.raised), Theme.C(_t.line2), 8); b.rectTransform.At(x + 8f, y, 96, 28);
+            var area = Kit.Node(b.rectTransform, "Area").Fill(); area.offsetMin = new Vector2(8, 3); area.offsetMax = new Vector2(-8, -3);
+            area.gameObject.AddComponent<RectMask2D>();
+            var tx = Kit.Text(area, "Text", "", Fonts.Mono, 12f, Color.white); tx.rectTransform.Fill(); tx.alignment = TextAlignmentOptions.MidlineLeft;
+            var field = b.gameObject.AddComponent<TMP_InputField>();
+            field.textViewport = area; field.textComponent = tx; field.fontAsset = Fonts.Mono; field.pointSize = 12f; field.characterLimit = 9;
+            field.text = cur.ToUpperInvariant(); Kit.Caret(field);
+            field.onEndEdit.AddListener(s =>
+            {
+                s = (s ?? "").Trim().ToUpperInvariant(); if (!s.StartsWith("#")) s = "#" + s;
+                if (System.Text.RegularExpressions.Regex.IsMatch(s, "^#([0-9A-F]{6}|[0-9A-F]{8})$") && s != cur.ToUpperInvariant()) Pick(token, s);
+                else field.text = cur.ToUpperInvariant();
+            });
+        }
+
+        private void Pick(string token, string hex) { Plugin.Instance.SetColour(token, hex); Refresh(); }
+        private void Refresh() { _t = Plugin.Instance.ThemeData; BuildNav(); }
 
         private static string Nice(string key) => System.Text.RegularExpressions.Regex.Replace(key, "(?<=[a-z])([A-Z])", " $1");
 
@@ -286,7 +371,8 @@ namespace Jatify.UI
         // Esc (or B): cancels a key capture, else clears the search, else closes the page; the pause menu stays
         internal void Escape()
         {
-            if (_listening != null) { _listening = null; BuildRows(); }
+            if (ColourPicker.Open != null) ColourPicker.Open.Close();
+            else if (_listening != null) { _listening = null; BuildRows(); }
             else if (_q.Length > 0) { _search.text = ""; _search.DeactivateInputField(); }
             else Close();
         }

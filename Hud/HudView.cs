@@ -18,7 +18,7 @@ namespace Jatify.UI
         private readonly TextMeshProUGUI _held, _heldQ;
         private readonly Image _heldStar;
         private readonly Bar _hp, _st, _ei;
-        private readonly Bar[] _gauges = new Bar[3];
+        private readonly Bar[] _gauges = new Bar[6];   // adrenaline, mod gauges and Look.AddStatusBar bars, sharing eitr's row
         private readonly Slot[] _slots = new Slot[8];
         private readonly Slot[] _tools = new Slot[8], _food = new Slot[SpecialRows.ShortWidth], _meads = new Slot[SpecialRows.ShortWidth], _ammo = new Slot[3];   // ammo: ExtraSlots' three, in a bar of their own bottom left   // tools: 6, or AzuEPI's quick slots (up to 8)
         private readonly RectTransform _power;
@@ -38,12 +38,16 @@ namespace Jatify.UI
         private RectTransform _hintsL, _hintsR, _hintsPlace, _side, _chestKeys, _setHints;
         private string _setKey = ""; private float _setNext;
         internal readonly Deeds.AchHud Ach;
+        // for Look.WindowRect: the bars of the health column, and the 1-8 bar with the bars beside it
+        internal List<RectTransform> HealthParts { get { _parts.Clear(); _parts.Add(_hp.Root); _parts.Add(_st.Root); _parts.Add(_ei.Root); foreach (var g in _gauges) _parts.Add(g.Root); return _parts; } }
+        internal List<RectTransform> HotbarParts { get { _parts.Clear(); foreach (var (line, _) in _barPanels) if (line != null) _parts.Add(line.rectTransform); return _parts; } }
+        private readonly List<RectTransform> _parts = new List<RectTransform>();
         internal RectTransform MapHole => _root.gameObject.activeSelf ? _minimap.Hole : null;
         private string _heldName;
 
         internal HudView(Transform canvas, ThemeData t)
         {
-            _t = t;
+            _t = t; _emberC = C(t.ember);
             _root = Kit.Node(canvas, "Hud").Fill();
 
             // dock: 534 wide (8 slots of 60, gaps of 6, padding 6), bottom 26
@@ -125,20 +129,33 @@ namespace Jatify.UI
             foreach (var (line, fill) in _barPanels) { if (line != null) line.enabled = on; if (fill != null) fill.enabled = on; }
         }
 
+        // other mods' HUD pieces live under the game's HUD root (Fate Woven's ability bar): faded out with ours on pause screens
+        private bool _paused;
+        private void Paused()
+        {
+            bool paused = Menu.IsVisible() || ConfigPage.Open != null;
+            if (paused == _paused || Hud.instance == null) return;
+            _paused = paused;
+            var root = Hud.instance.m_rootObject;
+            var cg = root.GetComponent<CanvasGroup>() ?? root.AddComponent<CanvasGroup>();
+            cg.alpha = paused ? 0f : 1f;
+        }
+
         internal void Tick()
         {
             TickBarPanels();
+            Paused();
             var p = Player.m_localPlayer;
             bool show = p != null && Hud.instance != null && !Hud.IsUserHidden() && !Minimap.IsOpen() && Hud.instance.m_rootObject.activeInHierarchy
                         && !Menu.IsVisible() && ConfigPage.Open == null;               // pause screens show the dimmed game, not the HUD
             if (_root.gameObject.activeSelf != show) _root.gameObject.SetActive(show);
             if (!show) return;
 
-            _hp.Set(p.GetHealth(), p.GetMaxHealth());
-            _st.Set(p.GetStamina(), p.GetMaxStamina());
-            float maxE = p.GetMaxEitr();
+            float maxH = p.GetMaxHealth(), maxS = p.GetMaxStamina(), maxE = p.GetMaxEitr();
+            _hp.Set(p.GetHealth(), maxH); _hp.Reserve(maxH > 0f ? Look.Reserve("health") / maxH : 0f);   // other mods' reserved part (Look.SetReserve)
+            _st.Set(p.GetStamina(), maxS); _st.Reserve(maxS > 0f ? Look.Reserve("stamina") / maxS : 0f);
             if (_ei.Root.gameObject.activeSelf != maxE > 0f) _ei.Root.gameObject.SetActive(maxE > 0f);
-            if (maxE > 0f) _ei.Set(p.GetEitr(), maxE);
+            if (maxE > 0f) { _ei.Set(p.GetEitr(), maxE); _ei.Reserve(Look.Reserve("eitr") / maxE); }
             Gauges();
 
             var inv = p.GetInventory();
@@ -254,18 +271,32 @@ namespace Jatify.UI
             var row = Kit.Node(parent, right ? "HintsRight" : "HintsLeft");
             row.anchorMin = row.anchorMax = row.pivot = new Vector2(right ? 1f : 0f, 0f);
             row.anchoredPosition = new Vector2(right ? -28f : 28f, 36f);
-            float x = 0f; var parts = new List<RectTransform>();
+            // the left row runs along the bottom; the right one is a column at the screen's edge, one key a line, right-aligned,
+            // so it stays beside the Food / Meads slots instead of above them (user)
+            float x = 0f; var lines = new List<(RectTransform cap, RectTransform what, float kw, float w)>();
             foreach (var (key, what) in items)
             {
                 var (cap, _) = Kit.Box(row, "Key", C(t.raised), C(t.line2), 5);
                 var kt = Kit.Text(cap.rectTransform, "K", key, Fonts.Mono, 10.5f, C(t.text)); kt.alignment = TextAlignmentOptions.Center;
-                float kw = Mathf.Max(20f, Kit.W(kt) + 10f);
-                cap.rectTransform.At(x, 0, kw, 20); kt.rectTransform.Fill();
+                float kw = Mathf.Max(20f, Kit.W(kt) + 10f); kt.rectTransform.Fill();
                 var wt = Kit.Text(row, "What", what, Fonts.Medium, 12f, C(t.dim)); wt.alignment = TextAlignmentOptions.MidlineLeft;
-                wt.rectTransform.At(x + kw + 6f, 0, Kit.W(wt) + 2f, 20);
-                x += kw + 6f + Kit.W(wt) + 16f;
+                lines.Add((cap.rectTransform, wt.rectTransform, kw, Kit.W(wt) + 2f));
             }
-            row.sizeDelta = new Vector2(x - 16f, 20f);
+            if (right)
+            {
+                float wide = 0f; foreach (var l in lines) wide = Mathf.Max(wide, l.kw + 6f + l.w);
+                for (int i = 0; i < lines.Count; i++)
+                {
+                    var l = lines[i]; float lx = wide - (l.kw + 6f + l.w);
+                    l.cap.At(lx, i * 24f, l.kw, 20); l.what.At(lx + l.kw + 6f, i * 24f, l.w, 20);
+                }
+                row.sizeDelta = new Vector2(wide, lines.Count * 24f - 4f);
+            }
+            else
+            {
+                foreach (var l in lines) { l.cap.At(x, 0, l.kw, 20); l.what.At(x + l.kw + 6f, 0, l.w, 20); x += l.kw + 6f + l.w + 14f; }
+                row.sizeDelta = new Vector2(x - 14f, 20f);
+            }
             var cg = row.gameObject.AddComponent<CanvasGroup>(); cg.alpha = 0.85f; cg.blocksRaycasts = false;
             return row;
         }
@@ -275,6 +306,8 @@ namespace Jatify.UI
         // each one's fill and text; theirs hidden (a copy made later inherits the hiding, and shows here too)
         private readonly List<(GuiBar bar, TMP_Text text, string label)> _gaugeSrc = new List<(GuiBar, TMP_Text, string)>();
         private float _gaugeScan;
+        private readonly List<(Look.ModBar bar, float v, float max)> _modUp = new List<(Look.ModBar, float, float)>();
+        private readonly Color _emberC;
         private static readonly AccessTools.FieldRef<Humanoid, ItemDrop.ItemData> TrinketOf = AccessTools.FieldRefAccess<Humanoid, ItemDrop.ItemData>("m_trinketItem");
         private void Gauges()
         {
@@ -298,6 +331,15 @@ namespace Jatify.UI
             System.Func<(GuiBar bar, TMP_Text text, string label), bool> up = g => g.bar != null && (g.label == "ADRENALINE" ? trinket : g.bar.transform.parent.gameObject.activeInHierarchy);
             int n = 0;
             foreach (var g in _gaugeSrc) if (up(g) && n < _gauges.Length) n++;
+            _modUp.Clear();
+            for (int j = 0; j < Look.Bars.Count; j++)
+            {   // other mods' bars (Look.AddStatusBar), after the game's gauges, while their max is above 0
+                var mb = Look.Bars[j];
+                float mx = Look.Read(mb.Id, mb.Max, out var bad1), v = bad1 ? 0f : Look.Read(mb.Id, mb.Value, out bad1);
+                if (bad1) { Look.Bars.RemoveAt(j--); continue; }
+                if (mx > 0f && n + _modUp.Count < _gauges.Length) _modUp.Add((mb, v, mx));
+            }
+            n += _modUp.Count;
             bool eitr = _ei.Root.gameObject.activeSelf; int cells = n + (eitr ? 1 : 0);   // they share Eitr's row (the action bar is right under it)
             float gap = 8f, w = cells > 0 ? (440f - gap * (cells - 1)) / cells : 440f; int i = 0;
             _ei.Width(47f, eitr && n > 0 ? w : 440f);
@@ -309,7 +351,12 @@ namespace Jatify.UI
                 if (g.label == "ADRENALINE") { float max = pl.GetMaxAdrenaline(); k = max > 0f ? pl.GetAdrenaline() / max : 0f; txt = Mathf.FloorToInt(pl.GetAdrenaline()).ToString(); }   // from the player: Valheim's bar is off at 0
                 else { var bar = g.bar.transform.Find("bar") as RectTransform; var area = (RectTransform)g.bar.transform; k = bar != null && area.rect.width > 0f ? bar.rect.width / area.rect.width : 0f; txt = g.text != null ? g.text.text : ""; }
                 var gb = _gauges[i++]; if (!gb.Root.gameObject.activeSelf) gb.Root.gameObject.SetActive(true);
-                gb.Width(x0 + (i - 1) * (w + gap), w); gb.SetRaw(k, txt, g.label);
+                gb.Width(x0 + (i - 1) * (w + gap), w); gb.Tint(_emberC); gb.SetRaw(k, txt, g.label);
+            }
+            foreach (var (mb, v, mx) in _modUp)
+            {
+                var gb = _gauges[i++]; if (!gb.Root.gameObject.activeSelf) gb.Root.gameObject.SetActive(true);
+                gb.Width(x0 + (i - 1) * (w + gap), w); gb.Tint(mb.Colour); gb.SetRaw(v / mx, Mathf.CeilToInt(v).ToString(), mb.Label);
             }
             for (; i < _gauges.Length; i++) if (_gauges[i].Root.gameObject.activeSelf) _gauges[i].Root.gameObject.SetActive(false);
         }
@@ -335,7 +382,7 @@ namespace Jatify.UI
                 if (sig != _setKey)
                 {
                     _setKey = sig; if (_setHints != null) Object.Destroy(_setHints.gameObject); _setHints = null;
-                    if (_setItems.Count > 0) { _setHints = Hints(_root, true, _t, _setItems.ToArray()); _setHints.anchoredPosition = new Vector2(_setHints.anchoredPosition.x, 64f); }
+                    if (_setItems.Count > 0) { _setHints = Hints(_root, true, _t, _setItems.ToArray()); _setHints.anchoredPosition = new Vector2(_setHints.anchoredPosition.x, _hintsR.anchoredPosition.y + _hintsR.sizeDelta.y + 12f); }   // above the combat column
                 }
             }
             if (_setHints != null && _setHints.gameObject.activeSelf != show) _setHints.gameObject.SetActive(show);
@@ -549,6 +596,17 @@ namespace Jatify.UI
                 k = Mathf.Clamp01(k);
                 _fill.sizeDelta = new Vector2(k <= 0f ? 0f : Mathf.Max(_h, _w * k), 0f); _fill.gameObject.SetActive(k > 0f);
                 if (_val.text != text) _val.text = text; if (_label.text != label) _label.text = label;
+            }
+            internal void Tint(Color c) { var im = _fill.GetComponent<Image>(); if (im != null && im.color != c) im.color = c; }
+
+            // the reserved part (0..1 of the bar) at its right end, darker; made on first use
+            private Image _res;
+            internal void Reserve(float k)
+            {
+                k = Mathf.Clamp01(k);
+                if (_res == null) { if (k <= 0f) return; _res = Kit.Panel(Root, "Reserve", new Color(0f, 0f, 0f, 0.55f), _h / 2f); var r = _res.rectTransform; r.anchorMin = new Vector2(1f, 0f); r.anchorMax = Vector2.one; r.pivot = new Vector2(1f, 0.5f); r.anchoredPosition = Vector2.zero; r.SetSiblingIndex(_fill.GetSiblingIndex() + 1); _res.raycastTarget = false; }   // over the fill, under the texts
+                bool on = k > 0f; if (_res.gameObject.activeSelf != on) _res.gameObject.SetActive(on);
+                if (on) _res.rectTransform.sizeDelta = new Vector2(Mathf.Max(_h, _w * k), 0f);
             }
             internal void Width(float x, float w)
             {
