@@ -23,6 +23,7 @@ namespace Jatify.UI
 [colours]
 - The colour wheel on each row opens a picker for any other colour, with a slice of the UI drawn in it.
 - In a world, the picker's Preview closes the menu and opens your inventory: the real UI takes the colour each time you let go of the mouse. Apply keeps it; Cancel, or closing the inventory, puts the old one back.
+- This is a first look: the colours get a bigger rework in the next update.
 
 <b>HUD</b>
 - The key hints at the bottom right stack at the screen's right edge, no longer above the action bar.

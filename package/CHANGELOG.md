@@ -5,6 +5,7 @@
 - Jatify UI settings have a Colours page: the accent, panels, text, health, stamina and eitr, each with a few ready colours and a hex field (#40).
 - The colour wheel on each row opens a picker for any other colour: a saturation and brightness square, a hue strip (and an opacity strip for Panels), R G B and H S V fields (0 to 1) and a hex field, the colour you started with one click away, and a slice of the UI drawn in the new colour.
 - Preview, in a world: the menu closes, the inventory opens and the real UI takes the colour each time you let go of the mouse. Apply keeps it; Cancel, or closing the inventory, puts the old one back. Nothing is saved before Apply.
+- This is a first look at the colours: they get a bigger rework in the next update.
 
 ### HUD
 
