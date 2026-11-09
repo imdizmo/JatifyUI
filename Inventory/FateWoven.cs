@@ -116,10 +116,12 @@ namespace Jatify.UI
             _lookAt = Time.unscaledTime + 0.5f;
             if (_parked == null)
             {
-                var go = GameObject.Find("WildcardFateWovenButton"); if (go == null || InventoryGui.instance == null) return;
+                if (InventoryGui.instance == null) return;
+                var hold = InventoryGui.instance.transform.Find("jatify-fatewoven-parked");   // parked already (a reload of ours): Find skips hidden objects
+                var go = hold != null ? hold.Find("WildcardFateWovenButton")?.gameObject : GameObject.Find("WildcardFateWovenButton"); if (go == null) return;
                 _icon = go.transform.Find("icon")?.GetComponent<Image>()?.sprite;
-                var hold = new GameObject("jatify-fatewoven-parked"); hold.SetActive(false); hold.transform.SetParent(InventoryGui.instance.transform, false);
-                go.transform.SetParent(hold.transform, false); go.SetActive(false);
+                if (hold == null) { var h = new GameObject("jatify-fatewoven-parked"); h.SetActive(false); h.transform.SetParent(InventoryGui.instance.transform, false); hold = h.transform; }
+                go.transform.SetParent(hold, false); go.SetActive(false);
                 _parked = go;
             }
             var mine = tab.Find("Clip/Tab/Icon")?.GetComponent<Image>();

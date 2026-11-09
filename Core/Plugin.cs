@@ -181,7 +181,7 @@ namespace Jatify.UI
             Safe("whats-new", WhatsNew.Tick);   // release builds too (key capture, closing with the menu)
         }
 
-        private void LateUpdate() { if (Headless) return; Safe("vanilla-hud", VanillaHud.Tick); Safe("minimap", () => VanillaMinimap.Tick(Root.MapHole)); Safe("layout", InventoryStyle.Layout); Safe("fatewoven-bar", FateWoven.HoldBar); Safe("mod-layout", Look.TickLayout); Safe("notices", Notices.Tick); Safe("save-badge", SaveBadge.Tick); Safe("chest-peek", ChestPeek.Tick); Safe("graves", Graves.Tick); Safe("cursor", CursorSkin.Tick); Safe("hover-card", HoverCard.Tick); Safe("item-tip", ItemTip.Tick); Safe("epic-skin", EpicSkin.Tick); Safe("azu-hold", AzuHold.Tick); } // after the game's own HUD update and animators
+        private void LateUpdate() { if (Headless) return; Safe("vanilla-hud", VanillaHud.Tick); Safe("minimap", () => VanillaMinimap.Tick(Root.MapHole)); Safe("layout", InventoryStyle.Layout); Safe("fatewoven-bar", FateWoven.HoldBar); Safe("mod-layout", Look.TickLayout); Safe("notices", Notices.Tick); Safe("save-badge", SaveBadge.Tick); Safe("chest-peek", ChestPeek.Tick); Safe("graves", Graves.Tick); Safe("cursor", CursorSkin.Tick); Safe("hover-card", HoverCard.Tick); Safe("item-tip", ItemTip.Tick); Safe("tooltip-top", TooltipStyle.Tick); Safe("epic-skin", EpicSkin.Tick); Safe("azu-hold", AzuHold.Tick); } // after the game's own HUD update and animators
 
         private static void DevTeardown()
         {
