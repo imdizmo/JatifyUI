@@ -53,7 +53,7 @@ namespace Jatify.UI
                 if (btn != null)
                 {
                     var (tg0, tr0, cb0) = (btn.targetGraphic, btn.transition, btn.colors);
-                    var cb = ColorBlock.defaultColorBlock; cb.normalColor = Color.white; cb.highlightedColor = Theme.C(t.accent); cb.selectedColor = Color.white; cb.pressedColor = Theme.C(t.accent); cb.fadeDuration = 0.12f;
+                    var cb = ColorBlock.defaultColorBlock; cb.normalColor = Color.white; cb.highlightedColor = Theme.C(t.accent); cb.selectedColor = Theme.C(t.accent); cb.pressedColor = Theme.C(t.accent); cb.fadeDuration = 0.12f;
                     _l.Do(() => { btn.targetGraphic = tx; btn.transition = Selectable.Transition.ColorTint; btn.colors = cb; }, () => { if (btn != null) { btn.targetGraphic = tg0; btn.transition = tr0; btn.colors = cb0; } });
                 }
                 var hl = e.GetComponent<HorizontalLayoutGroup>(); if (hl != null) _l.Added(e.gameObject.AddComponent<MenuLift>()).Init(hl);
@@ -160,14 +160,23 @@ namespace Jatify.UI
     // live design: a hovered (or keyboard-selected) entry slides forward 6 px and grows a touch.
     // Through the entry's own layout padding, so the list's layout doesn't snap it back.
     // hover: the label slides 6 px forward and grows 4 %, like the menu entries (MenuLift needs a layout group)
+    // Tint (optional): the label's colour goes to Over on hover, like the menu entries
     internal class TextLift : MonoBehaviour, UnityEngine.EventSystems.IPointerEnterHandler, UnityEngine.EventSystems.IPointerExitHandler
     {
-        internal RectTransform Label; private bool _over; private float _k;
+        internal RectTransform Label; internal Graphic Tint; internal Color Over;
+        private bool _over, _got; private float _k; private Vector2 _at; private Color _was;
         public void OnPointerEnter(UnityEngine.EventSystems.PointerEventData _) => _over = true;
         public void OnPointerExit(UnityEngine.EventSystems.PointerEventData _) => _over = false;
         private void OnDisable() { _over = false; _k = 0f; Apply(); }
         private void Update() { float k = Mathf.MoveTowards(_k, _over ? 1f : 0f, Time.unscaledDeltaTime / 0.14f); if (k != _k) { _k = k; Apply(); } }
-        private void Apply() { if (Label == null) return; float e = _k * _k * (3f - 2f * _k); Label.anchoredPosition = new Vector2(6f * e, 0f); Label.localScale = Vector3.one * (1f + 0.04f * e); }
+        private void Apply()
+        {
+            if (Label == null) return;
+            if (!_got) { _got = true; _at = Label.anchoredPosition; if (Tint != null) _was = Tint.color; }
+            float e = _k * _k * (3f - 2f * _k);
+            Label.anchoredPosition = _at + new Vector2(6f * e, 0f); Label.localScale = Vector3.one * (1f + 0.04f * e);
+            if (Tint != null) Tint.color = Color.Lerp(_was, Over, e);
+        }
     }
 
     internal class MenuLift : MonoBehaviour, UnityEngine.EventSystems.IPointerEnterHandler, UnityEngine.EventSystems.IPointerExitHandler
@@ -181,6 +190,9 @@ namespace Jatify.UI
         private void Update()
         {
             var es = UnityEngine.EventSystems.EventSystem.current;
+            // the menu selects Continue when it opens, and a selected button shows its selected colour over its hover colour:
+            // with the mouse nothing stays selected (the game selects Continue again once a gamepad is used)
+            if (es != null && es.currentSelectedGameObject == gameObject && ZInput.IsMouseActive()) es.SetSelectedGameObject(null);
             bool on = _over || (es != null && es.currentSelectedGameObject == gameObject && !ZInput.IsMouseActive());
             float k = Mathf.MoveTowards(_k, on ? 1f : 0f, Time.unscaledDeltaTime / 0.14f);
             if (k != _k) { _k = k; Apply(); }
