@@ -124,6 +124,12 @@ namespace Jatify.UI
             // Mod slots (other mods' slots on a page of their own) shows only when a mod adds any
             _modsTab = EdgeTab("jatify-mods-tab", true, "box", "Mod slots", "Shows other mods' slots: backpacks, jewellery, tomes, lanterns...", () => Column(true), t, g);
             _gearTab = EdgeTab("jatify-gear-tab", true, "host_helmet_icon", "Character", "Shows or hides the character, gear, skills and stats column.", () => Column(false), t, g);
+            // Fate Woven's panel: a tab under the column's (FateWoven.cs); its icon is Fate Woven's own, taken once it shows
+            if (FateWoven.On)
+            {
+                _fwTab = EdgeTab("jatify-fatewoven-tab", true, "box", "Fate Woven", "Opens or closes Fate Woven: abilities, runes, mastery and blessings.", FateWoven.Toggle, t, g);
+                var fic = _fwTab.Find("Clip/Tab/Icon")?.GetComponent<Image>(); if (fic != null) fic.enabled = false;
+            }
             // the trash sits under the grid (design position); the item detail box beside it was removed (user)
             StyleInfo(g.m_info, t);
             _trash = new Trash(_frame, t);
@@ -351,7 +357,7 @@ namespace Jatify.UI
             if (hidden > 0) Log.Warn($"inventory header: {hidden} mod button(s) don't fit and are hidden");
             _beltsLaid = -1;
         }
-        private static RectTransform _fold, _keyTab, _gearTab, _modsTab; private static int _colLit = -1;
+        private static RectTransform _fold, _keyTab, _gearTab, _modsTab, _fwTab; private static int _colLit = -1; private static bool _fwLit;
 
         // worn bags (Backpacks, AdventureBackpacks, RustyBags): a tab each above the key pouch's, the bag's own icon, lit while open; a
         // click opens it as its own key does, or switches to it (user: their keys work, this shows them cleanly). It never closes one:
@@ -688,6 +694,12 @@ namespace Jatify.UI
                 int lit = Narrow || _eq == null ? 0 : _eq.OnMods ? 2 : 1;   // the tab whose page shows is lit
                 if (lit != _colLit) { _colLit = lit; Tint(_gearTab, lit == 1); Tint(_modsTab, lit == 2); }
             }
+            if (_fwTab != null)
+            {
+                _fwTab.At(Lx - 52f + 1f, 123f - 32f + 66f * (_modsTab != null && _modsTab.gameObject.activeSelf ? 2 : 1), 52, 60);
+                FateWoven.Park(_fwTab);
+                bool open = FateWoven.Open; if (open != _fwLit) { _fwLit = open; Tint(_fwTab, open); }
+            }
             int key = SpecialRows.Start * 4 + (Folded ? 1 : 0) + (Narrow ? 2 : 0) + Mathf.RoundToInt(EsBelow) * 1000 + (UnderBag ? 1 << 24 : 0);   // ExtraSlots adding a row under the doll moves the strip
             HideRowCells();
             if (_beltLine == null || _beltsLaid == key) return;
@@ -1019,7 +1031,7 @@ namespace Jatify.UI
             ChestPanel.Restore();
             _eq?.Destroy(); _eq = null; _tabs.Clear(); _tabOn = null; _badge = null; _badgeShown = -1;
             _trash?.Destroy(); _trash = null; _stats?.Destroy(); _stats = null;
-            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _gearTab = null; _modsTab = null; _colLit = -1; _bagTabs.Clear(); _bagFor.Clear(); _bagLit.Clear(); _bagsAt = 0f; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _narrowLaid = -1; _acts.Clear(); _icons.Clear(); _modBtns.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
+            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _gearTab = null; _modsTab = null; _fwTab = null; _fwLit = false; _colLit = -1; _bagTabs.Clear(); _bagFor.Clear(); _bagLit.Clear(); _bagsAt = 0f; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _narrowLaid = -1; _acts.Clear(); _icons.Clear(); _modBtns.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
         }
     }
 
