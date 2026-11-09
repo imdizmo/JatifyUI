@@ -105,6 +105,8 @@ namespace Jatify.UI
             if (_preview || Player.m_localPlayer == null || InventoryGui.instance == null) return;
             _preview = true; _dirty = true;
             _root.SetParent(Root.Canvas.transform, false);
+            var cv = _root.gameObject.AddComponent<Canvas>(); cv.overrideSorting = true; cv.sortingOrder = 32500;   // over the inventory's panels
+            _root.gameObject.AddComponent<GraphicRaycaster>();
             _dim.enabled = false; _dim.raycastTarget = false;
             _panel.At(1920f - 660f - 40f, 90f, 660f, 424f);
             _panel.gameObject.AddComponent<Mover>();
