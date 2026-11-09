@@ -129,9 +129,22 @@ namespace Jatify.UI
             foreach (var (line, fill) in _barPanels) { if (line != null) line.enabled = on; if (fill != null) fill.enabled = on; }
         }
 
+        // other mods' HUD pieces live under the game's HUD root (Fate Woven's ability bar): faded out with ours on pause screens
+        private bool _paused;
+        private void Paused()
+        {
+            bool paused = Menu.IsVisible() || ConfigPage.Open != null;
+            if (paused == _paused || Hud.instance == null) return;
+            _paused = paused;
+            var root = Hud.instance.m_rootObject;
+            var cg = root.GetComponent<CanvasGroup>() ?? root.AddComponent<CanvasGroup>();
+            cg.alpha = paused ? 0f : 1f;
+        }
+
         internal void Tick()
         {
             TickBarPanels();
+            Paused();
             var p = Player.m_localPlayer;
             bool show = p != null && Hud.instance != null && !Hud.IsUserHidden() && !Minimap.IsOpen() && Hud.instance.m_rootObject.activeInHierarchy
                         && !Menu.IsVisible() && ConfigPage.Open == null;               // pause screens show the dimmed game, not the HUD
