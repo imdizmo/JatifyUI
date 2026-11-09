@@ -41,7 +41,7 @@ namespace Jatify.UI
             _default = Theme.C((string)typeof(ThemeData).GetField(field).GetValue(new ThemeData()));
             _root = Kit.Node(parent, "ColourPicker").Fill();
             var dim = Kit.Img(_root, "Dim", null, new Color(0f, 0f, 0f, dimA)); dim.rectTransform.Fill(); dim.raycastTarget = true;   // clicks stay in the picker
-            var solid = Theme.C(t.glass); solid.a = 0.98f;   // the settings page behind showed through the see-through panel colour
+            var solid = Theme.C(t.glass); solid.a = 1f;   // the settings page behind showed through the see-through panel colour
             var (panel, _) = Kit.Box(_root, "Panel", solid, Theme.C(t.line2), 14); var p = panel.rectTransform; p.At(630, 300, 660, 424); panel.raycastTarget = true;
             var title = Kit.Text(p, "Title", "COLOUR · " + label.ToUpperInvariant(), Fonts.Mono, 12f, Theme.C(t.mute)); title.characterSpacing = 6f; title.rectTransform.At(20, 14, 600, 18);
 
