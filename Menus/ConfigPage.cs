@@ -76,6 +76,7 @@ namespace Jatify.UI
         internal void Close()
         {
             if (_title != null) _title.SetActive(true);
+            ColourPicker.Open?.Close();
             if (_root != null) UnityEngine.Object.Destroy(_root.gameObject);
             if (Open == this) Open = null;
         }
@@ -215,6 +216,12 @@ namespace Jatify.UI
                     ring.rectTransform.At(x, y + 8, 28, 28);
                     ring.raycastTarget = true; ring.gameObject.AddComponent<Button>().onClick.AddListener(() => Pick(token, sw));
                 }
+                // any other colour: the picker, with a preview of the UI in it; ringed when the current colour is no swatch
+                bool own = !swatches.Any(sw => string.Equals(sw, cur, StringComparison.OrdinalIgnoreCase));
+                x -= 34f; var (cring, _) = Kit.Box(_content, "Custom", new Color(0.05f, 0.05f, 0.06f, 1f), own ? Color.white : Theme.C(_t.line2), 8); cring.rectTransform.At(x, y + 8, 28, 28);
+                var hue = Kit.Img(cring.rectTransform, "Hue", Sprite.Create(ColourPicker.HueTex(), new Rect(0, 0, 1, 128), new Vector2(0.5f, 0.5f)), Color.white, false); hue.rectTransform.Fill(); hue.rectTransform.offsetMin = new Vector2(4, 4); hue.rectTransform.offsetMax = new Vector2(-4, -4); hue.raycastTarget = false;
+                var tk = token; var lb = label; cring.raycastTarget = true;
+                cring.gameObject.AddComponent<Button>().onClick.AddListener(() => ColourPicker.Show(_root, _t, tk, lb, tk == "glass", v => Pick(tk, v)));
                 y += 56f;
             }
             var (rb, _) = Kit.Box(_content, "Reset", Theme.C(_t.raised), Theme.C(_t.line2), 8); rb.rectTransform.At(0, y + 12, 170, 32);
@@ -359,7 +366,8 @@ namespace Jatify.UI
         // Esc (or B): cancels a key capture, else clears the search, else closes the page; the pause menu stays
         internal void Escape()
         {
-            if (_listening != null) { _listening = null; BuildRows(); }
+            if (ColourPicker.Open != null) ColourPicker.Open.Close();
+            else if (_listening != null) { _listening = null; BuildRows(); }
             else if (_q.Length > 0) { _search.text = ""; _search.DeactivateInputField(); }
             else Close();
         }
