@@ -36,6 +36,9 @@ namespace Jatify.UI
             try { _toggle?.Invoke(); } catch (Exception e) { Log.Warn("Fate Woven: Toggle failed: " + e.Message); }
         }
 
+        // a bag's tab clicked: the bag wins the spot even when it was already open underneath
+        internal static void Close() { if (Open) Toggle(); }
+
         internal static bool Open
         {
             get { try { return _open != null && _open(); } catch { _open = null; return false; } }
