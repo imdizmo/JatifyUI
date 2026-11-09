@@ -369,7 +369,7 @@ namespace Jatify.UI
                 if (sig != _setKey)
                 {
                     _setKey = sig; if (_setHints != null) Object.Destroy(_setHints.gameObject); _setHints = null;
-                    if (_setItems.Count > 0) { _setHints = Hints(_root, true, _t, _setItems.ToArray()); _setHints.anchoredPosition = new Vector2(_setHints.anchoredPosition.x, _hintsR.anchoredPosition.y + _hintsR.sizeDelta.y + 12f);   // above the combat column }
+                    if (_setItems.Count > 0) { _setHints = Hints(_root, true, _t, _setItems.ToArray()); _setHints.anchoredPosition = new Vector2(_setHints.anchoredPosition.x, _hintsR.anchoredPosition.y + _hintsR.sizeDelta.y + 12f); }   // above the combat column
                 }
             }
             if (_setHints != null && _setHints.gameObject.activeSelf != show) _setHints.gameObject.SetActive(show);
