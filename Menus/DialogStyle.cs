@@ -26,6 +26,12 @@ namespace Jatify.UI
             {   // set while hidden, Unity drops it
                 cv.overrideSorting = true; cv.sortingOrder = (g.transform.GetComponentInParent<Canvas>()?.rootCanvas.sortingOrder ?? 600) + 5;
             }
+            if (g != null)
+                for (int i = 0; i < g.transform.childCount; i++)
+                {   // copies of it (Quick Stack Store's trash prompt) are made from the hidden one: their sorting is dropped too
+                    var ch = g.transform.GetChild(i);
+                    if (ch.gameObject.activeSelf && ch.name.StartsWith("SplitDialog(Clone)") && ch.GetComponent<Canvas>() is Canvas cc && !cc.overrideSorting) { cc.overrideSorting = true; cc.sortingOrder = (g.transform.GetComponentInParent<Canvas>()?.rootCanvas.sortingOrder ?? 600) + 5; }
+                }
             if (_popup != null && _popFor != _popup) { _pop.Undo(); _popFor = _popup; Popup(_popup.transform, Plugin.Instance.ThemeData); }
         }
 
@@ -35,7 +41,11 @@ namespace Jatify.UI
         [HarmonyPatch(typeof(UnifiedPopup), nameof(UnifiedPopup.Push))]
         private static class PopupShown
         {
-            private static void Prefix() { if (_popup == null) _popup = Traverse.Create(typeof(UnifiedPopup)).Field("instance").GetValue<UnifiedPopup>(); if (_popup != null && _popFor != _popup) Tick(); }
+            private static void Prefix()
+            {   // never in the popup's way: a failed restyle leaves it Valheim's
+                try { if (_popup == null) _popup = Traverse.Create(typeof(UnifiedPopup)).Field("instance").GetValue<UnifiedPopup>(); if (_popup != null && _popFor != _popup) Tick(); }
+                catch (System.Exception e) { _popFor = _popup; Log.Warn("popup restyle failed: " + e.Message); }
+            }
         }
 
         private static Color Solid(ThemeData t) { var c = Theme.C(t.glass); c.a = Mathf.Max(c.a, 0.97f); return c; }   // over the inventory a see-through card lets the slots show through

@@ -59,6 +59,8 @@ namespace Jatify.UI
             int lines = Mathf.Max(1, HoverCard.Actions.Count) + (open ? 1 : 0);   // Valheim's actions for this chest, and the crafting state
             float h = (open ? 12 + 24 + 8 + rows * (Cell + Gap) - Gap + 10 : 12 + 24 + 8) + lines * 24 + 8;
             _root.sizeDelta = new Vector2(w, h);   // the card fills it; it grows up and right from the crosshair
+            float half = ((RectTransform)Root.Canvas.transform).rect.height / 2f;
+            _root.anchoredPosition = new Vector2(16f, Mathf.Min(16f, half - 16f - h));   // a very tall chest: lowered so it stays on screen
             var (bg, _) = Card.Box(_root, "Card", t); bg.rectTransform.At(0, 0, w, h);
             // title: icon, name, used / total
             var piece = c.GetComponentInParent<Piece>();

@@ -246,7 +246,7 @@ namespace Jatify.UI
             float k = canvas.lossyScale.x / _frame.parent.lossyScale.x;
             if (Mathf.Abs(_frame.localScale.x - k) > 0.0001f) _frame.localScale = new Vector3(k, k, 1f);
             _frame.position = canvas.TransformPoint(new Vector3(left - canvas.rect.width / 2f, canvas.rect.height / 2f - Top, 0f));
-            float tw = chest ? _toolsW - (_canRename ? 0f : _renameW) : 0f;
+            float tw = chest ? _toolsW - (_canRename ? 0f : _renameW) : _bagClose != null && _bagClose.gameObject.activeSelf ? Btn + 8f : 0f;   // a bag's title stops short of its close button
             _tools.At(pw - Pad - tw, 13, tw, Btn);
             _name.rectTransform.At(58, 10, pw - 58 - tw - Pad - 12, 23); _sub.rectTransform.At(58, 33, pw - 58 - tw - Pad - 12, 16);
             float only = 190f; _searchBox.At(Pad, 56, pw - 2 * Pad - only - 8, Search); _onlyTile.At(pw - Pad - only, 57, only, 30);
@@ -321,8 +321,9 @@ namespace Jatify.UI
             if (c == null && _frame != null && Foreign is Inventory other)
             {   // another mod's grid: its title (EpicLoot: "Sockets: <item>"), how full it is
                 _shown = null;
-                if (_bagClose != null && !_bagClose.gameObject.activeSelf) _bagClose.gameObject.SetActive(true);
-                var of = OpenFor();   // EpicLoot's sockets: the item they belong to; else the worn bag it is (read when another opens)
+                var of = OpenFor();
+                bool bagX = of == null;   // EpicLoot's sockets close their own way
+                if (_bagClose != null && _bagClose.gameObject.activeSelf != bagX) _bagClose.gameObject.SetActive(bagX);   // EpicLoot's sockets: the item they belong to; else the worn bag it is (read when another opens)
                 if (of != null) { _icon.sprite = of.GetIcon(); _iconInv = null; }
                 else if (other != _iconInv) { _iconInv = other; var bag = Bags.Worn(Player.m_localPlayer, _worn).FirstOrDefault(b => Bags.Contents(b) == other); _icon.sprite = bag?.GetIcon(); }
                 _icon.enabled = _icon.sprite != null;
@@ -541,6 +542,6 @@ namespace Jatify.UI
 
         private static string N(ItemDrop.ItemData i) => Localization.instance.Localize(i.m_shared.m_name);
 
-        internal static void Restore() { _btnDone.Clear(); _l = null; _chestMode = true; _socketLooked = false; _socketItem = null; _frame = null; _g = null; _infoFade = null; _shown = null; _tip = null; _tipFor = null; _search = null; _query = ""; _found = null; _tipShow = null; }
+        internal static void Restore() { _iconInv = null; _bagClose = null; _btnDone.Clear(); _l = null; _chestMode = true; _socketLooked = false; _socketItem = null; _frame = null; _g = null; _infoFade = null; _shown = null; _tip = null; _tipFor = null; _search = null; _query = ""; _found = null; _tipShow = null; }
     }
 }

@@ -81,7 +81,18 @@ namespace Jatify.UI
         // the ability bar jumped with it (user). Jatify sets it instead, its lowest part (the level strip) Gap px over Jatify's
         // health bars and the held item's name, in every mode. Fate Woven places it in its Update; this runs after (LateUpdate)
         private const float Gap = 40f;
-        private static RectTransform _bar; private static float _barLook, _partsAt, _heldY = float.NaN;
+        private static RectTransform _bar; private static float _barLook, _partsAt, _moveAt, _heldY = float.NaN; private static bool _placed;
+        private static System.Reflection.PropertyInfo _moveProp; private static System.Reflection.FieldInfo _offField; private static bool _moveLooked;
+        // Fate Woven's HudBar.Move.Offset: off zero once the player moved the bar themselves (it then leaves out its own lift too)
+        private static bool Placed()
+        {
+            try
+            {
+                if (!_moveLooked) { _moveLooked = true; var hb = Type.GetType("ValheimWildcard.UI.HudBar, FateWoven"); _moveProp = hb?.GetProperty("Move", BindingFlags.NonPublic | BindingFlags.Static); _offField = _moveProp?.PropertyType.GetField("Offset"); }
+                var mv = _moveProp?.GetValue(null); return mv != null && _offField != null && ((Vector2)_offField.GetValue(mv)).sqrMagnitude >= 0.01f;
+            }
+            catch { _moveProp = null; return false; }
+        }
         private static readonly System.Collections.Generic.List<RectTransform> _parts = new System.Collections.Generic.List<RectTransform>();
         private static readonly Vector3[] _c4 = new Vector3[4];
         internal static void HoldBar()
@@ -95,6 +106,8 @@ namespace Jatify.UI
                 _partsAt = 0f; _heldY = float.NaN;
             }
             if (!_bar.gameObject.activeInHierarchy || _bar.parent == null) return;
+            if (Time.unscaledTime >= _moveAt) { _moveAt = Time.unscaledTime + 0.25f; _placed = Placed(); }
+            if (_placed) return;   // the player placed it with Fate Woven's own move mode: theirs
             if (Time.unscaledTime >= _partsAt) { _partsAt = Time.unscaledTime + 0.5f; _bar.GetComponentsInChildren(false, _parts); }   // its slots and level strip, read again twice a second
             float low = float.MaxValue, top = float.MinValue;
             foreach (var r in _parts) { if (r == null || r == _bar || !r.gameObject.activeInHierarchy || r.rect.height < 0.5f) continue; r.GetWorldCorners(_c4); low = Mathf.Min(low, _c4[0].y); }

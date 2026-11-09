@@ -388,7 +388,7 @@ namespace Jatify.UI
                 {
                     _bagFor[i] = it; _bagLit[i] = -1;
                     var ic = tab.GetComponentsInChildren<Image>(true).FirstOrDefault(x => x.name == "Icon"); if (ic != null) ic.sprite = it.GetIcon();
-                    var tip = tab.GetComponentInChildren<UITooltip>(true); if (tip != null) tip.Set(Localization.instance.Localize(it.m_shared.m_name), "Opens it.");
+                    var tip = tab.GetComponentInChildren<UITooltip>(true); if (tip != null) tip.Set(Localization.instance.Localize(it.m_shared.m_name), "Opens or closes it.");
                 }
                 int lit = Bags.IsOpen(it) ? 1 : 0; if (lit != _bagLit[i]) { _bagLit[i] = lit; Tint(tab, lit == 1); }
             }
