@@ -46,6 +46,7 @@ namespace Jatify.UI
         private static readonly AccessTools.FieldRef<InventoryGui, Container> Cur = AccessTools.FieldRefAccess<InventoryGui, Container>("m_currentContainer");
         private static readonly AccessTools.FieldRef<InventoryGui, InventoryGrid> Grid = AccessTools.FieldRefAccess<InventoryGui, InventoryGrid>("m_containerGrid");
         private static object _shown; private static CanvasGroup _cg; private static bool _hid;
+        internal static bool Covers => _hid;   // the chest panel is hidden under its panel
         internal static void Share(InventoryGui g)
         {
             if (g == null || g.m_container == null) return;
