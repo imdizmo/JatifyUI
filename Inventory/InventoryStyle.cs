@@ -357,7 +357,7 @@ namespace Jatify.UI
                 if (i >= _bagTabs.Count)
                 {
                     int n = i; var t = Plugin.Instance.ThemeData;
-                    _bagTabs.Add(EdgeTab("jatify-bag-tab", false, "box", "Bag", "", () => { if (n < _bagFor.Count && _bagFor[n] != null) { if (!Bags.IsOpen(_bagFor[n])) Bags.Open(_bagFor[n]); } }, t, InventoryGui.instance));
+                    _bagTabs.Add(EdgeTab("jatify-bag-tab", false, "box", "Bag", "", () => { FateWoven.Close(); if (n < _bagFor.Count && _bagFor[n] != null) { if (!Bags.IsOpen(_bagFor[n])) Bags.Open(_bagFor[n]); } }, t, InventoryGui.instance));
                     _bagFor.Add(null); _bagLit.Add(-1);
                 }
                 var tab = _bagTabs[i]; bool on = i < _worn.Count;
