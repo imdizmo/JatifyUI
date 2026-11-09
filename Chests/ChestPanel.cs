@@ -474,7 +474,7 @@ namespace Jatify.UI
             var chest = c.GetInventory(); var bag = p.GetInventory();
             var names = new HashSet<string>(chest.GetAllItems().Select(i => i.m_shared.m_name));
             var assigned = ChestAssign.SharedName(c); if (assigned != null) names.Add(assigned);
-            var list = bag.GetAllItems().Where(i => Putable(i) && (!similar || names.Contains(i.m_shared.m_name)) && ChestAssign.Allows(c, i)).ToList();
+            var list = bag.GetAllItems().Where(i => Putable(i) && (!similar || names.Contains(i.m_shared.m_name)) && ChestAssign.Allows(c, i)).OrderBy(i => i.m_gridPos.y).ThenBy(i => i.m_gridPos.x).ToList();   // in the bag's reading order: the chest fills the same way each time (user)
             if (list.Count == 0) return similar ? "Nothing you carry is in this chest" : "Nothing to put away";
             int n = Move(bag, chest, list);
             return n == 0 ? "The chest is full" : $"Put {n} stack{(n == 1 ? "" : "s")} in the chest" + (n < list.Count ? $" · {list.Count - n} did not fit" : "");
@@ -484,7 +484,7 @@ namespace Jatify.UI
         {
             var c = Open; var p = Player.m_localPlayer; if (c == null || p == null) return null;
             var chest = c.GetInventory(); var bag = p.GetInventory();
-            var list = chest.GetAllItems().Where(i => !IsLocked(i.m_gridPos.x, i.m_gridPos.y)).ToList();
+            var list = chest.GetAllItems().Where(i => !IsLocked(i.m_gridPos.x, i.m_gridPos.y)).OrderBy(i => i.m_gridPos.y).ThenBy(i => i.m_gridPos.x).ToList();   // the chest's reading order
             if (!similar && c.GetComponent<TombStone>() != null)
             {   // a grave: Valheim's own grave take-all (as the use key on it), so what you wore goes back on (ours, and AzuEPI's into its
                 // slots and quick slots). It refuses a grave that is open, so the panel closes first.
