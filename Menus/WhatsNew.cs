@@ -27,7 +27,7 @@ namespace Jatify.UI
 <b>HUD</b>
 - The key hints at the bottom right stack at the screen's right edge, no longer above the action bar.
 [hints]
-- Looking at a chest, its card sits at the bottom left, clear of the health bars.
+- Looking at a chest, its card opens up and right from the crosshair.
 - The building card sits above the right-hand slots, clear of the key hints.
 - Pause screens also hide what other mods add to Valheim's HUD.
 

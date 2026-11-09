@@ -9,7 +9,7 @@
 ### HUD
 
 - The key hints at the bottom right stack in a column at the screen's right edge, no longer above the action bar.
-- Looking at a chest, its card sits at the bottom left, no longer over the health bars.
+- Looking at a chest, its card opens up and right from the crosshair, its corner at the crosshair.
 - The building card sits above the right-hand slots and left of the key hints; it covered both.
 - Pause screens also hide what other mods add to Valheim's HUD (Fate Woven's ability bar showed through the menu).
 
