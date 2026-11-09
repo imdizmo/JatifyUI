@@ -120,8 +120,9 @@ namespace Jatify.UI
         private void Live()
         {
             if (InventoryGui.instance == null || !InventoryGui.IsVisible()) { Close(); return; }   // Esc or Tab: back as it was
-            if (!_dirty || Time.unscaledTime < _liveAt) return;
-            _dirty = false; _liveAt = Time.unscaledTime + 0.1f;   // the whole UI restyles: ten times a second at most while dragging
+            // the whole UI rebuilds for a colour: once the mouse is up and the colour has held for a moment, never mid-drag
+            if (!_dirty || Time.unscaledTime < _liveAt || Input.GetMouseButton(0)) return;
+            _dirty = false;
             Plugin.Instance.PreviewColour(_field, Hex(Picked()));
         }
 
@@ -133,7 +134,7 @@ namespace Jatify.UI
 
         private void Changed()
         {
-            _dirty = true;
+            _dirty = true; _liveAt = Time.unscaledTime + 0.3f;
             var c = Picked();
             if (_svHue != _h) { _svHue = _h; SvTex(); }
             Place(_svMark.rectTransform, _s, _v);
