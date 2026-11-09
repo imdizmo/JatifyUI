@@ -698,6 +698,7 @@ namespace Jatify.UI
             {
                 _fwTab.At(Lx - 52f + 1f, 123f - 32f + 66f * (_modsTab != null && _modsTab.gameObject.activeSelf ? 2 : 1), 52, 60);
                 FateWoven.Park(_fwTab);
+                FateWoven.Share(InventoryGui.instance);
                 bool open = FateWoven.Open; if (open != _fwLit) { _fwLit = open; Tint(_fwTab, open); }
             }
             int key = SpecialRows.Start * 4 + (Folded ? 1 : 0) + (Narrow ? 2 : 0) + Mathf.RoundToInt(EsBelow) * 1000 + (UnderBag ? 1 << 24 : 0);   // ExtraSlots adding a row under the doll moves the strip

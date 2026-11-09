@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -38,6 +39,26 @@ namespace Jatify.UI
         internal static bool Open
         {
             get { try { return _open != null && _open(); } catch { _open = null; return false; } }
+        }
+
+        // its panel takes crafting's spot, where our chest panel also sits: the newest one shows. Opening the panel hides the chest
+        // panel (the chest stays open; closing the panel shows it again), opening a chest (or a backpack) closes the panel
+        private static readonly AccessTools.FieldRef<InventoryGui, Container> Cur = AccessTools.FieldRefAccess<InventoryGui, Container>("m_currentContainer");
+        private static readonly AccessTools.FieldRef<InventoryGui, InventoryGrid> Grid = AccessTools.FieldRefAccess<InventoryGui, InventoryGrid>("m_containerGrid");
+        private static object _shown; private static CanvasGroup _cg; private static bool _hid;
+        internal static void Share(InventoryGui g)
+        {
+            if (g == null || g.m_container == null) return;
+            bool up = g.m_container.gameObject.activeInHierarchy;
+            object now = !up ? null : (object)Cur(g) ?? Grid(g)?.GetInventory();
+            bool open = Open;
+            if (now != null && now != _shown && open) { Toggle(); open = Open; }
+            _shown = now;
+            bool hide = up && open;
+            if (_cg == null || _cg.transform != g.m_container) { _cg = g.m_container.GetComponent<CanvasGroup>() ?? g.m_container.gameObject.AddComponent<CanvasGroup>(); _hid = !hide; }   // a rebuilt panel: set it once
+            if (hide == _hid) return;
+            _hid = hide;
+            _cg.alpha = hide ? 0f : 1f; _cg.blocksRaycasts = !hide; _cg.interactable = !hide;
         }
 
         // its floating button, moved under our tab and hidden; its icon becomes the tab's. Looked for twice a second until found
