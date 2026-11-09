@@ -84,12 +84,22 @@ namespace Jatify.UI
         // watcher's own reload after it is harmless). The accent's soft tint follows the accent.
         internal void Set(string token, string hex)
         {
-            var f = typeof(ThemeData).GetField(token); if (f == null || f.FieldType != typeof(string)) return;
-            f.SetValue(D, hex);
-            if (token == "accent") D.accentSoft = hex.Substring(0, 7) + "24";
+            if (!Put(token, hex)) return;
             try { File.WriteAllText(_file, JsonUtility.ToJson(D, true)); }
             catch (Exception e) { Log.Warn("theme.json not saved: " + e.Message); }
             Changed?.Invoke(D);
+        }
+
+        // the colour picker's preview: the UI restyles, theme.json stays as it was; Revert reads it back
+        internal void Preview(string token, string hex) { if (Put(token, hex)) Changed?.Invoke(D); }
+        internal void Revert() { if (Read()) Changed?.Invoke(D); }
+
+        private bool Put(string token, string hex)
+        {
+            var f = typeof(ThemeData).GetField(token); if (f == null || f.FieldType != typeof(string)) return false;
+            f.SetValue(D, hex);
+            if (token == "accent") D.accentSoft = hex.Substring(0, 7) + "24";
+            return true;
         }
 
         private bool Read()

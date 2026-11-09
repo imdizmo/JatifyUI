@@ -25,6 +25,8 @@ namespace Jatify.UI
         private readonly List<Graphic> _sample = new List<Graphic>();   // the sample's parts drawn in the picked colour
         private Graphic _accentGlow;
         private bool _writing;
+        private readonly Image _dim; private readonly RectTransform _panel; private readonly TMP_Text _title;
+        private bool _preview, _kept, _dirty; private float _liveAt;
 
         // field: ThemeData's field; alpha: panel colours carry it
         // dim: how dark the screen goes behind (edit mode keeps the real UI in view)
@@ -40,10 +42,10 @@ namespace Jatify.UI
             _orig = Theme.C((string)typeof(ThemeData).GetField(field).GetValue(t));
             _default = Theme.C((string)typeof(ThemeData).GetField(field).GetValue(new ThemeData()));
             _root = Kit.Node(parent, "ColourPicker").Fill();
-            var dim = Kit.Img(_root, "Dim", null, new Color(0f, 0f, 0f, dimA)); dim.rectTransform.Fill(); dim.raycastTarget = true;   // clicks stay in the picker
+            var dim = _dim = Kit.Img(_root, "Dim", null, new Color(0f, 0f, 0f, dimA)); dim.rectTransform.Fill(); dim.raycastTarget = true;   // clicks stay in the picker
             var solid = Theme.C(t.glass); solid.a = 1f;   // the settings page behind showed through the see-through panel colour
-            var (panel, _) = Kit.Box(_root, "Panel", solid, Theme.C(t.line2), 14); var p = panel.rectTransform; p.At(630, 300, 660, 424); panel.raycastTarget = true;
-            var title = Kit.Text(p, "Title", "COLOUR · " + label.ToUpperInvariant(), Fonts.Mono, 12f, Theme.C(t.mute)); title.characterSpacing = 6f; title.rectTransform.At(20, 14, 600, 18);
+            var (panel, _) = Kit.Box(_root, "Panel", solid, Theme.C(t.line2), 14); var p = _panel = panel.rectTransform; p.At(630, 300, 660, 424); panel.raycastTarget = true;
+            var title = _title = Kit.Text(p, "Title", "COLOUR · " + label.ToUpperInvariant(), Fonts.Mono, 12f, Theme.C(t.mute)); title.characterSpacing = 6f; title.rectTransform.At(20, 14, 600, 18);
 
             // saturation (x) / brightness (y) for the hue
             _sv = Kit.Img(p, "SV", null, Color.white, false); _sv.rectTransform.At(20, 44, 240, 240); _sv.raycastTarget = true;
@@ -66,6 +68,7 @@ namespace Jatify.UI
             Label(p, "Current", x + 6, 44); _cur = Swatch(p, x + 6, 62, Color.white);
             Label(p, "Original", x + 6, 116); var orig = Swatch(p, x + 6, 134, _orig);
             orig.raycastTarget = true; orig.gameObject.AddComponent<Button>().onClick.AddListener(() => Set(_orig));
+            if (Player.m_localPlayer != null) Button(p, "Preview", x + 6, 196, 120, false, Preview);   // in game: the real UI in this colour
             // the sample: this colour where the UI uses it, next to the others as they are
             Sample(p, x + 136, 44, 640 - (x + 136));
 
@@ -77,12 +80,14 @@ namespace Jatify.UI
             // buttons
             Button(p, "Default", 336, 372, 92, false, () => Set(_default));
             Button(p, "Cancel", 434, 372, 92, false, Close);
-            Button(p, "Apply", 532, 372, 108, true, () => { _apply(Hex(Picked())); Close(); });
+            Button(p, "Apply", 532, 372, 108, true, () => { _kept = true; if (_preview) Plugin.Instance.SetColour(_field, Hex(Picked())); else _apply(Hex(Picked())); Close(); });
             Set(_orig);
         }
 
         internal void Close()
         {
+            if (_preview && !_kept) Plugin.Instance.RevertColours();   // previewed, not applied: the saved colours come back
+            _preview = false;
             if (_root != null) UnityEngine.Object.Destroy(_root.gameObject);
             if (_svTex != null) UnityEngine.Object.Destroy(_svTex);
             if (Open == this) Open = null;
@@ -93,8 +98,40 @@ namespace Jatify.UI
 
         private void Set(Color c) { UnityEngine.Color.RGBToHSV(c, out _h, out _s, out _v); _a = c.a; Changed(); }
 
+        // preview: the settings page and the menu go, the inventory opens, the picker moves aside (drag it by any free spot) and
+        // every change restyles the real UI without saving. Apply saves; Cancel, or the inventory closing, puts it back
+        private void Preview()
+        {
+            if (_preview || Player.m_localPlayer == null || InventoryGui.instance == null) return;
+            _preview = true; _dirty = true;
+            _root.SetParent(Root.Canvas.transform, false);
+            _dim.enabled = false; _dim.raycastTarget = false;
+            _panel.At(1920f - 660f - 40f, 90f, 660f, 424f);
+            _panel.gameObject.AddComponent<Mover>();
+            _title.text += "  ·  PREVIEW";
+            var me = Open; Open = null; ConfigPage.Open?.Close(); Open = me;   // the page closes its picker: not this one
+            if (Menu.instance != null && Menu.IsVisible()) Menu.instance.Hide();
+            if (!InventoryGui.IsVisible()) InventoryGui.instance.Show(null);
+            _root.gameObject.AddComponent<Ticker>().Tick = Live;
+        }
+
+        private void Live()
+        {
+            if (InventoryGui.instance == null || !InventoryGui.IsVisible()) { Close(); return; }   // Esc or Tab: back as it was
+            if (!_dirty || Time.unscaledTime < _liveAt) return;
+            _dirty = false; _liveAt = Time.unscaledTime + 0.1f;   // the whole UI restyles: ten times a second at most while dragging
+            Plugin.Instance.PreviewColour(_field, Hex(Picked()));
+        }
+
+        private sealed class Ticker : MonoBehaviour { internal Action Tick; private void Update() => Tick?.Invoke(); }
+        private sealed class Mover : MonoBehaviour, IDragHandler
+        {
+            public void OnDrag(PointerEventData e) { var c = GetComponentInParent<Canvas>(); ((RectTransform)transform).anchoredPosition += e.delta / (c != null ? c.scaleFactor : 1f); }
+        }
+
         private void Changed()
         {
+            _dirty = true;
             var c = Picked();
             if (_svHue != _h) { _svHue = _h; SvTex(); }
             Place(_svMark.rectTransform, _s, _v);

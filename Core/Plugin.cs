@@ -25,6 +25,8 @@ namespace Jatify.UI
         private Theme _theme;
         internal ThemeData ThemeData => _theme.D;
         internal void SetColour(string token, string hex) => _theme.Set(token, hex);
+        internal void PreviewColour(string token, string hex) => _theme.Preview(token, hex);
+        internal void RevertColours() => _theme.Revert();
         private bool _dumped, _invStyled, _buildStyled;
 
         private void Awake()
