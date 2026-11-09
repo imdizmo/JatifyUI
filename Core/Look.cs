@@ -127,7 +127,7 @@ namespace Jatify.UI
             return Mathf.Max(0f, v);
         }
 
-        internal static void FireTheme() { if (ThemeChanged != null) Try("ThemeChanged", () => ThemeChanged(), () => ThemeChanged = null); }
+        internal static void FireTheme() { if (ThemeChanged != null) foreach (Action h in ThemeChanged.GetInvocationList()) Try("ThemeChanged", h, () => ThemeChanged -= h); }   // one failing handler goes, the others stay
 
         private static readonly string[] Names = { "inventory", "crafting", "character", "chest", "health", "hotbar" };
         private static readonly Rect[] _was = new Rect[Names.Length];
@@ -136,7 +136,7 @@ namespace Jatify.UI
             if (LayoutChanged == null) return;
             bool moved = false;
             for (int i = 0; i < Names.Length; i++) { var r = Windows(Names[i]); if (r != _was[i]) { _was[i] = r; moved = true; } }
-            if (moved) Try("LayoutChanged", () => LayoutChanged(), () => LayoutChanged = null);
+            if (moved) foreach (Action h in LayoutChanged.GetInvocationList()) Try("LayoutChanged", h, () => LayoutChanged -= h);
         }
 
         private static Rect Windows(string name)
@@ -159,7 +159,7 @@ namespace Jatify.UI
         {
             if (rt == null) return Rect.zero;
             _parts.Clear(); _parts.Add(rt);
-            if (children) foreach (Transform c in rt) if (c is RectTransform r) _parts.Add(r);
+            if (children) for (int i = 0; i < rt.childCount; i++) if (rt.GetChild(i) is RectTransform r) _parts.Add(r);   // no enumerator: this runs every frame
             return Union(_parts);
         }
         private static Rect Union(List<RectTransform> parts)

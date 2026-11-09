@@ -1032,7 +1032,7 @@ namespace Jatify.UI
             ChestPanel.Restore();
             _eq?.Destroy(); _eq = null; _tabs.Clear(); _tabOn = null; _badge = null; _badgeShown = -1;
             _trash?.Destroy(); _trash = null; _stats?.Destroy(); _stats = null;
-            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _gearTab = null; _modsTab = null; _fwTab = null; _fwLit = false; _colLit = -1; _bagTabs.Clear(); _bagFor.Clear(); _bagLit.Clear(); _bagsAt = 0f; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _narrowLaid = -1; _acts.Clear(); _icons.Clear(); _modBtns.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
+            _off.Clear(); _ours.Clear(); _frame = null; _beltLine = null; _fold = null; _keyTab = null; _gearTab = null; _modsTab = null; _fwTab = null; _fwLit = false; FateWoven.Unhide(); _colLit = -1; _bagTabs.Clear(); _bagFor.Clear(); _bagLit.Clear(); _bagsAt = 0f; _foldText = null; _legibleCount = -1; _panel = _head = _headLine = null; _narrowLaid = -1; _acts.Clear(); _icons.Clear(); _modBtns.Clear(); _beltLabels.Clear(); _for = null; _armor = _weight = null; _weightFill = null;
         }
     }
 

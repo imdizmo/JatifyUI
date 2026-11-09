@@ -25,7 +25,7 @@ namespace Jatify.UI
 
 <b>HUD</b>
 - The key hints at the bottom right stack at the screen's right edge, no longer above the action bar.
-- Pause screens hide other mods' HUD pieces too.
+- Pause screens also hide what other mods add to Valheim's HUD.
 
 <b>Menus</b>
 - Continue lights up on hover like the other entries, and the lists on the Jatify UI and Mods pages slide and light up the same way.

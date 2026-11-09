@@ -41,7 +41,7 @@ namespace Jatify.UI
             _t = t; _field = field; _alpha = alpha; _apply = apply;
             _orig = Theme.C((string)typeof(ThemeData).GetField(field).GetValue(t));
             _default = Theme.C((string)typeof(ThemeData).GetField(field).GetValue(new ThemeData()));
-            _root = Kit.Node(parent, "ColourPicker").Fill();
+            _root = Kit.Node(parent, "jatify-colourpicker").Fill();   // "jatify": its fields keep the keys from the game (Typing)
             var dim = _dim = Kit.Img(_root, "Dim", null, new Color(0f, 0f, 0f, dimA)); dim.rectTransform.Fill(); dim.raycastTarget = true;   // clicks stay in the picker
             var solid = Theme.C(t.glass); solid.a = 1f;   // the settings page behind showed through the see-through panel colour
             var (panel, _) = Kit.Box(_root, "Panel", solid, Theme.C(t.line2), 14); var p = _panel = panel.rectTransform; p.At(630, 300, 660, 424); panel.raycastTarget = true;
@@ -52,14 +52,14 @@ namespace Jatify.UI
             _sv.gameObject.AddComponent<DragArea>().On = uv => { _s = uv.x; _v = uv.y; Changed(); };
             _svMark = Kit.Img(_sv.rectTransform, "Mark", Kit.Ring(6), Color.white, false); _svMark.type = Image.Type.Sliced; Pin(_svMark.rectTransform, 12, 12);
             // hue, top to bottom like the reference (red at both ends)
-            var hue = Kit.Img(p, "Hue", Sprite.Create(HueTex(), new Rect(0, 0, 1, 128), new Vector2(0.5f, 0.5f)), Color.white, false); hue.rectTransform.At(270, 44, 20, 240); hue.raycastTarget = true;
+            var hue = Kit.Img(p, "Hue", HueSprite(), Color.white, false); hue.rectTransform.At(270, 44, 20, 240); hue.raycastTarget = true;
             hue.gameObject.AddComponent<DragArea>().On = uv => { _h = uv.y; Changed(); };
             _hueMark = Kit.Img(hue.rectTransform, "Mark", null, Color.white, false); Pin(_hueMark.rectTransform, 26, 3);
             float x = 300f;
             if (alpha)
             {   // opacity: the colour from clear (bottom) to solid (top) over a dark well
                 var well = Kit.Panel(p, "AlphaWell", new Color(0.05f, 0.05f, 0.06f, 1f), 3); well.rectTransform.At(300, 44, 20, 240);
-                _alphaFill = Kit.Img(well.rectTransform, "Fill", Sprite.Create(AlphaTex(), new Rect(0, 0, 1, 64), new Vector2(0.5f, 0.5f)), Color.white, false); _alphaFill.rectTransform.Fill(); _alphaFill.raycastTarget = true;
+                _alphaFill = Kit.Img(well.rectTransform, "Fill", AlphaSprite(), Color.white, false); _alphaFill.rectTransform.Fill(); _alphaFill.raycastTarget = true;
                 _alphaFill.gameObject.AddComponent<DragArea>().On = uv => { _a = uv.y; Changed(); };
                 _alphaMark = Kit.Img(well.rectTransform, "Mark", null, Color.white, false); Pin(_alphaMark.rectTransform, 26, 3);
                 x = 330f;
@@ -89,7 +89,7 @@ namespace Jatify.UI
             if (_preview && !_kept) { Shut(); Plugin.Instance.RevertColours(); }   // previewed, not applied: the saved colours come back
             _preview = false;
             if (_root != null) UnityEngine.Object.Destroy(_root.gameObject);
-            if (_svTex != null) UnityEngine.Object.Destroy(_svTex);
+            if (_svTex != null) { if (_sv != null && _sv.sprite != null) UnityEngine.Object.Destroy(_sv.sprite); UnityEngine.Object.Destroy(_svTex); }
             if (Open == this) Open = null;
         }
 
@@ -233,11 +233,12 @@ namespace Jatify.UI
         }
 
         // ---- textures and marks ------------------------------------------------------------------------------
+        private static Color32[] _px;
         private void SvTex()
         {
             const int n = 64;
             if (_svTex == null) { _svTex = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp }; _sv.sprite = Sprite.Create(_svTex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f)); }
-            var px = new Color32[n * n];
+            var px = _px ?? (_px = new Color32[n * n]);
             for (int y = 0; y < n; y++) for (int x = 0; x < n; x++) px[y * n + x] = UnityEngine.Color.HSVToRGB(_h, x / (n - 1f), y / (n - 1f));
             _svTex.SetPixels32(px); _svTex.Apply(false);
         }
@@ -266,6 +267,9 @@ namespace Jatify.UI
             tex.Apply(false);
             return _wheel = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f));
         }
+        private static Sprite _hueSp, _alphaSp;
+        private static Sprite HueSprite() => _hueSp != null ? _hueSp : _hueSp = Sprite.Create(HueTex(), new Rect(0, 0, 1, 128), new Vector2(0.5f, 0.5f));
+        private static Sprite AlphaSprite() => _alphaSp != null ? _alphaSp : _alphaSp = Sprite.Create(AlphaTex(), new Rect(0, 0, 1, 64), new Vector2(0.5f, 0.5f));
         private static Texture2D AlphaTex()
         {
             if (_alphaRamp != null) return _alphaRamp;

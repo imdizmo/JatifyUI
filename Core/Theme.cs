@@ -9,6 +9,7 @@ namespace Jatify.UI
     [Serializable]
     internal class ThemeData
     {
+        public int migrated;                    // 1: the 0.3.0 move from green to orange is done (once: green is a ready colour again)
         public string glass = "#262323C5";     // panel fill
         public string glassLine = "#FFFFFF26";  // panel outline
         public string line2 = "#FFFFFF33";      // stronger outline
@@ -68,6 +69,7 @@ namespace Jatify.UI
         };
         private void Migrate()
         {
+            if (D.migrated >= 1) return;
             var fresh = new ThemeData(); bool moved = false;
             foreach (var (token, was) in Old)
             {
@@ -75,8 +77,8 @@ namespace Jatify.UI
                 if (!string.Equals((string)f.GetValue(D), was, StringComparison.OrdinalIgnoreCase)) continue;
                 f.SetValue(D, f.GetValue(fresh)); moved = true;
             }
-            if (!moved) return;
-            try { File.WriteAllText(_file, JsonUtility.ToJson(D, true)); Log.Info("theme.json: the old green defaults moved to the new orange ones"); }
+            D.migrated = 1;
+            try { File.WriteAllText(_file, JsonUtility.ToJson(D, true)); if (moved) Log.Info("theme.json: the old green defaults moved to the new orange ones"); }
             catch (Exception e) { Log.Warn("theme.json not updated: " + e.Message); }
         }
 
